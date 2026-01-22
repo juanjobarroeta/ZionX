@@ -1,3 +1,6 @@
+console.log("🚀 ZionX Backend Starting...");
+console.log("📅 Start time:", new Date().toISOString());
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -8,6 +11,10 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 require("dotenv").config();
+
+console.log("✅ Core modules loaded");
+console.log("🔗 DATABASE_URL exists:", !!process.env.DATABASE_URL);
+console.log("🔗 PORT:", process.env.PORT || 5001);
 const XLSX = require("xlsx");
 let twilio;
 try {
@@ -793,26 +800,14 @@ const allowedOrigins = [
   "https://zionx-marketing.vercel.app",
   "https://zion-x.vercel.app"
 ];
+// CORS - Allow all origins for now to debug
 app.use(cors({
-  origin: function (origin, callback) {
-    console.log("🌍 Incoming request origin:", origin);
-    // Allow localhost, vercel, ngrok, and railway for development/production
-    if (!origin || 
-        origin.includes('localhost') || 
-        origin.includes('ngrok') || 
-        origin.includes('vercel.app') ||
-        origin.includes('railway.app') ||
-        allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn("❌ Blocked by CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: true, // Allow ALL origins temporarily
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
+console.log("✅ CORS configured (allowing all origins)");
 // Ensure all preflight OPTIONS requests are handled with the same CORS policy
 app.options("*", cors());
 
