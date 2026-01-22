@@ -1571,7 +1571,7 @@ const createTables = async () => {
       ALTER TABLE inventory_requests ADD COLUMN IF NOT EXISTS approval_required BOOLEAN DEFAULT true;
       ALTER TABLE inventory_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
       
-      // Create inventory_items table for bulk requests
+      -- Create inventory_items table for bulk requests
       CREATE TABLE IF NOT EXISTS inventory_items (
         id SERIAL PRIMARY KEY,
         request_id INTEGER REFERENCES inventory_requests(id) ON DELETE CASCADE,
