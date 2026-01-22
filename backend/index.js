@@ -1708,7 +1708,128 @@ const createTables = async () => {
       ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_type VARCHAR(50) DEFAULT 'regular';
     `);
 
-    console.log("✅ Tables ready");
+    // =====================================================
+    // MESSAGING & NOTIFICATIONS TABLES
+    // =====================================================
+    
+    // Notifications table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        link TEXT,
+        item_id INTEGER,
+        item_type VARCHAR(50),
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Notifications table created");
+
+    // Conversations table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255),
+        type VARCHAR(50) DEFAULT 'direct',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Conversation participants table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS conversation_participants (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_read_at TIMESTAMP,
+        UNIQUE(conversation_id, user_id)
+      );
+    `);
+
+    // Messages table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+        sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        content TEXT NOT NULL,
+        message_type VARCHAR(50) DEFAULT 'text',
+        item_id INTEGER,
+        item_type VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Message read receipts
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS message_read_receipts (
+        id SERIAL PRIMARY KEY,
+        message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(message_id, user_id)
+      );
+    `);
+    console.log("✅ Messaging tables created");
+
+    // Team members table (if not exists)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS team_members (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        role VARCHAR(50),
+        department VARCHAR(100),
+        phone VARCHAR(20),
+        avatar_url TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Team members table created");
+
+    // Projects table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        client_id INTEGER REFERENCES customers(id),
+        status VARCHAR(50) DEFAULT 'active',
+        start_date DATE,
+        end_date DATE,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Projects table created");
+
+    // Content/Tasks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content_tasks (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id),
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        assigned_to INTEGER REFERENCES users(id),
+        status VARCHAR(50) DEFAULT 'pending',
+        priority VARCHAR(20) DEFAULT 'medium',
+        due_date DATE,
+        platform VARCHAR(50),
+        content_type VARCHAR(50),
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Content tasks table created");
+
+    console.log("✅ All tables ready");
 
 // Route to receive and store credit investigation form data (extended fields)
 app.post("/investigations", authenticateToken, async (req, res) => {

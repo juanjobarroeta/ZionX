@@ -8,6 +8,8 @@ const MarketingDashboard = () => {
   const [customers, setCustomers] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [scheduledPosts, setScheduledPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,13 +22,17 @@ const MarketingDashboard = () => {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [customersRes, teamRes] = await Promise.all([
+      const [customersRes, teamRes, projectsRes, tasksRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: { team_members: [] } }))
+        axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: { team_members: [] } })),
+        axios.get(`${API_BASE_URL}/projects`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE_URL}/content-tasks`, { headers }).catch(() => ({ data: [] }))
       ]);
 
-      setCustomers(customersRes.data || []);
-      setTeamMembers(teamRes.data.team_members || []);
+      setCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
+      setTeamMembers(teamRes.data?.team_members || teamRes.data || []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -141,8 +147,8 @@ const MarketingDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-zionx-accent text-sm">Total Clientes</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{customers.length || 5}</p>
-                  <p className="text-xs text-green-600 mt-1">+12% este mes</p>
+                  <p className="text-3xl font-bold text-zionx-primary">{customers.length}</p>
+                  <p className="text-xs text-gray-500 mt-1">{customers.length === 0 ? "Sin clientes aún" : "Clientes activos"}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-xl">👥</span>
@@ -154,8 +160,8 @@ const MarketingDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-zionx-accent text-sm">Proyectos Activos</p>
-                  <p className="text-3xl font-bold text-zionx-primary">8</p>
-                  <p className="text-xs text-green-600 mt-1">+3 este mes</p>
+                  <p className="text-3xl font-bold text-zionx-primary">{projects.filter(p => p.status === 'active').length}</p>
+                  <p className="text-xs text-gray-500 mt-1">{projects.length} proyectos total</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-xl">🎯</span>
@@ -166,12 +172,12 @@ const MarketingDashboard = () => {
             <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-zionx-accent text-sm">Posts Programados</p>
-                  <p className="text-3xl font-bold text-zionx-primary">47</p>
-                  <p className="text-xs text-blue-600 mt-1">15 esta semana</p>
+                  <p className="text-zionx-accent text-sm">Tareas Pendientes</p>
+                  <p className="text-3xl font-bold text-zionx-primary">{tasks.filter(t => t.status === 'pending').length}</p>
+                  <p className="text-xs text-gray-500 mt-1">{tasks.length} tareas total</p>
                 </div>
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">📱</span>
+                  <span className="text-white text-xl">📋</span>
                 </div>
               </div>
             </div>
@@ -179,12 +185,12 @@ const MarketingDashboard = () => {
             <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-zionx-accent text-sm">Tareas Pendientes</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{teamMembers.reduce((sum, m) => sum + (parseInt(m.active_assignments) || 0), 0) || 12}</p>
-                  <p className="text-xs text-yellow-600 mt-1">4 vencen hoy</p>
+                  <p className="text-zionx-accent text-sm">Miembros del Equipo</p>
+                  <p className="text-3xl font-bold text-zionx-primary">{Array.isArray(teamMembers) ? teamMembers.length : 0}</p>
+                  <p className="text-xs text-gray-500 mt-1">{Array.isArray(teamMembers) && teamMembers.filter(m => m.is_active).length} activos</p>
                 </div>
                 <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">📋</span>
+                  <span className="text-white text-xl">👨‍💻</span>
                 </div>
               </div>
             </div>
