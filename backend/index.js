@@ -1339,17 +1339,83 @@ const createTables = async () => {
       console.log("Column penalty_paid type change failed (might already be NUMERIC):", err.message);
     }
 
+    // *** CREATE chart_of_accounts TABLE FIRST ***
+    // This table MUST exist before any INSERT or REFERENCE to it
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chart_of_accounts (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(20) UNIQUE NOT NULL,
+        account_code VARCHAR(20) UNIQUE,
+        name VARCHAR(150),
+        account_name VARCHAR(150),
+        type VARCHAR(50),
+        account_type VARCHAR(50),
+        group_name VARCHAR(100),
+        category VARCHAR(100),
+        parent_code VARCHAR(20),
+        parent_account_id INTEGER,
+        description TEXT,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Chart of accounts table created");
+
+    // Create trigger function to sync code/account_code columns
+    try {
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION sync_chart_of_accounts_columns()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          -- Sync code <-> account_code
+          IF NEW.code IS NOT NULL AND NEW.account_code IS NULL THEN
+            NEW.account_code := NEW.code;
+          ELSIF NEW.account_code IS NOT NULL AND NEW.code IS NULL THEN
+            NEW.code := NEW.account_code;
+          END IF;
+          -- Sync name <-> account_name
+          IF NEW.name IS NOT NULL AND NEW.account_name IS NULL THEN
+            NEW.account_name := NEW.name;
+          ELSIF NEW.account_name IS NOT NULL AND NEW.name IS NULL THEN
+            NEW.name := NEW.account_name;
+          END IF;
+          -- Sync type <-> account_type
+          IF NEW.type IS NOT NULL AND NEW.account_type IS NULL THEN
+            NEW.account_type := NEW.type;
+          ELSIF NEW.account_type IS NOT NULL AND NEW.type IS NULL THEN
+            NEW.type := NEW.account_type;
+          END IF;
+          -- Sync group_name <-> category
+          IF NEW.group_name IS NOT NULL AND NEW.category IS NULL THEN
+            NEW.category := NEW.group_name;
+          ELSIF NEW.category IS NOT NULL AND NEW.group_name IS NULL THEN
+            NEW.group_name := NEW.category;
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS chart_of_accounts_sync ON chart_of_accounts;
+        CREATE TRIGGER chart_of_accounts_sync
+        BEFORE INSERT OR UPDATE ON chart_of_accounts
+        FOR EACH ROW EXECUTE FUNCTION sync_chart_of_accounts_columns();
+      `);
+      console.log("✅ Chart of accounts sync trigger created");
+    } catch (err) {
+      console.log("Trigger creation skipped:", err.message);
+    }
+
     // Ensure required chart of accounts exist for payment processing
     try {
       await pool.query(`
-        INSERT INTO chart_of_accounts (account_code, account_name, account_type, category) 
+        INSERT INTO chart_of_accounts (code, name, type, category) 
         VALUES 
           ('4101', 'Penalidades Clientes', 'INGRESO', 'OPERATIVO'),
           ('4100', 'Intereses Clientes', 'INGRESO', 'OPERATIVO'),
           ('1101', 'Caja', 'ACTIVO', 'CIRCULANTE'),
           ('1102', 'Banco', 'ACTIVO', 'CIRCULANTE'),
           ('1103', 'Clientes', 'ACTIVO', 'CIRCULANTE')
-        ON CONFLICT (account_code) DO NOTHING
+        ON CONFLICT (code) DO NOTHING
       `);
       console.log("✅ Chart of accounts verified/created");
     } catch (err) {
@@ -1416,12 +1482,10 @@ const createTables = async () => {
       );
     `);
 
-    // Chart of accounts table already exists with different column names
-    // Using existing structure: account_code, account_name, account_type, category
     // Insert all foundational seed accounts so they are always present on server reset
     try {
       await pool.query(`
-        INSERT INTO chart_of_accounts (account_code, account_name, account_type, category)
+        INSERT INTO chart_of_accounts (code, name, type, category)
         VALUES 
         ('1101', 'Fondo Fijo de Caja', 'ACTIVO', 'ACTIVO CIRCULANTE'),
         ('1102', 'Cuenta Bancaria', 'ACTIVO', 'ACTIVO CIRCULANTE'),
@@ -1461,19 +1525,20 @@ const createTables = async () => {
         ('6300', 'Papelería', 'EGRESO', 'GASTOS OPERATIVOS'),
         ('6999', 'Otros Gastos', 'EGRESO', 'GASTOS OPERATIVOS'),
         ('9999', 'Resultado del Ejercicio', 'CAPITAL', 'CAPITAL CONTABLE')
-      ON CONFLICT (account_code) DO NOTHING;
+      ON CONFLICT (code) DO NOTHING;
     `);
+      console.log("✅ Chart of accounts seed data inserted");
     } catch (error) {
       console.log("⚠️ Chart of accounts insert skipped:", error.message);
     }
 
-    // Create journal_entries table
+    // Create journal_entries table (NO foreign key to allow flexibility)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS journal_entries (
         id SERIAL PRIMARY KEY,
         date DATE DEFAULT CURRENT_DATE,
         description TEXT,
-        account_code VARCHAR(20) REFERENCES chart_of_accounts(code),
+        account_code VARCHAR(20),
         debit NUMERIC DEFAULT 0,
         credit NUMERIC DEFAULT 0,
         source_type VARCHAR(50),
@@ -1482,6 +1547,7 @@ const createTables = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    console.log("✅ Journal entries table created");
 
     // Patch existing tables with missing columns (safe for repeated runs)
     await pool.query(`
