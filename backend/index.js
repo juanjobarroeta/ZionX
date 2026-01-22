@@ -1,6 +1,15 @@
 console.log("🚀 ZionX Backend Starting...");
 console.log("📅 Start time:", new Date().toISOString());
 
+// Global error handlers to prevent silent crashes
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -4689,6 +4698,15 @@ app.use((req, res, next) => {
 });
 
 app.use(bodyParser.json());
+
+// Health check endpoint - responds before any complex logic
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/", (req, res) => {
+  res.json({ message: "ZionX API is running", version: "1.0.0" });
+});
 
 app.use("/uploads", express.static("uploads"));
 
