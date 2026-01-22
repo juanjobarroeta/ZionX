@@ -844,8 +844,21 @@ console.log("🌐 DATABASE_URL:", process.env.DATABASE_URL ? "Connected via DATA
 
 // Create tables
 const createTables = async () => {
-  // 1. Users table (must be created before any table referencing users)
   console.log("📣 Connected to DB. Creating tables...");
+  
+  // 0. Stores table (must be created FIRST - referenced by users and other tables)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stores (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      address TEXT,
+      phone VARCHAR(20),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  console.log("✅ Stores table created");
+
+  // 1. Users table (must be created before any table referencing users)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -953,15 +966,7 @@ const createTables = async () => {
     );
   `);
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS stores (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      address TEXT,
-      phone VARCHAR(20),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  // stores table already created at the beginning
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS financial_movements (
