@@ -1828,6 +1828,21 @@ async function start() {
     await createTables();
     console.log("✅ Database tables created/verified");
     
+    // Create default admin user if no users exist
+    try {
+      const usersCheck = await pool.query("SELECT COUNT(*) FROM users");
+      if (parseInt(usersCheck.rows[0].count) === 0) {
+        const hashedPassword = await bcrypt.hash("zionx2024", 10);
+        await pool.query(`
+          INSERT INTO users (name, email, password, role, is_active) 
+          VALUES ('Admin', 'admin@zionx.com', $1, 'admin', true)
+        `, [hashedPassword]);
+        console.log("✅ Default admin user created: admin@zionx.com / zionx2024");
+      }
+    } catch (userErr) {
+      console.log("⚠️ Could not check/create default user:", userErr.message);
+    }
+    
     // Run migration for existing payments
     try {
       await migrateExistingPayments();
