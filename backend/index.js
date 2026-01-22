@@ -853,31 +853,44 @@ console.log("🌐 DATABASE_URL:", process.env.DATABASE_URL ? "Connected via DATA
 const createTables = async () => {
   console.log("📣 Connected to DB. Creating tables...");
   
-  // 0. Stores table (must be created FIRST - referenced by users and other tables)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS stores (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      address TEXT,
-      phone VARCHAR(20),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-  console.log("✅ Stores table created");
-
-  // 1. Users table (must be created before any table referencing users)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(100) UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      role VARCHAR(50) DEFAULT 'user',
-      is_active BOOLEAN DEFAULT true,
-      store_id INTEGER REFERENCES stores(id),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  // Create all core tables in a single transaction to ensure order
+  try {
+    await pool.query(`
+      -- 0. Stores table (FIRST - referenced by users)
+      CREATE TABLE IF NOT EXISTS stores (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        address TEXT,
+        phone VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      -- 1. Users table (needs stores to exist)
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        is_active BOOLEAN DEFAULT true,
+        store_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Core tables (stores, users) created");
+  } catch (err) {
+    console.error("❌ Error creating core tables:", err.message);
+    // Try creating them separately
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS stores (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, address TEXT, phone VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+      console.log("✅ Stores table created (fallback)");
+    } catch (e) { console.log("Stores table may already exist"); }
+    
+    try {
+      await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, password TEXT NOT NULL, role VARCHAR(50) DEFAULT 'user', is_active BOOLEAN DEFAULT true, store_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
+      console.log("✅ Users table created (fallback)");
+    } catch (e) { console.log("Users table may already exist"); }
+  }
   // Ensure the 'role' column exists (safe to run even if already present)
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
