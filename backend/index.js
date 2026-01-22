@@ -789,13 +789,20 @@ const allowedOrigins = [
   "https://crediya.me",
   "https://www.crediya.me",
   "https://crediya-frontend-io2d.vercel.app",
-  "https://crediya-frontend.netlify.app"
+  "https://crediya-frontend.netlify.app",
+  "https://zionx-marketing.vercel.app",
+  "https://zion-x.vercel.app"
 ];
 app.use(cors({
   origin: function (origin, callback) {
     console.log("🌍 Incoming request origin:", origin);
-    // Allow localhost for development
-    if (!origin || origin.includes('localhost') || origin.includes('ngrok') || allowedOrigins.includes(origin)) {
+    // Allow localhost, vercel, ngrok, and railway for development/production
+    if (!origin || 
+        origin.includes('localhost') || 
+        origin.includes('ngrok') || 
+        origin.includes('vercel.app') ||
+        origin.includes('railway.app') ||
+        allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn("❌ Blocked by CORS:", origin);
