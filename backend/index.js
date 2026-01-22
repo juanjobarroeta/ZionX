@@ -899,7 +899,18 @@ const createTables = async () => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
   `);
-  console.log("✅ Users table created");
+  // Add permissions column for RBAC
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
+  `);
+  // Add other useful user columns
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+  `);
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100);
+  `);
+  console.log("✅ Users table created with all columns");
 
   // 2. Customers table (must be created before customer_notes, loans, etc.)
   await pool.query(`
