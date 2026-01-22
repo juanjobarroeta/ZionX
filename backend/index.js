@@ -2007,8 +2007,10 @@ async function start() {
       .filter(r => r.route)
       .forEach(r => console.log("📦 Registered route:", r.route.path));
 
-    app.listen(port, () => {
-      console.log(`🚀 Backend live at http://localhost:${port}`);
+    // Railway requires binding to 0.0.0.0
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`🚀 Backend live at http://0.0.0.0:${port}`);
+      console.log(`📡 Server is listening and ready to accept connections`);
     });
   } catch (err) {
     console.error("❌ Error starting server:", err);
