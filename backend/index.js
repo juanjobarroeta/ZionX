@@ -875,8 +875,62 @@ const createTables = async () => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
   `);
+  console.log("✅ Users table created");
 
-  // 2. Customer Notes, Avales, and References
+  // 2. Customers table (must be created before customer_notes, loans, etc.)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS customers (
+      id SERIAL PRIMARY KEY,
+      first_name VARCHAR(100),
+      last_name VARCHAR(100),
+      phone VARCHAR(20),
+      email VARCHAR(100),
+      birthdate DATE,
+      curp VARCHAR(30),
+      address TEXT,
+      employment TEXT,
+      income NUMERIC,
+      ine_path TEXT,
+      bureau_path TEXT,
+      selfie_path TEXT,
+      video_path TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  console.log("✅ Customers table created");
+
+  // 3. Loans table (must be created before payment_breakdowns, loan_installments, etc.)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS loans (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      customer_id INTEGER REFERENCES customers(id),
+      loan_type VARCHAR(50),
+      principal NUMERIC NOT NULL,
+      interest_rate NUMERIC NOT NULL,
+      term_weeks INTEGER NOT NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      inventory_status VARCHAR(50) DEFAULT 'pending',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  console.log("✅ Loans table created");
+
+  // 4. Payments table (must be created before payment_breakdowns, etc.)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id SERIAL PRIMARY KEY,
+      loan_id INTEGER REFERENCES loans(id) ON DELETE CASCADE,
+      amount NUMERIC NOT NULL,
+      method VARCHAR(50),
+      payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  console.log("✅ Payments table created");
+
+  // 5. Customer Notes, Avales, and References
   await pool.query(`
     CREATE TABLE IF NOT EXISTS customer_notes (
       id SERIAL PRIMARY KEY,
