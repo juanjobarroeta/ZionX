@@ -105,16 +105,8 @@ const CreateCustomer = () => {
       case 1: // Business Information
         if (!form.business_name.trim()) errors.business_name = "Razón social es requerida";
         if (!form.rfc.trim()) errors.rfc = "RFC es requerido";
-        if (form.rfc && !/^[A-Z&Ñ]{3}\d{6}[A-Z0-9]{3}$/i.test(form.rfc)) {
-          console.log('RFC validation failed for:', form.rfc);
-          console.log('RFC length:', form.rfc.length);
-          console.log('RFC trimmed:', form.rfc.trim());
-          console.log('RFC uppercase:', form.rfc.toUpperCase());
-          console.log('RFC regex test:', /^[A-Z&Ñ]{3}\d{6}[A-Z0-9]{3}$/i.test(form.rfc));
-          console.log('RFC char by char:', form.rfc.split(''));
-          errors.rfc = "Formato de RFC inválido. Use formato: XXX999999XXX (3 letras + 6 números + 3 caracteres)";
-        } else {
-          console.log('RFC validation passed for:', form.rfc);
+        if (form.rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/i.test(form.rfc)) {
+          errors.rfc = "Formato de RFC inválido. Use formato: Persona Moral (12 caracteres) o Persona Física (13 caracteres)";
         }
         if (!form.industry.trim()) errors.industry = "Giro comercial es requerido";
         break;

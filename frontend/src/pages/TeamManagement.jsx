@@ -13,7 +13,7 @@ const TeamManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'designer',
+    role: 'designer_jr',
     skills: [],
     monthly_wage: '',
     max_daily_tasks: 5,
@@ -22,16 +22,20 @@ const TeamManagement = () => {
   });
 
   const roles = [
-    { value: 'designer', label: 'Diseñador', icon: '🎨' },
+    { value: 'designer_jr', label: 'Diseñador Jr', icon: '🎨' },
+    { value: 'designer_sr', label: 'Diseñador Sr', icon: '🎨' },
     { value: 'community_manager', label: 'Community Manager', icon: '📱' },
+    { value: 'project_manager', label: 'Project Manager', icon: '📋' },
     { value: 'copywriter', label: 'Copywriter', icon: '✍️' },
     { value: 'photographer', label: 'Fotógrafo', icon: '📸' },
     { value: 'video_editor', label: 'Editor de Video', icon: '🎬' }
   ];
 
   const skillOptions = {
-    designer: ['Photoshop', 'Illustrator', 'Figma', 'After Effects', 'InDesign', 'Canva'],
+    designer_jr: ['Photoshop', 'Illustrator', 'Canva', 'InDesign', 'Figma'],
+    designer_sr: ['Photoshop', 'Illustrator', 'Figma', 'After Effects', 'InDesign', 'Canva', 'Branding', 'UI/UX'],
     community_manager: ['Instagram', 'Facebook', 'TikTok', 'LinkedIn', 'Twitter', 'Analytics'],
+    project_manager: ['Gestión de Proyectos', 'Planificación', 'Coordinación', 'Cliente', 'Presupuestos', 'Reportes'],
     copywriter: ['SEO', 'Email Marketing', 'Blog Writing', 'Social Media Copy', 'Ad Copy'],
     photographer: ['Product Photography', 'Portrait', 'Event Photography', 'Photo Editing'],
     video_editor: ['Premiere Pro', 'After Effects', 'Final Cut Pro', 'Motion Graphics', 'Color Grading']
@@ -111,7 +115,7 @@ const TeamManagement = () => {
     setFormData({
       name: '',
       email: '',
-      role: 'designer',
+      role: 'designer_jr',
       skills: [],
       monthly_wage: '',
       max_daily_tasks: 5,
@@ -218,7 +222,7 @@ const TeamManagement = () => {
                 <div>
                   <p className="text-zionx-accent text-sm">Diseñadores</p>
                   <p className="text-2xl font-bold text-zionx-primary">
-                    {Array.isArray(teamMembers) ? teamMembers.filter(m => m && m.role === 'designer').length : 0}
+                    {Array.isArray(teamMembers) ? teamMembers.filter(m => m && (m.role === 'designer_jr' || m.role === 'designer_sr' || m.role === 'designer')).length : 0}
                   </p>
                 </div>
                 <span className="text-3xl">🎨</span>

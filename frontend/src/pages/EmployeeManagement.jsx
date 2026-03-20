@@ -137,11 +137,17 @@ const EmployeeManagement = () => {
   };
 
   const departmentColors = {
-    "Diseño": "bg-purple-100 text-purple-800",
-    "Community": "bg-blue-100 text-blue-800",
+    "Dirección y estrategia": "bg-red-100 text-red-800",
+    "Creativo": "bg-purple-100 text-purple-800",
+    "Social Media": "bg-blue-100 text-blue-800",
+    "Producción": "bg-indigo-100 text-indigo-800",
+    "Paid Media": "bg-pink-100 text-pink-800",
+    "PR": "bg-orange-100 text-orange-800",
+    "Operaciones": "bg-gray-100 text-gray-800",
     "Ventas": "bg-green-100 text-green-800",
     "Administración": "bg-yellow-100 text-yellow-800",
-    "Dirección": "bg-red-100 text-red-800"
+    "RH": "bg-teal-100 text-teal-800",
+    "Clientes": "bg-cyan-100 text-cyan-800"
   };
 
   // Stats
@@ -435,11 +441,17 @@ const EmployeeManagement = () => {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     >
                       <option value="">Seleccionar...</option>
-                      <option value="Diseño">Diseño</option>
-                      <option value="Community">Community Management</option>
+                      <option value="Dirección y estrategia">Dirección y estrategia</option>
+                      <option value="Creativo">Creativo</option>
+                      <option value="Social Media">Social Media</option>
+                      <option value="Producción">Producción</option>
+                      <option value="Paid Media">Paid Media</option>
+                      <option value="PR">PR</option>
+                      <option value="Operaciones">Operaciones</option>
                       <option value="Ventas">Ventas</option>
                       <option value="Administración">Administración</option>
-                      <option value="Dirección">Dirección</option>
+                      <option value="RH">RH</option>
+                      <option value="Clientes">Clientes</option>
                     </select>
                   </div>
                 </div>
