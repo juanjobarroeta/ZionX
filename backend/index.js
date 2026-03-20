@@ -1902,6 +1902,58 @@ const createTables = async () => {
     `);
     console.log("✅ Messaging tables created");
 
+    // Add missing columns to messaging tables
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        -- Add missing columns to conversation_participants
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversation_participants' AND column_name='unread_count') THEN
+          ALTER TABLE conversation_participants ADD COLUMN unread_count INTEGER DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversation_participants' AND column_name='muted') THEN
+          ALTER TABLE conversation_participants ADD COLUMN muted BOOLEAN DEFAULT false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversation_participants' AND column_name='role') THEN
+          ALTER TABLE conversation_participants ADD COLUMN role VARCHAR(20) DEFAULT 'member';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversation_participants' AND column_name='nickname') THEN
+          ALTER TABLE conversation_participants ADD COLUMN nickname VARCHAR(100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversation_participants' AND column_name='left_at') THEN
+          ALTER TABLE conversation_participants ADD COLUMN left_at TIMESTAMP;
+        END IF;
+        
+        -- Add missing columns to conversations
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversations' AND column_name='name') THEN
+          ALTER TABLE conversations ADD COLUMN name VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversations' AND column_name='last_message_at') THEN
+          ALTER TABLE conversations ADD COLUMN last_message_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='conversations' AND column_name='last_message_preview') THEN
+          ALTER TABLE conversations ADD COLUMN last_message_preview TEXT;
+        END IF;
+        
+        -- Add missing columns to messages
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='file_url') THEN
+          ALTER TABLE messages ADD COLUMN file_url TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='file_name') THEN
+          ALTER TABLE messages ADD COLUMN file_name VARCHAR(255);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='file_type') THEN
+          ALTER TABLE messages ADD COLUMN file_type VARCHAR(50);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_deleted') THEN
+          ALTER TABLE messages ADD COLUMN is_deleted BOOLEAN DEFAULT false;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='deleted_at') THEN
+          ALTER TABLE messages ADD COLUMN deleted_at TIMESTAMP;
+        END IF;
+      END $$;
+    `);
+    console.log("✅ Messaging table columns added/verified");
+
     // Team members table (if not exists)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS team_members (
