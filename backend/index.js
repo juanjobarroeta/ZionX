@@ -19,9 +19,14 @@ const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config();
+// Load .env - try multiple locations
+const dotenvPath = path.join(__dirname, '.env');
+console.log('🔍 Looking for .env at:', dotenvPath);
+require("dotenv").config({ path: dotenvPath });
 
 console.log("✅ Core modules loaded");
+console.log("🔍 DEBUG - META_APP_ID:", process.env.META_APP_ID);
+console.log("🔍 DEBUG - META_APP_SECRET:", process.env.META_APP_SECRET ? "***" + process.env.META_APP_SECRET.slice(-4) : "undefined");
 console.log("🔗 DATABASE_URL exists:", !!process.env.DATABASE_URL);
 console.log("🔗 PORT:", process.env.PORT || 5001);
 const XLSX = require("xlsx");
@@ -933,6 +938,115 @@ const createTables = async () => {
     );
   `);
   console.log("✅ Customers table created");
+
+  // Add business customer columns if they don't exist
+  await pool.query(`
+    DO $$ 
+    BEGIN
+      -- Business Information
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='business_name') THEN
+        ALTER TABLE customers ADD COLUMN business_name VARCHAR(255);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='commercial_name') THEN
+        ALTER TABLE customers ADD COLUMN commercial_name VARCHAR(255);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='rfc') THEN
+        ALTER TABLE customers ADD COLUMN rfc VARCHAR(13);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='tax_regime') THEN
+        ALTER TABLE customers ADD COLUMN tax_regime VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='business_type') THEN
+        ALTER TABLE customers ADD COLUMN business_type VARCHAR(50);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='industry') THEN
+        ALTER TABLE customers ADD COLUMN industry VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='website') THEN
+        ALTER TABLE customers ADD COLUMN website VARCHAR(255);
+      END IF;
+      
+      -- Fiscal Address
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='fiscal_address') THEN
+        ALTER TABLE customers ADD COLUMN fiscal_address TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='fiscal_postal_code') THEN
+        ALTER TABLE customers ADD COLUMN fiscal_postal_code VARCHAR(10);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='fiscal_city') THEN
+        ALTER TABLE customers ADD COLUMN fiscal_city VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='fiscal_state') THEN
+        ALTER TABLE customers ADD COLUMN fiscal_state VARCHAR(100);
+      END IF;
+      
+      -- Contact Person
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_first_name') THEN
+        ALTER TABLE customers ADD COLUMN contact_first_name VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_last_name') THEN
+        ALTER TABLE customers ADD COLUMN contact_last_name VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_position') THEN
+        ALTER TABLE customers ADD COLUMN contact_position VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_email') THEN
+        ALTER TABLE customers ADD COLUMN contact_email VARCHAR(100);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_phone') THEN
+        ALTER TABLE customers ADD COLUMN contact_phone VARCHAR(20);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='contact_mobile') THEN
+        ALTER TABLE customers ADD COLUMN contact_mobile VARCHAR(20);
+      END IF;
+      
+      -- Business Details
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='business_size') THEN
+        ALTER TABLE customers ADD COLUMN business_size VARCHAR(50);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='employees_count') THEN
+        ALTER TABLE customers ADD COLUMN employees_count INTEGER;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='annual_revenue') THEN
+        ALTER TABLE customers ADD COLUMN annual_revenue NUMERIC;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='marketing_budget') THEN
+        ALTER TABLE customers ADD COLUMN marketing_budget NUMERIC;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='target_market') THEN
+        ALTER TABLE customers ADD COLUMN target_market TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='current_marketing_channels') THEN
+        ALTER TABLE customers ADD COLUMN current_marketing_channels TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='referral_source') THEN
+        ALTER TABLE customers ADD COLUMN referral_source VARCHAR(100);
+      END IF;
+      
+      -- Document Paths
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='business_license_path') THEN
+        ALTER TABLE customers ADD COLUMN business_license_path TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='tax_certificate_path') THEN
+        ALTER TABLE customers ADD COLUMN tax_certificate_path TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='fiscal_address_proof_path') THEN
+        ALTER TABLE customers ADD COLUMN fiscal_address_proof_path TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='legal_representative_id_path') THEN
+        ALTER TABLE customers ADD COLUMN legal_representative_id_path TEXT;
+      END IF;
+      
+      -- Team Assignment
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='default_designer') THEN
+        ALTER TABLE customers ADD COLUMN default_designer INTEGER;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='default_community_manager') THEN
+        ALTER TABLE customers ADD COLUMN default_community_manager INTEGER;
+      END IF;
+    END $$;
+  `);
+  console.log("✅ Business customer columns added/verified");
 
   // 3. Loans table (must be created before payment_breakdowns, loan_installments, etc.)
   await pool.query(`
@@ -2130,10 +2244,19 @@ async function start() {
     }, authenticateToken, messagesRoutes);
     
     // Social Media (Meta/Facebook/Instagram) routes
+    // Conditional auth: /config is public, others require auth
     app.use('/api/social', (req, res, next) => {
       req.pool = pool;
-      next();
-    }, authenticateToken, socialMediaRoutes);
+      console.log('🔍 Social route accessed:', req.method, req.path, 'URL:', req.url);
+      // Skip authentication for /config endpoint
+      if (req.path === '/config' && req.method === 'GET') {
+        console.log('✅ Allowing public access to /api/social/config');
+        return next();
+      }
+      // Require authentication for all other routes
+      console.log('🔒 Requiring auth for:', req.method, req.path);
+      return authenticateToken(req, res, next);
+    }, socialMediaRoutes);
     
     // Content Approvals routes
     app.use('/api/approvals', (req, res, next) => {
