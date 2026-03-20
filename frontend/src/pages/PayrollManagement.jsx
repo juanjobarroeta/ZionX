@@ -53,21 +53,39 @@ const PayrollManagement = () => {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
+      // Validate month format
+      if (!newPeriod.month || !newPeriod.month.includes('-')) {
+        alert("Por favor selecciona un mes válido");
+        return;
+      }
+
       // Calculate dates based on period type
       const [year, month] = newPeriod.month.split('-');
+      
+      // Validate year and month
+      if (!year || !month || year === 'undefined' || month === 'undefined') {
+        alert("Formato de fecha inválido. Por favor selecciona el mes nuevamente.");
+        return;
+      }
+      
+      // Ensure month is zero-padded
+      const monthPadded = month.padStart(2, '0');
       let start_date, end_date, period_name;
       
       if (newPeriod.period_type === '1ra_quincena') {
-        start_date = `${year}-${month}-01`;
-        end_date = `${year}-${month}-15`;
-        period_name = `1ra Quincena ${getMonthName(month)} ${year}`;
+        start_date = `${year}-${monthPadded}-01`;
+        end_date = `${year}-${monthPadded}-15`;
+        period_name = `1ra Quincena ${getMonthName(monthPadded)} ${year}`;
       } else {
-        start_date = `${year}-${month}-16`;
-        // Last day of month
-        const lastDay = new Date(year, month, 0).getDate();
-        end_date = `${year}-${month}-${lastDay}`;
-        period_name = `2da Quincena ${getMonthName(month)} ${year}`;
+        start_date = `${year}-${monthPadded}-16`;
+        // Last day of month - using proper date calculation
+        const lastDay = new Date(parseInt(year), parseInt(monthPadded), 0).getDate();
+        const lastDayPadded = String(lastDay).padStart(2, '0');
+        end_date = `${year}-${monthPadded}-${lastDayPadded}`;
+        period_name = `2da Quincena ${getMonthName(monthPadded)} ${year}`;
       }
+
+      console.log('Creating period with dates:', { start_date, end_date, period_name });
 
       await axios.post(`${API_BASE_URL}/api/hr/payroll/periods`, {
         period_name,
@@ -82,6 +100,7 @@ const PayrollManagement = () => {
       setNewPeriod({ period_type: '1ra_quincena', month: new Date().toISOString().slice(0, 7), payment_date: '', notes: '' });
       fetchData();
     } catch (error) {
+      console.error('Error creating payroll period:', error);
       alert("Error: " + (error.response?.data?.error || error.message));
     }
   };
@@ -242,7 +261,8 @@ const PayrollManagement = () => {
   const getMonthName = (month) => {
     const months = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    return months[parseInt(month)];
+    const monthNum = parseInt(month, 10);
+    return months[monthNum] || month;
   };
 
   const getStatusBadge = (status) => {
