@@ -2139,6 +2139,84 @@ const createTables = async () => {
     `);
     console.log("✅ Projects table created");
 
+    // Add missing columns to projects table
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='customer_id') THEN
+          ALTER TABLE projects ADD COLUMN customer_id INTEGER REFERENCES customers(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='project_manager_id') THEN
+          ALTER TABLE projects ADD COLUMN project_manager_id INTEGER REFERENCES team_members(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='budget') THEN
+          ALTER TABLE projects ADD COLUMN budget NUMERIC(10,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='actual_cost') THEN
+          ALTER TABLE projects ADD COLUMN actual_cost NUMERIC(10,2) DEFAULT 0;
+        END IF;
+      END $$;
+    `);
+    console.log("✅ Projects columns added/verified");
+
+    // Tasks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        status VARCHAR(50) DEFAULT 'todo',
+        priority VARCHAR(20) DEFAULT 'medium',
+        due_date DATE,
+        completed_at TIMESTAMP,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Tasks table created");
+
+    // Task assignments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS task_assignments (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+        assignee_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE,
+        assignment_type VARCHAR(50) DEFAULT 'primary',
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        assigned_by INTEGER REFERENCES users(id),
+        UNIQUE(task_id, assignee_id, assignment_type)
+      );
+    `);
+    console.log("✅ Task assignments table created");
+
+    // Project stages table (for project management)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS project_stages (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        stage_name VARCHAR(100) NOT NULL,
+        stage_order INTEGER,
+        status VARCHAR(50) DEFAULT 'not_started',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Project stages table created");
+
+    // Project activity log
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS project_activity (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        activity_type VARCHAR(50),
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Project activity table created");
+
     // Content/Tasks table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_tasks (
