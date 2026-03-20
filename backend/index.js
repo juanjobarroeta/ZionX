@@ -2060,6 +2060,69 @@ const createTables = async () => {
     `);
     console.log("✅ Team members columns added/verified");
 
+    // Payroll periods table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payroll_periods (
+        id SERIAL PRIMARY KEY,
+        period_name VARCHAR(100) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        payment_date DATE,
+        status VARCHAR(20) DEFAULT 'draft',
+        total_gross NUMERIC(12,2) DEFAULT 0,
+        total_deductions NUMERIC(12,2) DEFAULT 0,
+        total_net NUMERIC(12,2) DEFAULT 0,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Payroll periods table created");
+
+    // Payroll entries table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payroll_entries (
+        id SERIAL PRIMARY KEY,
+        payroll_period_id INTEGER REFERENCES payroll_periods(id) ON DELETE CASCADE,
+        team_member_id INTEGER REFERENCES team_members(id) ON DELETE CASCADE,
+        
+        -- Earnings
+        base_salary NUMERIC(10,2) DEFAULT 0,
+        overtime_hours NUMERIC(6,2) DEFAULT 0,
+        overtime_pay NUMERIC(10,2) DEFAULT 0,
+        bonuses NUMERIC(10,2) DEFAULT 0,
+        commissions NUMERIC(10,2) DEFAULT 0,
+        other_earnings NUMERIC(10,2) DEFAULT 0,
+        gross_pay NUMERIC(10,2) DEFAULT 0,
+        
+        -- Deductions
+        isr_tax NUMERIC(10,2) DEFAULT 0,
+        imss_employee NUMERIC(10,2) DEFAULT 0,
+        imss_employer NUMERIC(10,2) DEFAULT 0,
+        infonavit NUMERIC(10,2) DEFAULT 0,
+        loans_deduction NUMERIC(10,2) DEFAULT 0,
+        other_deductions NUMERIC(10,2) DEFAULT 0,
+        total_deductions NUMERIC(10,2) DEFAULT 0,
+        
+        -- Net pay
+        net_pay NUMERIC(10,2) DEFAULT 0,
+        
+        -- Status
+        status VARCHAR(20) DEFAULT 'pending',
+        paid_at TIMESTAMP,
+        payment_method VARCHAR(50),
+        
+        -- Metadata
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        UNIQUE(payroll_period_id, team_member_id)
+      );
+    `);
+    console.log("✅ Payroll entries table created");
+
     // Projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
