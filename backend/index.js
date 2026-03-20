@@ -1971,6 +1971,95 @@ const createTables = async () => {
     `);
     console.log("✅ Team members table created");
 
+    // Add missing columns to team_members table
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        -- Skills and capabilities
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='skills') THEN
+          ALTER TABLE team_members ADD COLUMN skills TEXT[];
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='capacity_hours_per_week') THEN
+          ALTER TABLE team_members ADD COLUMN capacity_hours_per_week INTEGER DEFAULT 40;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='max_daily_tasks') THEN
+          ALTER TABLE team_members ADD COLUMN max_daily_tasks INTEGER DEFAULT 5;
+        END IF;
+        
+        -- Employment details
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='employee_type') THEN
+          ALTER TABLE team_members ADD COLUMN employee_type VARCHAR(50) DEFAULT 'full_time';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='hire_date') THEN
+          ALTER TABLE team_members ADD COLUMN hire_date DATE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='contract_type') THEN
+          ALTER TABLE team_members ADD COLUMN contract_type VARCHAR(50) DEFAULT 'permanent';
+        END IF;
+        
+        -- Compensation
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='hourly_rate') THEN
+          ALTER TABLE team_members ADD COLUMN hourly_rate NUMERIC(10,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='monthly_wage') THEN
+          ALTER TABLE team_members ADD COLUMN monthly_wage NUMERIC(10,2);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='payment_frequency') THEN
+          ALTER TABLE team_members ADD COLUMN payment_frequency VARCHAR(50) DEFAULT 'monthly';
+        END IF;
+        
+        -- Banking information
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='bank_account') THEN
+          ALTER TABLE team_members ADD COLUMN bank_account VARCHAR(50);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='bank_name') THEN
+          ALTER TABLE team_members ADD COLUMN bank_name VARCHAR(100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='clabe') THEN
+          ALTER TABLE team_members ADD COLUMN clabe VARCHAR(18);
+        END IF;
+        
+        -- Tax and legal
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='rfc') THEN
+          ALTER TABLE team_members ADD COLUMN rfc VARCHAR(13);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='curp') THEN
+          ALTER TABLE team_members ADD COLUMN curp VARCHAR(18);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='imss_number') THEN
+          ALTER TABLE team_members ADD COLUMN imss_number VARCHAR(20);
+        END IF;
+        
+        -- Contact and emergency
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='address') THEN
+          ALTER TABLE team_members ADD COLUMN address TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='emergency_contact') THEN
+          ALTER TABLE team_members ADD COLUMN emergency_contact VARCHAR(100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='emergency_phone') THEN
+          ALTER TABLE team_members ADD COLUMN emergency_phone VARCHAR(20);
+        END IF;
+        
+        -- Notes
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='notes') THEN
+          ALTER TABLE team_members ADD COLUMN notes TEXT;
+        END IF;
+        
+        -- Status tracking
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='status') THEN
+          ALTER TABLE team_members ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='termination_date') THEN
+          ALTER TABLE team_members ADD COLUMN termination_date DATE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='team_members' AND column_name='termination_reason') THEN
+          ALTER TABLE team_members ADD COLUMN termination_reason TEXT;
+        END IF;
+      END $$;
+    `);
+    console.log("✅ Team members columns added/verified");
+
     // Projects table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS projects (
