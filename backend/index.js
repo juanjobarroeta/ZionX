@@ -2217,6 +2217,58 @@ const createTables = async () => {
     `);
     console.log("✅ Project activity table created");
 
+    // Service packages table (for subscriptions)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS service_packages (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        base_price NUMERIC(10,2) NOT NULL,
+        billing_cycle VARCHAR(20) DEFAULT 'monthly',
+        posts_per_month INTEGER,
+        platforms_included TEXT[],
+        stories_per_week INTEGER,
+        reels_per_month INTEGER,
+        features TEXT[],
+        is_active BOOLEAN DEFAULT true,
+        display_order INTEGER DEFAULT 0,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Service packages table created");
+
+    // Customer subscriptions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_subscriptions (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        service_package_id INTEGER REFERENCES service_packages(id),
+        status VARCHAR(50) DEFAULT 'active',
+        start_date DATE NOT NULL,
+        end_date DATE,
+        next_billing_date DATE,
+        billing_cycle VARCHAR(20) DEFAULT 'monthly',
+        
+        -- Pricing
+        custom_monthly_price NUMERIC(10,2),
+        discount_percentage NUMERIC(5,2),
+        
+        -- Customizations
+        custom_posts_per_month INTEGER,
+        custom_platforms TEXT[],
+        custom_features TEXT[],
+        
+        -- Notes and tracking
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Customer subscriptions table created");
+
     // Content/Tasks table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_tasks (
