@@ -2401,6 +2401,36 @@ const createTables = async () => {
     `);
     console.log("✅ Billable time entries table created");
 
+    // Add missing columns to billable_time_entries
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='billable_time_entries' AND column_name='is_invoiced') THEN
+          ALTER TABLE billable_time_entries ADD COLUMN is_invoiced BOOLEAN DEFAULT false;
+        END IF;
+      END $$;
+    `);
+    
+    // Create client_expenses table for billable expenses
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_expenses (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        project_id INTEGER,
+        expense_date DATE DEFAULT CURRENT_DATE,
+        description TEXT NOT NULL,
+        amount NUMERIC(10,2) NOT NULL,
+        category VARCHAR(100),
+        receipt_path VARCHAR(500),
+        is_invoiced BOOLEAN DEFAULT false,
+        invoice_id INTEGER REFERENCES invoices(id),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Client expenses table created");
+
     // Content/Tasks table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_tasks (
