@@ -70,31 +70,102 @@ const PaymentManagement = () => {
     }
   };
 
-  // Filter subscriptions
-  const filteredSubscriptions = subscriptions
+  // Combine unpaid invoices with subscriptions that don't have invoices
+  const paymentItems = [];
+  
+  // Add all unpaid/partial invoices
+  invoices
+    .filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled')
+    .forEach(invoice => {
+      const today = new Date();
+      const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
+      const daysUntilDue = dueDate ? Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24)) : 999;
+      
+      let status, label, color;
+      if (invoice.status === 'partial') {
+        status = 'partial';
+        label = `⏳ Pago Parcial (${formatCurrency(invoice.amount_paid)} de ${formatCurrency(invoice.total)})`;
+        color = 'yellow';
+      } else if (daysUntilDue < 0) {
+        status = 'overdue';
+        label = `⚠️ Vencida hace ${Math.abs(daysUntilDue)} días`;
+        color = 'red';
+      } else if (daysUntilDue <= 7) {
+        status = 'upcoming';
+        label = `⏰ Vence en ${daysUntilDue} días`;
+        color = 'yellow';
+      } else {
+        status = 'pending';
+        label = `📅 Vence en ${daysUntilDue} días`;
+        color = 'blue';
+      }
+      
+      paymentItems.push({
+        type: 'invoice',
+        id: `inv-${invoice.id}`,
+        invoice_id: invoice.id,
+        subscription_id: invoice.subscription_id,
+        customer_name: invoice.customer_name,
+        customer_email: invoice.customer_email,
+        amount: invoice.total,
+        amount_due: invoice.amount_due || invoice.total,
+        due_date: invoice.due_date,
+        invoice_number: invoice.invoice_number,
+        paymentStatus: { status, label, color, days: daysUntilDue }
+      });
+    });
+  
+  // Add subscriptions that DON'T have unpaid invoices
+  subscriptions
     .filter(sub => sub.status === 'active')
-    .map(sub => ({ ...sub, paymentStatus: getPaymentStatus(sub) }))
     .filter(sub => {
+      // Exclude if there's an unpaid invoice for this subscription
+      const hasUnpaidInvoice = invoices.some(inv => 
+        inv.subscription_id === sub.id && 
+        inv.status !== 'paid' && 
+        inv.status !== 'cancelled'
+      );
+      return !hasUnpaidInvoice;
+    })
+    .forEach(sub => {
+      const status = getPaymentStatus(sub);
+      paymentItems.push({
+        type: 'subscription',
+        id: `sub-${sub.id}`,
+        subscription_id: sub.id,
+        customer_id: sub.customer_id,
+        customer_name: sub.customer_name,
+        customer_email: sub.customer_email,
+        amount: parseFloat(sub.effective_monthly_price) * 1.16, // Include IVA for display
+        amount_due: parseFloat(sub.effective_monthly_price) * 1.16,
+        due_date: sub.next_billing_date,
+        paymentStatus: status
+      });
+    });
+  
+  // Filter payment items
+  const filteredPaymentItems = paymentItems
+    .filter(item => {
       if (filter === 'all') return true;
-      if (filter === 'overdue') return sub.paymentStatus.status === 'overdue';
-      if (filter === 'upcoming') return sub.paymentStatus.status === 'upcoming';
-      if (filter === 'paid') return sub.paymentStatus.status === 'paid';
+      if (filter === 'overdue') return item.paymentStatus.status === 'overdue';
+      if (filter === 'upcoming') return item.paymentStatus.status === 'upcoming';
+      if (filter === 'paid') return item.paymentStatus.status === 'paid';
       return true;
     })
     .sort((a, b) => (a.paymentStatus.days || 999) - (b.paymentStatus.days || 999));
 
-  // Stats
+  // Stats based on payment items (invoices + subscriptions without invoices)
   const stats = {
-    total: subscriptions.filter(s => s.status === 'active').length,
-    overdue: subscriptions.filter(s => s.status === 'active' && getPaymentStatus(s).status === 'overdue').length,
-    upcoming: subscriptions.filter(s => s.status === 'active' && getPaymentStatus(s).status === 'upcoming').length,
-    paid: subscriptions.filter(s => s.status === 'active' && getPaymentStatus(s).status === 'paid').length,
-    overdueAmount: subscriptions
-      .filter(s => s.status === 'active' && getPaymentStatus(s).status === 'overdue')
-      .reduce((sum, s) => sum + parseFloat(s.effective_monthly_price || 0), 0),
-    upcomingAmount: subscriptions
-      .filter(s => s.status === 'active' && getPaymentStatus(s).status === 'upcoming')
-      .reduce((sum, s) => sum + parseFloat(s.effective_monthly_price || 0), 0)
+    total: paymentItems.length,
+    overdue: paymentItems.filter(item => item.paymentStatus.status === 'overdue').length,
+    upcoming: paymentItems.filter(item => item.paymentStatus.status === 'upcoming').length,
+    paid: invoices.filter(inv => inv.status === 'paid').length,
+    overdueAmount: paymentItems
+      .filter(item => item.paymentStatus.status === 'overdue')
+      .reduce((sum, item) => sum + parseFloat(item.amount_due || 0), 0),
+    upcomingAmount: paymentItems
+      .filter(item => item.paymentStatus.status === 'upcoming')
+      .reduce((sum, item) => sum + parseFloat(item.amount_due || 0), 0)
   };
 
   const formatCurrency = (amount) => {
@@ -293,7 +364,7 @@ const PaymentManagement = () => {
                 <div>
                   <p className="text-sm text-gray-500">Vencidos</p>
                   <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
-                  <p className="text-xs text-red-500">{formatCurrency(stats.overdueAmount * 1.16)}</p>
+                  <p className="text-xs text-red-500">{formatCurrency(stats.overdueAmount)}</p>
                 </div>
               </div>
             </div>
@@ -309,7 +380,7 @@ const PaymentManagement = () => {
                 <div>
                   <p className="text-sm text-gray-500">Próximos 7 días</p>
                   <p className="text-2xl font-bold text-yellow-600">{stats.upcoming}</p>
-                  <p className="text-xs text-yellow-600">{formatCurrency(stats.upcomingAmount * 1.16)}</p>
+                  <p className="text-xs text-yellow-600">{formatCurrency(stats.upcomingAmount)}</p>
                 </div>
               </div>
             </div>
@@ -334,12 +405,12 @@ const PaymentManagement = () => {
           <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zionx-primary">
-                {filter === 'all' && 'Todas las Suscripciones Activas'}
+                {filter === 'all' && 'Todos los Pagos Pendientes'}
                 {filter === 'overdue' && '⚠️ Pagos Vencidos'}
                 {filter === 'upcoming' && '⏰ Próximos a Vencer (7 días)'}
                 {filter === 'paid' && '✅ Pagos al Corriente'}
               </h2>
-              <span className="text-sm text-gray-500">{filteredSubscriptions.length} registros</span>
+              <span className="text-sm text-gray-500">{filteredPaymentItems.length} registros</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -354,27 +425,32 @@ const PaymentManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredSubscriptions.length > 0 ? (
-                    filteredSubscriptions.map((sub) => (
-                      <tr key={sub.id} className={`hover:bg-gray-50 ${sub.paymentStatus.status === 'overdue' ? 'bg-red-50' : ''}`}>
+                  {filteredPaymentItems.length > 0 ? (
+                    filteredPaymentItems.map((item) => (
+                      <tr key={item.id} className={`hover:bg-gray-50 ${item.paymentStatus.status === 'overdue' ? 'bg-red-50' : ''}`}>
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-medium text-gray-900">{sub.customer_name}</div>
-                            <div className="text-sm text-gray-500">{sub.customer_email || sub.customer_phone || '-'}</div>
+                            <div className="font-medium text-gray-900">{item.customer_name}</div>
+                            <div className="text-xs text-gray-500">
+                              {item.type === 'invoice' ? `📄 Factura ${item.invoice_number}` : '📱 Suscripción'}
+                            </div>
+                            <div className="text-xs text-gray-500">{item.customer_email || '-'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="font-semibold text-zionx-primary">
-                            {formatCurrency(parseFloat(sub.effective_monthly_price) * 1.16)}
+                            {formatCurrency(item.amount_due || item.amount)}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            ({formatCurrency(sub.effective_monthly_price)} + IVA)
-                          </div>
+                          {item.type === 'subscription' && (
+                            <div className="text-xs text-gray-500">
+                              (Sin facturar)
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
-                            {sub.next_billing_date 
-                              ? new Date(sub.next_billing_date).toLocaleDateString('es-MX', {
+                            {item.due_date 
+                              ? new Date(item.due_date).toLocaleDateString('es-MX', {
                                   day: 'numeric',
                                   month: 'short',
                                   year: 'numeric'
@@ -385,35 +461,49 @@ const PaymentManagement = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium
-                            ${sub.paymentStatus.color === 'red' ? 'bg-red-100 text-red-800' : ''}
-                            ${sub.paymentStatus.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
-                            ${sub.paymentStatus.color === 'green' ? 'bg-green-100 text-green-800' : ''}
-                            ${sub.paymentStatus.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
-                            ${sub.paymentStatus.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
+                            ${item.paymentStatus.color === 'red' ? 'bg-red-100 text-red-800' : ''}
+                            ${item.paymentStatus.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
+                            ${item.paymentStatus.color === 'green' ? 'bg-green-100 text-green-800' : ''}
+                            ${item.paymentStatus.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
+                            ${item.paymentStatus.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
                           `}>
-                            {sub.paymentStatus.label}
+                            {item.paymentStatus.label}
                           </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex space-x-2 flex-wrap gap-1">
-                            {sub.paymentStatus.status !== 'paid' && (
+                            {item.type === 'invoice' ? (
                               <>
-                                <button
-                                  onClick={() => openPaymentModal(sub)}
-                                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                <Link
+                                  to={`/income/invoices/${item.invoice_id}`}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                                 >
-                                  💰 Registrar Pago
-                                </button>
+                                  👁️ Ver Factura
+                                </Link>
+                                {item.paymentStatus.status !== 'paid' && (
+                                  <button
+                                    onClick={() => alert('Use el botón "Registrar Pago" en la factura')}
+                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                  >
+                                    💰 Pagar
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Link
+                                  to={`/income/invoice-generator?subscription_id=${item.subscription_id}&customer_id=${item.customer_id}`}
+                                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
+                                >
+                                  📄 Facturar
+                                </Link>
                                 <button
-                                  onClick={() => openReminderModal(sub)}
+                                  onClick={() => openReminderModal(item)}
                                   className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
                                 >
                                   📱 Recordatorio
                                 </button>
                               </>
-                            )}
-                            {sub.paymentStatus.status === 'paid' && (
-                              <span className="text-green-600 text-sm">✓ Al corriente</span>
                             )}
                           </div>
                         </td>
@@ -424,7 +514,7 @@ const PaymentManagement = () => {
                       <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                         <div className="flex flex-col items-center">
                           <span className="text-4xl mb-2">📋</span>
-                          <p>No hay suscripciones en esta categoría</p>
+                          <p>No hay pagos pendientes en esta categoría</p>
                         </div>
                       </td>
                     </tr>
