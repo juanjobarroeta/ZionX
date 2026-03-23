@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { createNotification, notifyAllUsers, NotificationTemplates } = require('../utils/notifications');
+const { calculateQuincenalPayroll } = require('../utils/mexicanTaxCalculations');
 
 // Debug route to test HR endpoints
 router.get('/test', (req, res) => {
@@ -414,30 +415,24 @@ router.post('/payroll/periods/:id/generate', async (req, res) => {
         continue;
       }
       
-      // Calculate base salary - always divide by 2 for quincenal payroll
-      // (employees' monthly_wage is stored as full month, quincena = half)
-      let baseSalary = Math.round((parseFloat(emp.monthly_wage) / 2) * 100) / 100;
+      // Calculate payroll using official Mexican tax tables (2026)
+      const payroll = calculateQuincenalPayroll(parseFloat(emp.monthly_wage));
       
-      // Simple ISR estimation (this would be more complex in reality)
-      const isrRate = baseSalary > 20000 ? 0.25 : baseSalary > 10000 ? 0.20 : 0.10;
-      const isrTax = Math.round(baseSalary * isrRate * 100) / 100;
-      
-      // IMSS employee contribution (approximately 2.5%)
-      const imssEmployee = Math.round(baseSalary * 0.025 * 100) / 100;
-      
-      const totalDeductions = isrTax + imssEmployee;
-      const netPay = Math.round((baseSalary - totalDeductions) * 100) / 100;
-      
-      console.log(`💵 ${emp.name}: Base=$${baseSalary}, ISR=$${isrTax}, IMSS=$${imssEmployee}, Net=$${netPay}`);
+      console.log(`💵 ${emp.name}: Base=$${payroll.baseSalary}, ISR=$${payroll.isrTax}, IMSS=$${payroll.imssEmployee}, Net=$${payroll.netPay}`);
       
       await client.query(`
         INSERT INTO payroll_entries (
           payroll_period_id, team_member_id,
           base_salary, gross_pay,
-          isr_tax, imss_employee, total_deductions,
+          isr_tax, imss_employee, imss_employer, total_deductions,
           net_pay, status
-        ) VALUES ($1, $2, $3, $3, $4, $5, $6, $7, 'pending')
-      `, [id, emp.id, baseSalary, isrTax, imssEmployee, totalDeductions, netPay]);
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+      `, [
+        id, emp.id, 
+        payroll.baseSalary, payroll.grossPay,
+        payroll.isrTax, payroll.imssEmployee, payroll.employerCosts.imssEmployer,
+        payroll.totalDeductions, payroll.netPay
+      ]);
       
       generatedCount++;
     }
