@@ -2326,7 +2326,7 @@ const createTables = async () => {
         tax_percentage NUMERIC(5,2) DEFAULT 16,
         tax_amount NUMERIC(10,2) DEFAULT 0,
         discount_amount NUMERIC(10,2) DEFAULT 0,
-        total NUMERIC(10,2) NOT NULL,
+        total NUMERIC(10,2) NOT NULL DEFAULT 0,
         amount_paid NUMERIC(10,2) DEFAULT 0,
         status VARCHAR(20) DEFAULT 'draft',
         sent_at TIMESTAMP,

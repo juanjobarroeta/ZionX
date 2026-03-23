@@ -425,8 +425,8 @@ module.exports = function(app, pool, authenticateToken) {
           invoice_number, customer_id, subscription_id,
           invoice_date, due_date,
           billing_period_start, billing_period_end,
-          status, created_by
-        ) VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6, 'draft', $7)
+          status, created_by, total
+        ) VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6, 'draft', $7, 0)
         RETURNING *
       `, [invoice_number, customer_id, subscription_id, due_date, billing_period_start, billing_period_end, req.user.id]);
       

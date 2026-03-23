@@ -471,14 +471,14 @@ router.post('/invoices/generate', async (req, res) => {
     const due_date = new Date();
     due_date.setDate(due_date.getDate() + due_days);
     
-    // Create invoice
+    // Create invoice with initial total of 0 (will be updated after adding items)
     const invoiceResult = await client.query(`
       INSERT INTO invoices (
         invoice_number, customer_id, subscription_id,
         invoice_date, due_date,
         billing_period_start, billing_period_end,
-        status, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, $9)
+        status, notes, created_by, total
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', $8, $9, 0)
       RETURNING *
     `, [
       invoice_number, customer_id, subscription_id,
