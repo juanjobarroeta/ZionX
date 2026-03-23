@@ -45,6 +45,34 @@ const InvoiceGenerator = () => {
     setBillingPeriodEnd(end.toISOString().split('T')[0]);
   }, []);
 
+  // Auto-populate subscription amount when subscription is selected
+  useEffect(() => {
+    if (selectedSubscription && subscriptions.length > 0) {
+      const subscription = subscriptions.find(s => s.id.toString() === selectedSubscription);
+      if (subscription) {
+        // Pre-populate with subscription details
+        const subscriptionPrice = parseFloat(subscription.effective_monthly_price || subscription.custom_monthly_price || 0);
+        if (subscriptionPrice > 0) {
+          const subscriptionItem = {
+            description: `${subscription.package_name || 'Servicio de Marketing'}`,
+            quantity: 1,
+            unit_price: subscriptionPrice.toFixed(2)
+          };
+          
+          // Only add if not already in custom items
+          const alreadyAdded = customItems.some(item => 
+            item.description.includes(subscription.package_name) || 
+            item.unit_price === subscriptionPrice.toFixed(2)
+          );
+          
+          if (!alreadyAdded) {
+            setCustomItems(prev => [subscriptionItem, ...prev]);
+          }
+        }
+      }
+    }
+  }, [selectedSubscription, subscriptions]);
+
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -69,8 +97,11 @@ const InvoiceGenerator = () => {
       setSubscriptions(subsRes.data.filter(s => s.status === 'active'));
       setUnbilledAddons(addonsRes.data);
       
-      // Auto-select subscription if only one
-      if (subsRes.data.length === 1) {
+      // Auto-select subscription if coming from URL or if only one exists
+      const subscriptionFromUrl = searchParams.get("subscription_id");
+      if (subscriptionFromUrl) {
+        setSelectedSubscription(subscriptionFromUrl);
+      } else if (subsRes.data.length === 1) {
         setSelectedSubscription(subsRes.data[0].id.toString());
       }
     } catch (error) {
