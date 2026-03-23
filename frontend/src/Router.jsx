@@ -46,6 +46,7 @@ import LoanApplicationDetails from "./components/LoanApplicationDetails";
 import CollectionsDashboard from "./pages/CollectionsDashboard";
 import ProductProfile from "./pages/ProductProfile";
 import CreateUser from "./pages/CreateUser";
+import UserManagement from "./pages/UserManagement";
 import StoreDashboard from "./pages/StoreDashboard";
 import BudgetManagement from "./pages/BudgetManagement";
 import AccountingHub from "./pages/AccountingHub";
@@ -74,6 +75,7 @@ import SubscriptionsManager from "./pages/SubscriptionsManager";
 import PaymentManagement from "./pages/PaymentManagement";
 import InvoiceGenerator from "./pages/InvoiceGenerator";
 import InvoicesManager from "./pages/InvoicesManager";
+import InvoiceDetail from "./pages/InvoiceDetail";
 
 // HR & Payroll
 import EmployeeManagement from "./pages/EmployeeManagement";
@@ -197,6 +199,7 @@ const AppRouter = () => (
       <Route path="/income/payments" element={<FinanceRoute><PaymentManagement /></FinanceRoute>} />
       <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
       <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
+      <Route path="/income/invoices/:id" element={<FinanceRoute><InvoiceDetail /></FinanceRoute>} />
       <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
       <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
 
@@ -293,6 +296,7 @@ const AppRouter = () => (
         }
       />
       <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
+      <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/auth" replace />} />
     </Routes>
   </Router>

@@ -176,8 +176,12 @@ const InvoiceGenerator = () => {
       
       alert(`¡Factura ${res.data.invoice_number} generada exitosamente!\n\nSubtotal: $${res.data.subtotal?.toFixed(2) || '0.00'} MXN\nIVA (16%): $${res.data.iva?.toFixed(2) || '0.00'} MXN\nTotal: $${res.data.total.toFixed(2)} MXN`);
       
-      // Redirect to invoices list (detail page doesn't exist yet)
-      navigate('/income/invoices');
+      // Redirect to invoice detail page
+      if (res.data.invoice_id) {
+        navigate(`/income/invoices/${res.data.invoice_id}`);
+      } else {
+        navigate('/income/invoices');
+      }
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Error al generar factura: " + (error.response?.data?.error || error.message));

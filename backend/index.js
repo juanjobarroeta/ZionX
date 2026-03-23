@@ -2177,6 +2177,23 @@ const createTables = async () => {
     `);
     console.log("✅ Tasks table created");
 
+    // Add missing columns to tasks table
+    await pool.query(`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='estimated_hours') THEN
+          ALTER TABLE tasks ADD COLUMN estimated_hours NUMERIC(6,2) DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='actual_hours') THEN
+          ALTER TABLE tasks ADD COLUMN actual_hours NUMERIC(6,2) DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='custom_fields') THEN
+          ALTER TABLE tasks ADD COLUMN custom_fields JSONB;
+        END IF;
+      END $$;
+    `);
+    console.log("✅ Tasks columns added/verified");
+
     // Task assignments table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS task_assignments (
