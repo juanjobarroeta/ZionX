@@ -291,8 +291,8 @@ router.get('/invoices', async (req, res) => {
     let query = `
       SELECT 
         i.*,
-        c.first_name || ' ' || c.last_name as customer_name,
-        c.email as customer_email,
+        COALESCE(c.business_name, c.first_name || ' ' || c.last_name) as customer_name,
+        COALESCE(c.contact_email, c.email) as customer_email,
         (i.total - i.amount_paid) as amount_due,
         CASE 
           WHEN i.status = 'paid' THEN 'paid'
@@ -358,12 +358,12 @@ router.get('/invoices/pending', async (req, res) => {
  */
 router.get('/invoices/overdue', async (req, res) => {
   try {
-    const result = await req.pool.query(`
+      const result = await req.pool.query(`
       SELECT 
         i.*,
-        c.first_name || ' ' || c.last_name as customer_name,
-        c.email as customer_email,
-        c.phone as customer_phone,
+        COALESCE(c.business_name, c.first_name || ' ' || c.last_name) as customer_name,
+        COALESCE(c.contact_email, c.email) as customer_email,
+        COALESCE(c.contact_phone, c.phone) as customer_phone,
         (i.total - i.amount_paid) as amount_due,
         (CURRENT_DATE - i.due_date) as days_overdue
       FROM invoices i
@@ -392,10 +392,11 @@ router.get('/invoices/:id', async (req, res) => {
     const invoiceResult = await req.pool.query(`
       SELECT 
         i.*,
-        c.first_name || ' ' || c.last_name as customer_name,
-        c.email as customer_email,
-        c.phone as customer_phone,
-        c.address as customer_address,
+        COALESCE(c.business_name, c.first_name || ' ' || c.last_name) as customer_name,
+        COALESCE(c.contact_email, c.email) as customer_email,
+        COALESCE(c.contact_phone, c.phone) as customer_phone,
+        COALESCE(c.fiscal_address, c.address) as customer_address,
+        c.rfc as customer_rfc,
         (i.total - i.amount_paid) as amount_due
       FROM invoices i
       JOIN customers c ON i.customer_id = c.id
@@ -491,8 +492,12 @@ router.post('/invoices/generate', async (req, res) => {
     let line_items = [];
     let display_order = 0;
     
-    // Add subscription if provided
-    if (subscription_id) {
+    console.log(`📝 Generating invoice for customer ${customer_id}, subscription ${subscription_id}`);
+    console.log(`   Custom items provided: ${custom_items.length}`);
+    
+    // Add subscription if provided AND no custom items contain subscription
+    // (If custom_items exist with subscription, skip auto-adding to avoid duplicates)
+    if (subscription_id && custom_items.length === 0) {
       const subResult = await client.query(`
         SELECT 
           cs.*,
@@ -656,8 +661,11 @@ router.post('/invoices/generate', async (req, res) => {
     }
     
     // Add custom items
+    console.log(`   Adding ${custom_items.length} custom items...`);
     for (const item of custom_items) {
       const itemTotal = item.quantity * item.unit_price;
+      console.log(`   → ${item.description}: ${item.quantity} × $${item.unit_price} = $${itemTotal}`);
+      
       await client.query(`
         INSERT INTO invoice_items (
           invoice_id, item_type, description,

@@ -18,7 +18,7 @@ const InvoiceGenerator = () => {
   const [selectedSubscription, setSelectedSubscription] = useState(searchParams.get("subscription_id") || "");
   const [billingPeriodStart, setBillingPeriodStart] = useState("");
   const [billingPeriodEnd, setBillingPeriodEnd] = useState("");
-  const [includeAddons, setIncludeAddons] = useState(true);
+  const [includeAddons, setIncludeAddons] = useState(false);
   const [customItems, setCustomItems] = useState([]);
   const [notes, setNotes] = useState("");
   
@@ -169,12 +169,15 @@ const InvoiceGenerator = () => {
       );
 
       setInvoicePreview(res.data);
-      alert(`¡Factura ${res.data.invoice_number} generada exitosamente!\nTotal: $${res.data.total.toFixed(2)} MXN (incluye IVA)`);
       
-      // Redirect to invoice detail
-      if (res.data.invoice_id) {
-        navigate(`/income/invoices/${res.data.invoice_id}`);
-      }
+      // Log the invoice details for debugging
+      console.log('Invoice generated:', res.data);
+      console.log('Line items:', res.data.line_items);
+      
+      alert(`¡Factura ${res.data.invoice_number} generada exitosamente!\n\nSubtotal: $${res.data.subtotal?.toFixed(2) || '0.00'} MXN\nIVA (16%): $${res.data.iva?.toFixed(2) || '0.00'} MXN\nTotal: $${res.data.total.toFixed(2)} MXN`);
+      
+      // Redirect to invoices list (detail page doesn't exist yet)
+      navigate('/income/invoices');
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Error al generar factura: " + (error.response?.data?.error || error.message));
