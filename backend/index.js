@@ -2269,6 +2269,138 @@ const createTables = async () => {
     `);
     console.log("✅ Customer subscriptions table created");
 
+    // Service addons table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS service_addons (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50),
+        price NUMERIC(10,2) NOT NULL,
+        pricing_type VARCHAR(20) DEFAULT 'fixed',
+        billing_frequency VARCHAR(20) DEFAULT 'one-time',
+        is_active BOOLEAN DEFAULT true,
+        requires_approval BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Service addons table created");
+
+    // Customer addon purchases table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_addon_purchases (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        subscription_id INTEGER REFERENCES customer_subscriptions(id),
+        addon_id INTEGER REFERENCES service_addons(id),
+        quantity INTEGER DEFAULT 1,
+        unit_price NUMERIC(10,2) NOT NULL,
+        total_price NUMERIC(10,2) NOT NULL,
+        billing_period VARCHAR(20),
+        is_recurring BOOLEAN DEFAULT false,
+        status VARCHAR(20) DEFAULT 'pending',
+        description TEXT,
+        project_id INTEGER,
+        task_id INTEGER,
+        approved_by INTEGER REFERENCES users(id),
+        approved_at TIMESTAMP,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Customer addon purchases table created");
+
+    // Invoices table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id SERIAL PRIMARY KEY,
+        invoice_number VARCHAR(50) UNIQUE NOT NULL,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        subscription_id INTEGER REFERENCES customer_subscriptions(id),
+        invoice_date DATE DEFAULT CURRENT_DATE,
+        due_date DATE,
+        billing_period_start DATE,
+        billing_period_end DATE,
+        subtotal NUMERIC(10,2) DEFAULT 0,
+        tax_percentage NUMERIC(5,2) DEFAULT 16,
+        tax_amount NUMERIC(10,2) DEFAULT 0,
+        discount_amount NUMERIC(10,2) DEFAULT 0,
+        total NUMERIC(10,2) NOT NULL,
+        amount_paid NUMERIC(10,2) DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'draft',
+        sent_at TIMESTAMP,
+        paid_at TIMESTAMP,
+        payment_method VARCHAR(50),
+        payment_reference VARCHAR(255),
+        invoice_file_path VARCHAR(500),
+        notes TEXT,
+        internal_notes TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Invoices table created");
+
+    // Invoice items table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoice_items (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+        item_type VARCHAR(30) NOT NULL,
+        description TEXT NOT NULL,
+        quantity NUMERIC(10,2) DEFAULT 1,
+        unit_price NUMERIC(10,2) NOT NULL,
+        subtotal NUMERIC(10,2) NOT NULL,
+        discount NUMERIC(10,2) DEFAULT 0,
+        total NUMERIC(10,2) NOT NULL,
+        reference_id INTEGER,
+        reference_type VARCHAR(50),
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Invoice items table created");
+
+    // Invoice payments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoice_payments (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+        amount NUMERIC(10,2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        payment_date DATE DEFAULT CURRENT_DATE,
+        reference_number VARCHAR(255),
+        notes TEXT,
+        journal_entry_id INTEGER,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Invoice payments table created");
+
+    // Billable time entries table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS billable_time_entries (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        project_id INTEGER,
+        task_id INTEGER,
+        team_member_id INTEGER REFERENCES team_members(id),
+        work_date DATE DEFAULT CURRENT_DATE,
+        hours NUMERIC(5,2) NOT NULL,
+        hourly_rate NUMERIC(10,2),
+        total_amount NUMERIC(10,2),
+        description TEXT,
+        is_billable BOOLEAN DEFAULT true,
+        status VARCHAR(20) DEFAULT 'unbilled',
+        invoice_id INTEGER REFERENCES invoices(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Billable time entries table created");
+
     // Content/Tasks table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content_tasks (
