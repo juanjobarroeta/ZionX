@@ -267,12 +267,13 @@ const PayrollManagement = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
+      draft: { color: 'bg-blue-100 text-blue-800', label: '📝 Abierto' },
       open: { color: 'bg-blue-100 text-blue-800', label: '📝 Abierto' },
       processing: { color: 'bg-yellow-100 text-yellow-800', label: '⏳ Procesando' },
       paid: { color: 'bg-green-100 text-green-800', label: '✅ Pagado' },
       closed: { color: 'bg-gray-100 text-gray-800', label: '📁 Cerrado' }
     };
-    const badge = badges[status] || badges.open;
+    const badge = badges[status] || badges.draft;
     return <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color}`}>{badge.label}</span>;
   };
 
@@ -334,7 +335,7 @@ const PayrollManagement = () => {
                 <div>
                   <p className="text-sm text-gray-500">Períodos Abiertos</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {periods.filter(p => p.status === 'open').length}
+                    {periods.filter(p => p.status === 'open' || p.status === 'draft').length}
                   </p>
                 </div>
               </div>
@@ -412,22 +413,30 @@ const PayrollManagement = () => {
                         <td className="px-6 py-4">{getStatusBadge(period.status)}</td>
                         <td className="px-6 py-4">
                           <div className="flex gap-2">
-                            {period.status === 'open' && (
+                            {(period.status === 'open' || period.status === 'draft') && (
                               <>
                                 {(!period.entry_count || parseInt(period.entry_count) === 0) ? (
                                   <button
                                     onClick={() => generateEntries(period.id)}
-                                    className="text-blue-600 hover:text-blue-800 text-sm"
+                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                   >
-                                    ⚙️ Generar
+                                    ⚙️ Generar Registros
                                   </button>
                                 ) : (
-                                  <button
-                                    onClick={() => { fetchPeriodDetails(period.id); setShowProcessModal(true); }}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                                  >
-                                    💰 Procesar Pago
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => fetchPeriodDetails(period.id)}
+                                      className="text-blue-600 hover:text-blue-800 text-sm"
+                                    >
+                                      ✏️ Editar Incidencias
+                                    </button>
+                                    <button
+                                      onClick={() => { fetchPeriodDetails(period.id); setShowProcessModal(true); }}
+                                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                    >
+                                      💰 Procesar Pago
+                                    </button>
+                                  </>
                                 )}
                                 <button
                                   onClick={() => fetchPeriodDetails(period.id)}
