@@ -9,6 +9,7 @@ const InvoicesManager = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [cancelling, setCancelling] = useState(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -168,17 +169,18 @@ const InvoicesManager = () => {
                           <div className="flex gap-2">
                             <Link
                               to={`/income/invoices/${invoice.id}`}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                             >
-                              Ver
+                              👁️ Ver
                             </Link>
-                            {(invoice.status === 'sent' || invoice.status === 'partial') && (
-                              <Link
-                                to={`/income/invoices/${invoice.id}/payment`}
-                                className="text-green-600 hover:text-green-800 text-sm"
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <button
+                                onClick={() => handleCancelInvoice(invoice)}
+                                disabled={cancelling === invoice.id}
+                                className="text-red-500 hover:text-red-700 text-sm disabled:opacity-50"
                               >
-                                Pagar
-                              </Link>
+                                {cancelling === invoice.id ? '⏳' : '✗ Cancelar'}
+                              </button>
                             )}
                           </div>
                         </td>

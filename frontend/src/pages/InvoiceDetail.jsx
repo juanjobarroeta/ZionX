@@ -9,6 +9,7 @@ const InvoiceDetail = () => {
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
@@ -35,6 +36,35 @@ const InvoiceDetail = () => {
       style: 'currency',
       currency: 'MXN'
     }).format(amount || 0);
+  };
+
+  const handleCancelInvoice = async () => {
+    const reason = prompt("¿Por qué deseas cancelar esta factura?");
+    if (!reason) return;
+    
+    if (!confirm(`¿Estás seguro de cancelar la factura ${invoice.invoice_number}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    
+    try {
+      setCancelling(true);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      await axios.post(
+        `${API_BASE_URL}/api/income/invoices/${id}/cancel`,
+        { reason },
+        { headers }
+      );
+      
+      alert(`✅ Factura ${invoice.invoice_number} cancelada exitosamente`);
+      navigate('/income/invoices');
+    } catch (error) {
+      console.error("Error cancelling invoice:", error);
+      alert("❌ Error al cancelar factura: " + (error.response?.data?.error || error.message));
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -223,7 +253,7 @@ const InvoiceDetail = () => {
             )}
 
             {/* Actions */}
-            <div className="mt-8 pt-8 border-t flex gap-3">
+            <div className="mt-8 pt-8 border-t flex gap-3 flex-wrap">
               {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                 <button
                   onClick={() => alert('Función de registro de pago en desarrollo')}
@@ -238,13 +268,19 @@ const InvoiceDetail = () => {
               >
                 📥 Descargar PDF
               </button>
-              {invoice.status === 'draft' && (
+              {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                 <button
-                  onClick={() => alert('Función de cancelación en desarrollo')}
-                  className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors"
+                  onClick={handleCancelInvoice}
+                  disabled={cancelling}
+                  className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  ✗ Cancelar Factura
+                  {cancelling ? 'Cancelando...' : '✗ Cancelar Factura'}
                 </button>
+              )}
+              {invoice.status === 'cancelled' && (
+                <div className="bg-gray-100 text-gray-600 px-6 py-3 rounded-lg">
+                  ✗ Esta factura está cancelada
+                </div>
               )}
             </div>
           </div>
