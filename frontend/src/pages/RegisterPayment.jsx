@@ -802,7 +802,7 @@ const RegisterPayment = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-bold text-primary-600">#{customer.id}</span>
                               <span className="font-medium text-neutral-800">
-                                {customer.first_name} {customer.last_name}
+                                {customer.business_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim()}
                               </span>
                             </div>
                             <div className="text-sm text-neutral-600 mb-2">

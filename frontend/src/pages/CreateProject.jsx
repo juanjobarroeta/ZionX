@@ -238,11 +238,16 @@ const CreateProject = () => {
                     className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
                   >
                     <option value="">Seleccionar Cliente</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.first_name} {customer.last_name}
-                      </option>
-                    ))}
+                    {customers.map((customer) => {
+                      const displayName = customer.business_name 
+                        ? customer.business_name
+                        : `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+                      return (
+                        <option key={customer.id} value={customer.id}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

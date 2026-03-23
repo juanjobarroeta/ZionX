@@ -233,11 +233,16 @@ const AddonsManager = () => {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
                   >
                     <option value="">Seleccionar cliente...</option>
-                    {customers.map(customer => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.first_name} {customer.last_name}
-                      </option>
-                    ))}
+                    {customers.map(customer => {
+                      const displayName = customer.business_name 
+                        ? customer.business_name
+                        : `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+                      return (
+                        <option key={customer.id} value={customer.id}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
