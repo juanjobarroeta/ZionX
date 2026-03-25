@@ -436,8 +436,12 @@ router.get('/revenue/summary', async (req, res) => {
         TO_CHAR(ip.payment_date, 'YYYY-MM') as month,
         COUNT(DISTINCT i.id) as invoice_count,
         COUNT(ip.id) as payment_count,
+        SUM(ip.amount) as total_paid,
         SUM(ip.amount) as total_revenue,
+        SUM(i.total) as total_billed,
         SUM(i.total) as total_invoiced,
+        SUM(i.subtotal) as subtotal,
+        SUM(i.tax_amount) as tax,
         AVG(ip.amount) as avg_payment
       FROM invoice_payments ip
       JOIN invoices i ON ip.invoice_id = i.id
