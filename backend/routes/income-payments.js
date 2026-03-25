@@ -140,17 +140,18 @@ router.post('/invoices/:id/payment', async (req, res) => {
     // Update invoice amount_paid and status
     const new_amount_paid = parseFloat(invoice.amount_paid) + paymentAmount;
     const new_status = new_amount_paid >= parseFloat(invoice.total) ? 'paid' : 'partial';
+    const is_fully_paid = new_status === 'paid';
     
     await client.query(`
       UPDATE invoices SET
         amount_paid = $1,
         status = $2,
-        paid_at = CASE WHEN $2 = 'paid' THEN CURRENT_TIMESTAMP ELSE paid_at END,
-        payment_method = CASE WHEN $2 = 'paid' THEN $3 ELSE payment_method END,
-        payment_reference = CASE WHEN $2 = 'paid' THEN $4 ELSE payment_reference END,
+        paid_at = CASE WHEN $3 THEN CURRENT_TIMESTAMP ELSE paid_at END,
+        payment_method = CASE WHEN $3 THEN $4::varchar ELSE payment_method END,
+        payment_reference = CASE WHEN $3 THEN $5::varchar ELSE payment_reference END,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
-    `, [new_amount_paid, new_status, payment_method, reference_number, invoice_id]);
+      WHERE id = $6
+    `, [new_amount_paid, new_status, is_fully_paid, payment_method, reference_number, invoice_id]);
     
     // Create accounting entries for the payment using correct schema format
     // Determine bank/cash account based on payment method
