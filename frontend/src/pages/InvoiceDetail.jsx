@@ -10,6 +10,14 @@ const InvoiceDetail = () => {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+    amount: '',
+    payment_method: 'transferencia',
+    reference_number: '',
+    notes: ''
+  });
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
@@ -36,6 +44,56 @@ const InvoiceDetail = () => {
       style: 'currency',
       currency: 'MXN'
     }).format(amount || 0);
+  };
+
+  const handleOpenPaymentModal = () => {
+    setPaymentData({
+      amount: invoice.amount_due || invoice.total,
+      payment_method: 'transferencia',
+      reference_number: '',
+      notes: ''
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handleRegisterPayment = async () => {
+    if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
+      alert('❌ Ingresa un monto válido');
+      return;
+    }
+
+    if (parseFloat(paymentData.amount) > parseFloat(invoice.amount_due || invoice.total)) {
+      if (!confirm('⚠️ El monto es mayor al saldo pendiente. ¿Continuar?')) {
+        return;
+      }
+    }
+
+    try {
+      setSubmittingPayment(true);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      await axios.post(
+        `${API_BASE_URL}/api/income/invoices/${id}/payment`,
+        {
+          amount: parseFloat(paymentData.amount),
+          payment_method: paymentData.payment_method,
+          payment_date: new Date().toISOString().split('T')[0],
+          reference_number: paymentData.reference_number || null,
+          notes: paymentData.notes || null
+        },
+        { headers }
+      );
+      
+      alert(`✅ Pago de ${formatCurrency(paymentData.amount)} registrado exitosamente`);
+      setShowPaymentModal(false);
+      fetchInvoice(); // Refresh invoice data
+    } catch (error) {
+      console.error("Error registering payment:", error);
+      alert("❌ Error al registrar pago: " + (error.response?.data?.error || error.message));
+    } finally {
+      setSubmittingPayment(false);
+    }
   };
 
   const handleCancelInvoice = async () => {
@@ -256,7 +314,7 @@ const InvoiceDetail = () => {
             <div className="mt-8 pt-8 border-t flex gap-3 flex-wrap">
               {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                 <button
-                  onClick={() => alert('Función de registro de pago en desarrollo')}
+                  onClick={handleOpenPaymentModal}
                   className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   💰 Registrar Pago
@@ -285,6 +343,127 @@ const InvoiceDetail = () => {
             </div>
           </div>
         </div>
+
+        {/* Payment Modal */}
+        {showPaymentModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-zionx-primary">💰 Registrar Pago</h3>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Invoice Info */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">Factura</p>
+                  <p className="font-bold text-zionx-primary">{invoice.invoice_number}</p>
+                  <p className="text-sm text-gray-600 mt-2">Cliente</p>
+                  <p className="font-medium">{invoice.customer_name}</p>
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total factura:</span>
+                      <span className="font-medium">{formatCurrency(invoice.total)}</span>
+                    </div>
+                    {invoice.amount_paid > 0 && (
+                      <div className="flex justify-between text-sm text-green-600 mt-1">
+                        <span>Pagado:</span>
+                        <span className="font-medium">{formatCurrency(invoice.amount_paid)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold text-orange-600 mt-1">
+                      <span>Por cobrar:</span>
+                      <span>{formatCurrency(invoice.amount_due || invoice.total)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Form */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Monto del Pago *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={paymentData.amount}
+                      onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
+                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Método de Pago *
+                  </label>
+                  <select
+                    value={paymentData.payment_method}
+                    onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="transferencia">🏦 Transferencia Bancaria</option>
+                    <option value="efectivo">💵 Efectivo</option>
+                    <option value="tarjeta">💳 Tarjeta</option>
+                    <option value="cheque">📝 Cheque</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Referencia / No. de Transacción
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentData.reference_number}
+                    onChange={(e) => setPaymentData({...paymentData, reference_number: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Ej: SPEI-123456, No. Cheque, etc."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notas (Opcional)
+                  </label>
+                  <textarea
+                    value={paymentData.notes}
+                    onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    rows="2"
+                    placeholder="Notas adicionales sobre el pago..."
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={submittingPayment}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleRegisterPayment}
+                    disabled={submittingPayment}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingPayment ? 'Registrando...' : '✓ Registrar Pago'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
