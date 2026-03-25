@@ -342,8 +342,22 @@ router.get('/invoices', async (req, res) => {
 router.get('/invoices/pending', async (req, res) => {
   try {
     const result = await req.pool.query(`
-      SELECT * FROM v_pending_invoices 
-      ORDER BY due_date, invoice_date
+      SELECT 
+        i.*,
+        c.first_name || ' ' || c.last_name as customer_name,
+        c.email as customer_email,
+        c.phone as customer_phone,
+        (i.total - COALESCE(i.amount_paid, 0)) as amount_due
+      FROM invoices i
+      JOIN customers c ON i.customer_id = c.id
+      WHERE i.status NOT IN ('paid', 'cancelled')
+      ORDER BY 
+        CASE 
+          WHEN i.due_date < CURRENT_DATE THEN 0
+          ELSE 1
+        END,
+        i.due_date, 
+        i.invoice_date
     `);
     res.json(result.rows);
   } catch (error) {
