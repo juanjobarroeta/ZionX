@@ -247,4 +247,133 @@ router.post('/:id/pay', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/expenses/:id/reverse
+ * Reverse a paid expense (undo the payment and journal entries)
+ */
+router.post('/:id/reverse', async (req, res) => {
+  const client = await req.pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const expense_id = parseInt(req.params.id);
+    const { reason } = req.body;
+    
+    // Get expense details
+    const expenseResult = await client.query(
+      'SELECT * FROM expenses WHERE id = $1',
+      [expense_id]
+    );
+    
+    if (!expenseResult.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    const expense = expenseResult.rows[0];
+    
+    if (expense.status !== 'paid') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Can only reverse paid expenses. Use DELETE for unpaid expenses.' 
+      });
+    }
+    
+    // Find all journal entries for this expense
+    const journalEntries = await client.query(`
+      SELECT id, account_code, debit, credit, description
+      FROM journal_entries
+      WHERE source_type IN ('expense', 'expense_payment') 
+        AND source_id = $1
+    `, [expense_id]);
+    
+    if (journalEntries.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'No journal entries found for this expense' 
+      });
+    }
+    
+    // Create reversal entries (swap debit and credit)
+    for (const entry of journalEntries.rows) {
+      await client.query(`
+        INSERT INTO journal_entries (
+          date, description, account_code, debit, credit,
+          source_type, source_id
+        ) VALUES (
+          CURRENT_DATE, $1, $2, $3, $4, 'expense_reversal', $5
+        )
+      `, [
+        `REVERSA: ${expense.description} - ${reason || 'Corrección'}`,
+        entry.account_code,
+        entry.credit, // Swap: credit becomes debit
+        entry.debit,  // Swap: debit becomes credit
+        expense_id
+      ]);
+    }
+    
+    // Update expense status
+    await client.query(`
+      UPDATE expenses SET
+        status = 'reversed',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [expense_id]);
+    
+    await client.query('COMMIT');
+    
+    console.log(`✅ Reversed expense ${expense_id}: ${expense.description}`);
+    console.log(`   Reversed ${journalEntries.rows.length} journal entries`);
+    
+    res.json({
+      success: true,
+      expense_id,
+      entries_reversed: journalEntries.rows.length,
+      message: 'Gasto reversado exitosamente'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error reversing expense:', error);
+    res.status(500).json({ error: 'Failed to reverse expense', details: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * DELETE /api/expenses/:id
+ * Delete an unpaid expense (only works for pending/draft expenses)
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const expense_id = parseInt(req.params.id);
+    
+    // Check if expense is paid
+    const expenseResult = await req.pool.query(
+      'SELECT status FROM expenses WHERE id = $1',
+      [expense_id]
+    );
+    
+    if (!expenseResult.rows.length) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    if (expenseResult.rows[0].status === 'paid') {
+      return res.status(400).json({ 
+        error: 'Cannot delete paid expense. Use /reverse endpoint instead.' 
+      });
+    }
+    
+    // Delete expense
+    await req.pool.query('DELETE FROM expenses WHERE id = $1', [expense_id]);
+    
+    console.log(`🗑️ Deleted unpaid expense ${expense_id}`);
+    res.json({ message: 'Gasto eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error deleting expense:', error);
+    res.status(500).json({ error: 'Failed to delete expense' });
+  }
+});
+
 module.exports = router;
