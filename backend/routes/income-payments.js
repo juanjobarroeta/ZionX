@@ -354,6 +354,14 @@ router.post('/invoices/:id/cancel', async (req, res) => {
       });
     }
     
+    // Get invoice details for reversal entry
+    const invoiceData = await client.query('SELECT invoice_number FROM invoices WHERE id = $1', [id]);
+    if (!invoiceData.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    const invoiceNumber = invoiceData.rows[0].invoice_number;
+    
     // Cancel invoice
     const result = await client.query(`
       UPDATE invoices SET
@@ -369,8 +377,34 @@ router.post('/invoices/:id/cancel', async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
     
-    // Note: Invoice generation doesn't create journal entries in new system
-    // (Revenue is recognized when payment is received, not when invoice is generated)
+    // REVERSE journal entries created when invoice was generated
+    // Find all journal entries for this invoice
+    const invoiceEntries = await client.query(`
+      SELECT id, account_code, debit, credit
+      FROM journal_entries
+      WHERE source_type = 'invoice_generated' AND source_id = $1
+    `, [id]);
+    
+    // Create reversal entries (swap debit and credit)
+    for (const entry of invoiceEntries.rows) {
+      await client.query(`
+        INSERT INTO journal_entries (
+          date, description, account_code, debit, credit, 
+          source_type, source_id, created_by
+        ) VALUES (
+          CURRENT_DATE, $1, $2, $3, $4, 'invoice_cancelled', $5, $6
+        )
+      `, [
+        `Reversa Factura Cancelada ${invoiceNumber}`,
+        entry.account_code,
+        entry.credit, // Swap: what was credit becomes debit
+        entry.debit,  // Swap: what was debit becomes credit
+        id,
+        req.user.id
+      ]);
+    }
+    
+    console.log(`✅ Cancelled invoice ${invoiceNumber} and reversed ${invoiceEntries.rows.length} journal entries`);
     
     await client.query('COMMIT');
     
