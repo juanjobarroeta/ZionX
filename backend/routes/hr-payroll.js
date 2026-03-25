@@ -845,16 +845,17 @@ router.get('/financial/profit-loss', async (req, res) => {
     `;
     const labor = await req.pool.query(laborQuery);
     
-    // Get operating expenses
+    // Get operating expenses - from journal_entries (more reliable)
     const expensesQuery = `
       SELECT 
-        TO_CHAR(expense_date, 'YYYY-MM') as month,
-        ec.name as category,
-        SUM(oe.amount) as total
-      FROM operating_expenses oe
-      LEFT JOIN expense_categories ec ON oe.category_id = ec.id
-      ${year ? `WHERE EXTRACT(YEAR FROM expense_date) = ${year}` : ''}
-      GROUP BY TO_CHAR(expense_date, 'YYYY-MM'), ec.name
+        TO_CHAR(je.date, 'YYYY-MM') as month,
+        coa.name as category,
+        SUM(je.debit) as total
+      FROM journal_entries je
+      JOIN chart_of_accounts coa ON je.account_code = coa.code
+      WHERE coa.code LIKE '6%' AND coa.code != '6000'
+      ${year ? `AND EXTRACT(YEAR FROM je.date) = ${year}` : ''}
+      GROUP BY TO_CHAR(je.date, 'YYYY-MM'), coa.name
       ORDER BY month DESC, category
     `;
     const expenses = await req.pool.query(expensesQuery);
@@ -890,9 +891,11 @@ router.get('/financial/profit-loss', async (req, res) => {
           GROUP BY TO_CHAR(pp.end_date, 'YYYY-MM')
         ) labor ON rev.month = labor.month
         LEFT JOIN (
-          SELECT TO_CHAR(expense_date, 'YYYY-MM') as month, SUM(amount) as total
-          FROM operating_expenses
-          GROUP BY TO_CHAR(expense_date, 'YYYY-MM')
+          SELECT TO_CHAR(je.date, 'YYYY-MM') as month, SUM(je.debit) as total
+          FROM journal_entries je
+          JOIN chart_of_accounts coa ON je.account_code = coa.code
+          WHERE coa.code LIKE '6%' AND coa.code != '6000'
+          GROUP BY TO_CHAR(je.date, 'YYYY-MM')
         ) expenses ON rev.month = expenses.month
       ) summary
       ORDER BY month DESC
@@ -936,11 +939,14 @@ router.get('/financial/summary', async (req, res) => {
       WHERE TO_CHAR(pp.end_date, 'YYYY-MM') = $1 AND pp.status = 'paid'
     `, [currentMonth]);
     
-    // Current month expenses
+    // Current month expenses - from journal_entries
     const expensesResult = await req.pool.query(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM operating_expenses
-      WHERE TO_CHAR(expense_date, 'YYYY-MM') = $1
+      SELECT COALESCE(SUM(je.debit), 0) as total
+      FROM journal_entries je
+      JOIN chart_of_accounts coa ON je.account_code = coa.code
+      WHERE coa.code LIKE '6%' 
+        AND coa.code != '6000'
+        AND TO_CHAR(je.date, 'YYYY-MM') = $1
     `, [currentMonth]);
     
     // YTD totals
@@ -958,9 +964,12 @@ router.get('/financial/summary', async (req, res) => {
     `, [currentYear]);
     
     const ytdExpensesResult = await req.pool.query(`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM operating_expenses
-      WHERE EXTRACT(YEAR FROM expense_date) = $1
+      SELECT COALESCE(SUM(je.debit), 0) as total
+      FROM journal_entries je
+      JOIN chart_of_accounts coa ON je.account_code = coa.code
+      WHERE coa.code LIKE '6%' 
+        AND coa.code != '6000'
+        AND EXTRACT(YEAR FROM je.date) = $1
     `, [currentYear]);
     
     // Employee count
