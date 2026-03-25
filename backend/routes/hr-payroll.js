@@ -829,13 +829,21 @@ router.get('/financial/profit-loss', async (req, res) => {
     `;
     const revenue = await req.pool.query(revenueQuery);
     
-    // Get labor costs
+    // Get labor costs - direct query instead of view
     const laborQuery = `
-      SELECT * FROM v_monthly_labor_cost
-      ${dateFilter}
+      SELECT 
+        TO_CHAR(pp.end_date, 'YYYY-MM') as month,
+        SUM(pe.gross_pay) as gross_pay,
+        SUM(pe.net_pay) as net_pay,
+        SUM(pe.total_deductions) as total_deductions,
+        COUNT(DISTINCT pe.team_member_id) as employee_count
+      FROM payroll_entries pe
+      JOIN payroll_periods pp ON pe.payroll_period_id = pp.id
+      WHERE pp.status = 'paid'
+      GROUP BY TO_CHAR(pp.end_date, 'YYYY-MM')
       ORDER BY month DESC
     `;
-    const labor = await req.pool.query(laborQuery, params);
+    const labor = await req.pool.query(laborQuery);
     
     // Get operating expenses
     const expensesQuery = `
@@ -851,9 +859,46 @@ router.get('/financial/profit-loss', async (req, res) => {
     `;
     const expenses = await req.pool.query(expensesQuery);
     
-    // Get P&L summary
-    const summaryQuery = `SELECT * FROM v_profit_loss_summary ${dateFilter} ORDER BY month DESC`;
-    const summary = await req.pool.query(summaryQuery, params);
+    // Get P&L summary - direct calculation instead of view
+    const summaryQuery = `
+      SELECT 
+        month,
+        revenue,
+        labor_cost,
+        operating_expenses,
+        (revenue - labor_cost - operating_expenses) as net_income,
+        CASE WHEN revenue > 0 
+          THEN ROUND(((revenue - labor_cost - operating_expenses) / revenue * 100)::numeric, 2)
+          ELSE 0 
+        END as profit_margin
+      FROM (
+        SELECT 
+          rev.month,
+          COALESCE(rev.total, 0) as revenue,
+          COALESCE(labor.labor, 0) as labor_cost,
+          COALESCE(expenses.total, 0) as operating_expenses
+        FROM (
+          SELECT TO_CHAR(payment_date, 'YYYY-MM') as month, SUM(amount) as total
+          FROM invoice_payments
+          GROUP BY TO_CHAR(payment_date, 'YYYY-MM')
+        ) rev
+        LEFT JOIN (
+          SELECT TO_CHAR(pp.end_date, 'YYYY-MM') as month, SUM(pe.gross_pay) as labor
+          FROM payroll_entries pe
+          JOIN payroll_periods pp ON pe.payroll_period_id = pp.id
+          WHERE pp.status = 'paid'
+          GROUP BY TO_CHAR(pp.end_date, 'YYYY-MM')
+        ) labor ON rev.month = labor.month
+        LEFT JOIN (
+          SELECT TO_CHAR(expense_date, 'YYYY-MM') as month, SUM(amount) as total
+          FROM operating_expenses
+          GROUP BY TO_CHAR(expense_date, 'YYYY-MM')
+        ) expenses ON rev.month = expenses.month
+      ) summary
+      ORDER BY month DESC
+      LIMIT 12
+    `;
+    const summary = await req.pool.query(summaryQuery);
     
     res.json({
       summary: summary.rows,
