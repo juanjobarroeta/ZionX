@@ -895,7 +895,7 @@ const CreativeBrief = () => {
               <button
                 onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
                 disabled={currentStep === 1}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 ← Anterior
               </button>
@@ -903,7 +903,7 @@ const CreativeBrief = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? '💾 Guardando...' : '💾 Guardar Progreso'}
               </button>
@@ -911,7 +911,7 @@ const CreativeBrief = () => {
               {currentStep < 5 ? (
                 <button
                   onClick={() => setCurrentStep(Math.min(5, currentStep + 1))}
-                  className="px-6 py-2 bg-zionx-primary text-black font-semibold rounded-lg hover:bg-lime-400"
+                  className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors"
                 >
                   Siguiente →
                 </button>
@@ -921,7 +921,7 @@ const CreativeBrief = () => {
                     await handleSave();
                     navigate('/briefs');
                   }}
-                  className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700"
+                  className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                 >
                   ✓ Completar Brief
                 </button>
