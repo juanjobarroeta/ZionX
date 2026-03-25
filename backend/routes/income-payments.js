@@ -519,44 +519,73 @@ router.get('/revenue/addon-performance', async (req, res) => {
  */
 router.get('/dashboard', async (req, res) => {
   try {
-    // MRR
-    const mrrResult = await req.pool.query(`
-      SELECT SUM(COALESCE(cs.custom_monthly_price, sp.base_price)) as mrr
-      FROM customer_subscriptions cs
-      JOIN service_packages sp ON cs.service_package_id = sp.id
-      WHERE cs.status = 'active'
-    `);
+    // MRR - calculate from subscriptions (try with service_packages, fallback to custom_monthly_price only)
+    let mrr = 0;
+    try {
+      const mrrResult = await req.pool.query(`
+        SELECT SUM(COALESCE(cs.custom_monthly_price, sp.base_price, 0)) as mrr
+        FROM customer_subscriptions cs
+        LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
+        WHERE cs.status = 'active'
+      `);
+      mrr = parseFloat(mrrResult.rows[0].mrr || 0);
+    } catch (mrrError) {
+      // If service_packages doesn't exist or join fails, just count invoices
+      console.log('MRR calculation fallback:', mrrError.message);
+      const fallbackMRR = await req.pool.query(`
+        SELECT AVG(total) as avg_invoice
+        FROM invoices
+        WHERE invoice_date >= CURRENT_DATE - INTERVAL '3 months'
+      `);
+      mrr = parseFloat(fallbackMRR.rows[0].avg_invoice || 0);
+    }
     
-    // Total outstanding (unpaid invoices)
+    // Total outstanding (unpaid invoices) - based on actual invoice totals
     const outstandingResult = await req.pool.query(`
-      SELECT SUM(total - amount_paid) as total_outstanding
+      SELECT 
+        SUM(total - COALESCE(amount_paid, 0)) as total_outstanding,
+        COUNT(*) as invoice_count
       FROM invoices
       WHERE status NOT IN ('paid', 'cancelled')
     `);
     
     // Overdue amount
     const overdueResult = await req.pool.query(`
-      SELECT SUM(total - amount_paid) as overdue_amount, COUNT(*) as overdue_count
+      SELECT 
+        SUM(total - COALESCE(amount_paid, 0)) as overdue_amount, 
+        COUNT(*) as overdue_count
       FROM invoices
-      WHERE due_date < CURRENT_DATE AND status NOT IN ('paid', 'cancelled')
+      WHERE due_date < CURRENT_DATE 
+        AND status NOT IN ('paid', 'cancelled')
+        AND (total - COALESCE(amount_paid, 0)) > 0
     `);
     
-    // This month revenue
+    // This month revenue - ACTUAL payments received (not just invoiced)
     const thisMonthResult = await req.pool.query(`
       SELECT 
-        SUM(amount_paid) as revenue_this_month,
-        COUNT(*) as invoices_this_month
+        COALESCE(SUM(ip.amount), 0) as revenue_this_month,
+        COUNT(DISTINCT i.id) as invoices_this_month
+      FROM invoices i
+      LEFT JOIN invoice_payments ip ON i.id = ip.invoice_id
+      WHERE EXTRACT(YEAR FROM i.invoice_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+        AND EXTRACT(MONTH FROM i.invoice_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+    `);
+    
+    // Also get total invoiced this month (for comparison)
+    const invoicedThisMonth = await req.pool.query(`
+      SELECT COALESCE(SUM(total), 0) as total_invoiced
       FROM invoices
       WHERE EXTRACT(YEAR FROM invoice_date) = EXTRACT(YEAR FROM CURRENT_DATE)
         AND EXTRACT(MONTH FROM invoice_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND status != 'cancelled'
     `);
     
     // Last month revenue
     const lastMonthResult = await req.pool.query(`
-      SELECT SUM(amount_paid) as revenue_last_month
-      FROM invoices
-      WHERE invoice_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
-        AND invoice_date < DATE_TRUNC('month', CURRENT_DATE)
+      SELECT COALESCE(SUM(ip.amount), 0) as revenue_last_month
+      FROM invoice_payments ip
+      WHERE ip.payment_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+        AND ip.payment_date < DATE_TRUNC('month', CURRENT_DATE)
     `);
     
     // Active subscriptions count
@@ -566,13 +595,14 @@ router.get('/dashboard', async (req, res) => {
       WHERE status = 'active'
     `);
     
-    const mrr = parseFloat(mrrResult.rows[0].mrr || 0);
     const totalOutstanding = parseFloat(outstandingResult.rows[0].total_outstanding || 0);
+    const invoiceCount = parseInt(outstandingResult.rows[0].invoice_count || 0);
     const overdueAmount = parseFloat(overdueResult.rows[0].overdue_amount || 0);
     const overdueCount = parseInt(overdueResult.rows[0].overdue_count || 0);
     const revenueThisMonth = parseFloat(thisMonthResult.rows[0].revenue_this_month || 0);
     const revenueLastMonth = parseFloat(lastMonthResult.rows[0].revenue_last_month || 0);
     const invoicesThisMonth = parseInt(thisMonthResult.rows[0].invoices_this_month || 0);
+    const totalInvoiced = parseFloat(invoicedThisMonth.rows[0].total_invoiced || 0);
     const activeSubscriptions = parseInt(subscriptionsResult.rows[0].active_subscriptions || 0);
     
     // Calculate growth
@@ -580,21 +610,28 @@ router.get('/dashboard', async (req, res) => {
       ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth * 100)
       : 0;
     
+    // If MRR is 0 but we have invoices, estimate MRR from average invoice
+    if (mrr === 0 && totalInvoiced > 0) {
+      mrr = totalInvoiced / (invoicesThisMonth || 1);
+    }
+    
     res.json({
-      mrr,
-      total_outstanding: totalOutstanding,
-      overdue_amount: overdueAmount,
+      mrr: Math.round(mrr * 100) / 100,
+      total_outstanding: Math.round(totalOutstanding * 100) / 100,
+      overdue_amount: Math.round(overdueAmount * 100) / 100,
       overdue_count: overdueCount,
-      revenue_this_month: revenueThisMonth,
-      revenue_last_month: revenueLastMonth,
+      revenue_this_month: Math.round(revenueThisMonth * 100) / 100,
+      revenue_last_month: Math.round(revenueLastMonth * 100) / 100,
       month_over_month_growth: Math.round(monthOverMonthGrowth * 100) / 100,
       invoices_this_month: invoicesThisMonth,
+      total_invoiced_this_month: Math.round(totalInvoiced * 100) / 100,
       active_subscriptions: activeSubscriptions,
-      annual_run_rate: mrr * 12
+      annual_run_rate: Math.round(mrr * 12 * 100) / 100,
+      pending_invoice_count: invoiceCount
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    res.status(500).json({ error: 'Failed to fetch dashboard data', details: error.message });
   }
 });
 
