@@ -614,7 +614,7 @@ router.post('/payroll/periods/:id/process', async (req, res) => {
         payment_date = $1,
         total_gross = $2,
         total_net = $3,
-        closed_at = CURRENT_TIMESTAMP
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $4
     `, [payment_date || new Date(), totalGross, totalNet, id]);
     
