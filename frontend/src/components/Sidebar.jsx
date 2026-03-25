@@ -26,6 +26,7 @@ const sectionList = [
     color: "from-blue-400 to-blue-600",
     links: [
       { href: "/crm", label: "Directorio", icon: "📋" },
+      { href: "/briefs", label: "Creative Briefs", icon: "📝" },
       { href: "/create-customer", label: "Nuevo Cliente", icon: "➕" },
       { href: "/customers/import", label: "Importar Clientes", icon: "📤" },
     ],
