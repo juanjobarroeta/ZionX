@@ -397,23 +397,31 @@ router.get('/revenue/summary', async (req, res) => {
   try {
     const { year, month } = req.query;
     
-    let query = 'SELECT * FROM v_monthly_revenue WHERE 1=1';
+    let query = `
+      SELECT 
+        TO_CHAR(ip.payment_date, 'YYYY-MM') as month,
+        COUNT(DISTINCT i.id) as invoice_count,
+        COUNT(ip.id) as payment_count,
+        SUM(ip.amount) as total_revenue,
+        SUM(i.total) as total_invoiced,
+        AVG(ip.amount) as avg_payment
+      FROM invoice_payments ip
+      JOIN invoices i ON ip.invoice_id = i.id
+      WHERE 1=1
+    `;
     const params = [];
     
     if (year) {
-      params.push(year);
-      query += ` AND month LIKE $${params.length} || '-%'`;
+      params.push(parseInt(year));
+      query += ` AND EXTRACT(YEAR FROM ip.payment_date) = $${params.length}`;
     }
     
     if (month) {
-      const yearParam = year || new Date().getFullYear();
-      const monthPadded = month.toString().padStart(2, '0');
-      params.length = 0;
-      params.push(`${yearParam}-${monthPadded}`);
-      query = 'SELECT * FROM v_monthly_revenue WHERE month = $1';
+      params.push(parseInt(month));
+      query += ` AND EXTRACT(MONTH FROM ip.payment_date) = $${params.length}`;
     }
     
-    query += ' ORDER BY month DESC';
+    query += ' GROUP BY TO_CHAR(ip.payment_date, \'YYYY-MM\') ORDER BY month DESC LIMIT 12';
     
     const result = await req.pool.query(query, params);
     res.json(result.rows);
