@@ -54,12 +54,12 @@ router.post('/create', async (req, res) => {
     
     const account_code = categoryAccountMap[category] || '6999';
     
-    // Insert into expenses table
+    // Insert into expenses table (match actual table structure)
     const expenseResult = await client.query(`
       INSERT INTO expenses (
-        category, amount, description, expense_date,
-        status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        category, amount, description, due_date,
+        status, type, method
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `, [
       category,
@@ -67,7 +67,8 @@ router.post('/create', async (req, res) => {
       description,
       expense_date || new Date(),
       payment_method ? 'paid' : 'pending',
-      req.user.id
+      category, // Use category as type as well
+      payment_method
     ]);
     
     const expense = expenseResult.rows[0];
@@ -83,30 +84,28 @@ router.post('/create', async (req, res) => {
       await client.query(`
         INSERT INTO journal_entries (
           date, description, account_code, debit, credit, 
-          source_type, source_id, created_by
-        ) VALUES ($1, $2, $3, $4, 0, 'expense', $5, $6)
+          source_type, source_id
+        ) VALUES ($1, $2, $3, $4, 0, 'expense', $5)
       `, [
         expense_date || new Date(),
         `${description} - ${vendor || 'Gasto'}`,
         account_code,
         expenseAmount,
-        expense.id,
-        req.user.id
+        expense.id
       ]);
       
       // Credit: Bank/Cash (decreases cash)
       await client.query(`
         INSERT INTO journal_entries (
           date, description, account_code, debit, credit,
-          source_type, source_id, created_by
-        ) VALUES ($1, $2, $3, 0, $4, 'expense', $5, $6)
+          source_type, source_id
+        ) VALUES ($1, $2, $3, 0, $4, 'expense', $5)
       `, [
         expense_date || new Date(),
         `Pago ${description} - ${payment_method}`,
         cashAccountCode,
         expenseAmount,
-        expense.id,
-        req.user.id
+        expense.id
       ]);
       
       console.log(`✅ Created expense ${expense.id} and journal entries: Debit ${account_code}, Credit ${cashAccountCode} - $${expenseAmount}`);
@@ -204,30 +203,28 @@ router.post('/:id/pay', async (req, res) => {
     await client.query(`
       INSERT INTO journal_entries (
         date, description, account_code, debit, credit,
-        source_type, source_id, created_by
-      ) VALUES ($1, $2, $3, $4, 0, 'expense_payment', $5, $6)
+        source_type, source_id
+      ) VALUES ($1, $2, $3, $4, 0, 'expense_payment', $5)
     `, [
       payment_date || new Date(),
       `Gasto: ${expense.description}`,
       account_code,
       expenseAmount,
-      expense_id,
-      req.user.id
+      expense_id
     ]);
     
     // Credit: Bank/Cash
     await client.query(`
       INSERT INTO journal_entries (
         date, description, account_code, debit, credit,
-        source_type, source_id, created_by
-      ) VALUES ($1, $2, $3, 0, $4, 'expense_payment', $5, $6)
+        source_type, source_id
+      ) VALUES ($1, $2, $3, 0, $4, 'expense_payment', $5)
     `, [
       payment_date || new Date(),
       `Pago: ${expense.description} - ${payment_method}`,
       cashAccountCode,
       expenseAmount,
-      expense_id,
-      req.user.id
+      expense_id
     ]);
     
     await client.query('COMMIT');
