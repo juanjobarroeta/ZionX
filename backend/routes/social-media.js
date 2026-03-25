@@ -212,7 +212,7 @@ router.get('/accounts', async (req, res) => {
     let query = `
       SELECT 
         sa.*,
-        c.business_name as customer_name
+        CONCAT(c.first_name, ' ', c.last_name) as customer_name
       FROM social_accounts sa
       LEFT JOIN customers c ON sa.customer_id = c.id
       WHERE sa.is_active = true

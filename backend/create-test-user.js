@@ -35,15 +35,23 @@ async function createAdminUser() {
       return;
     }
 
+    // Get admin permissions from template
+    const permissionsResult = await pool.query(
+      "SELECT permissions FROM permission_templates WHERE name = 'admin'"
+    );
+    const adminPermissions = permissionsResult.rows.length > 0 
+      ? permissionsResult.rows[0].permissions 
+      : {};
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(adminUser.password, 10);
 
-    // Insert user
+    // Insert user with full admin permissions
     const result = await pool.query(`
-      INSERT INTO users (name, email, password, role, is_active) 
-      VALUES ($1, $2, $3, $4, true)
+      INSERT INTO users (name, email, password, role, is_active, permissions) 
+      VALUES ($1, $2, $3, $4, true, $5)
       RETURNING id, name, email, role
-    `, [adminUser.name, adminUser.email, hashedPassword, adminUser.role]);
+    `, [adminUser.name, adminUser.email, hashedPassword, adminUser.role, adminPermissions]);
 
     console.log("✅ Admin user created successfully!");
     console.log("========================");
@@ -51,12 +59,15 @@ async function createAdminUser() {
     console.log("🔑 Password:", adminUser.password);
     console.log("👤 Role:", adminUser.role);
     console.log("🆔 User ID:", result.rows[0].id);
+    console.log("🔐 Permissions: Full admin access");
     console.log("========================");
     console.log("\n🚀 You can now login with these credentials!");
+    console.log("🌐 Production URL: https://zionx-marketing.vercel.app/");
 
     await pool.end();
   } catch (error) {
     console.error("❌ Error creating admin user:", error.message);
+    console.error("Stack:", error.stack);
     await pool.end();
     process.exit(1);
   }

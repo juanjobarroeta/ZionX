@@ -2713,6 +2713,7 @@ async function start() {
     const socialMediaRoutes = require('./routes/social-media');
     const approvalsRoutes = require('./routes/approvals');
     const expensesRoutes = require('./routes/expenses');
+    const creativeBriefsRoutes = require('./routes/creative-briefs');
     
     app.use(whatsappRoutes);
     app.use(leadsRoutes);
@@ -2784,7 +2785,13 @@ async function start() {
       next();
     }, authenticateToken, expensesRoutes);
     
-    console.log("✅ WhatsApp, Leads, Income, Customer Import, HR, Notifications, Messages, Social Media, Approvals, and Expenses routes loaded");
+    // Creative Briefs routes (prospect questionnaires)
+    app.use('/api/briefs', (req, res, next) => {
+      req.pool = pool;
+      next();
+    }, authenticateToken, creativeBriefsRoutes);
+    
+    console.log("✅ WhatsApp, Leads, Income, Customer Import, HR, Notifications, Messages, Social Media, Approvals, Expenses, and Creative Briefs routes loaded");
 
     // Log all registered routes before starting server
     app._router.stack

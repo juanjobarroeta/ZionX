@@ -87,7 +87,8 @@ const sectionList = [
     label: "Configuración",
     color: "from-gray-400 to-gray-600",
     links: [
-      { href: "/admin/create-user", label: "Gestión de Usuarios", icon: "👤" },
+      { href: "/admin/create-user", label: "Crear Usuario", icon: "➕" },
+      { href: "/admin/user-management", label: "Gestión de Usuarios", icon: "👥" },
     ],
   },
 ];
@@ -98,7 +99,7 @@ const defaultOpenSections = {
   leads: false,
   projects: false,
   finances: false,
-  settings: false,
+  settings: true,
 };
 
 const SIDEBAR_STATE_KEY = "sidebar-state";
