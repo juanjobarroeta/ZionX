@@ -22,6 +22,7 @@ import ProfitSummary from "./pages/ProfitSummary";
 import BalanceSheet from "./pages/BalanceSheet";
 import BriefsList from "./pages/BriefsList";
 import CreativeBrief from "./pages/CreativeBrief";
+import PublicCreativeBrief from "./pages/PublicCreativeBrief";
 import InventoryRequest from "./pages/InventoryRequest"; // fixed export
 import AdminApprovals from "./pages/AdminApprovals";
 import AdminInventoryViewer from "./pages/AdminInventoryViewer";
@@ -290,6 +291,9 @@ const AppRouter = () => (
       <Route path="/briefs" element={<ProtectedRoute><BriefsList /></ProtectedRoute>} />
       <Route path="/briefs/new" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
       <Route path="/briefs/:id" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
+      
+      {/* Public Creative Brief - No login required */}
+      <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
       
       <Route path="/dashboard/store-dashboard" element={<AdminRoute><StoreDashboard /></AdminRoute>} />
       <Route path="/admin/reclassify-payment" element={<AdminRoute><ReclassifyPayment /></AdminRoute>} />

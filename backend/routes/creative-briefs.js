@@ -278,4 +278,179 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/briefs/:id/generate-link
+ * Generate shareable public link for a brief
+ */
+router.post('/:id/generate-link', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Generate unique token
+    const crypto = require('crypto');
+    const publicToken = crypto.randomBytes(32).toString('hex');
+    
+    // Store token in brief
+    await req.pool.query(`
+      ALTER TABLE creative_briefs ADD COLUMN IF NOT EXISTS public_token VARCHAR(255);
+      UPDATE creative_briefs SET public_token = $1 WHERE id = $2
+    `, [publicToken, id]);
+    
+    const publicLink = `${req.protocol}://${req.get('host')}/public-brief/${publicToken}`;
+    
+    console.log(`✅ Generated public link for brief ${id}`);
+    res.json({ 
+      success: true,
+      public_link: publicLink,
+      token: publicToken
+    });
+  } catch (error) {
+    console.error('Error generating link:', error);
+    res.status(500).json({ error: 'Failed to generate link' });
+  }
+});
+
+// =====================================================
+// PUBLIC ENDPOINTS (No authentication required)
+// =====================================================
+
+/**
+ * GET /api/briefs/public/:token
+ * Get brief by public token (no auth required)
+ */
+router.get('/public/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    const result = await req.pool.query(
+      'SELECT * FROM creative_briefs WHERE public_token = $1',
+      [token]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Brief not found or link expired' });
+    }
+    
+    // Return brief data (excluding sensitive fields)
+    const brief = result.rows[0];
+    delete brief.created_by;
+    
+    res.json(brief);
+  } catch (error) {
+    console.error('Error fetching public brief:', error);
+    res.status(500).json({ error: 'Failed to fetch brief' });
+  }
+});
+
+/**
+ * PUT /api/briefs/public/:token
+ * Update brief via public link (no auth required)
+ */
+router.put('/public/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const briefData = req.body;
+    
+    // Check if brief exists
+    const checkResult = await req.pool.query(
+      'SELECT id FROM creative_briefs WHERE public_token = $1',
+      [token]
+    );
+    
+    if (!checkResult.rows.length) {
+      return res.status(404).json({ error: 'Brief not found' });
+    }
+    
+    // Build update query
+    const updates = [];
+    const values = [];
+    let paramCount = 0;
+    
+    Object.keys(briefData).forEach(key => {
+      if (briefData[key] !== undefined && key !== 'id' && key !== 'public_token') {
+        paramCount++;
+        updates.push(`${key} = $${paramCount}`);
+        values.push(briefData[key]);
+      }
+    });
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+    
+    paramCount++;
+    values.push(token);
+    
+    const query = `
+      UPDATE creative_briefs SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE public_token = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await req.pool.query(query, values);
+    
+    console.log(`✅ Updated public brief via token`);
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating public brief:', error);
+    res.status(500).json({ error: 'Failed to update brief' });
+  }
+});
+
+/**
+ * POST /api/briefs/public/:token/submit
+ * Submit completed brief (no auth required)
+ */
+router.post('/public/:token/submit', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const briefData = req.body;
+    
+    // Update brief with all data and mark as completed
+    const updates = [];
+    const values = [];
+    let paramCount = 0;
+    
+    Object.keys(briefData).forEach(key => {
+      if (briefData[key] !== undefined) {
+        paramCount++;
+        updates.push(`${key} = $${paramCount}`);
+        values.push(briefData[key]);
+      }
+    });
+    
+    paramCount++;
+    values.push(token);
+    
+    const query = `
+      UPDATE creative_briefs SET 
+        ${updates.join(', ')},
+        status = 'completed',
+        completed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE public_token = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await req.pool.query(query, values);
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Brief not found' });
+    }
+    
+    console.log(`✅ Brief completed via public submission`);
+    
+    // TODO: Send notification to team
+    
+    res.json({ 
+      success: true,
+      message: 'Brief submitted successfully',
+      brief_id: result.rows[0].id
+    });
+  } catch (error) {
+    console.error('Error submitting public brief:', error);
+    res.status(500).json({ error: 'Failed to submit brief' });
+  }
+});
+
 module.exports = router;
