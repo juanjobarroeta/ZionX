@@ -481,12 +481,12 @@ const PaymentManagement = () => {
                                   👁️ Ver Factura
                                 </Link>
                                 {item.paymentStatus.status !== 'paid' && (
-                                  <button
-                                    onClick={() => alert('Use el botón "Registrar Pago" en la factura')}
+                                  <Link
+                                    to={`/income/invoices/${item.invoice_id}`}
                                     className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
                                   >
                                     💰 Pagar
-                                  </button>
+                                  </Link>
                                 )}
                               </>
                             ) : (
