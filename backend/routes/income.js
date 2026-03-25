@@ -439,7 +439,20 @@ router.get('/subscriptions', async (req, res) => {
  */
 router.get('/subscriptions/active', async (req, res) => {
   try {
-    const result = await req.pool.query('SELECT * FROM v_active_subscriptions ORDER BY customer_name');
+    const result = await req.pool.query(`
+      SELECT 
+        cs.*,
+        c.first_name || ' ' || c.last_name as customer_name,
+        c.email as customer_email,
+        c.phone as customer_phone,
+        sp.name as package_name,
+        COALESCE(cs.custom_monthly_price, sp.base_price) as effective_monthly_price
+      FROM customer_subscriptions cs
+      JOIN customers c ON cs.customer_id = c.id
+      LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
+      WHERE cs.status = 'active'
+      ORDER BY c.first_name, c.last_name
+    `);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching active subscriptions:', error);
