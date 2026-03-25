@@ -930,42 +930,66 @@ const CreativeBrief = () => {
 
             {/* Quick Actions */}
             {id && (
-              <div className="flex gap-3 mt-4 pt-4 border-t">
+              <div className="space-y-3 mt-4 pt-4 border-t">
                 <button
                   onClick={async () => {
                     try {
                       const token = localStorage.getItem("token");
-                      await axios.post(`${API_BASE_URL}/api/briefs/${id}/send`, {}, {
+                      const res = await axios.post(`${API_BASE_URL}/api/briefs/${id}/generate-link`, {}, {
                         headers: { Authorization: `Bearer ${token}` }
                       });
-                      alert("✅ Brief marcado como enviado");
+                      const link = res.data.public_link || `${window.location.origin}/public-brief/${res.data.token}`;
+                      
+                      // Copy to clipboard
+                      navigator.clipboard.writeText(link);
+                      
+                      alert(`✅ Link copiado al portapapeles:\n\n${link}\n\nEnvía este link al prospecto para que llene el brief sin necesidad de login.`);
                     } catch (error) {
-                      alert("❌ Error al marcar como enviado");
+                      alert("❌ Error al generar link");
                     }
                   }}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
                 >
-                  📤 Marcar como Enviado
+                  🔗 Generar Link Público (para enviar al prospecto)
                 </button>
 
-                <button
-                  onClick={async () => {
-                    if (!confirm("¿Convertir este prospecto en cliente?")) return;
-                    try {
-                      const token = localStorage.getItem("token");
-                      const res = await axios.post(`${API_BASE_URL}/api/briefs/${id}/convert`, {}, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
-                      alert(`✅ Convertido a cliente #${res.data.customer.id}`);
-                      navigate('/crm');
-                    } catch (error) {
-                      alert("❌ Error al convertir");
-                    }
-                  }}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                >
-                  ✓ Convertir a Cliente
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem("token");
+                        await axios.post(`${API_BASE_URL}/api/briefs/${id}/send`, {}, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        alert("✅ Brief marcado como enviado");
+                      } catch (error) {
+                        alert("❌ Error al marcar como enviado");
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  >
+                    📤 Marcar como Enviado
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      if (!confirm("¿Convertir este prospecto en cliente?")) return;
+                      try {
+                        const token = localStorage.getItem("token");
+                        const res = await axios.post(`${API_BASE_URL}/api/briefs/${id}/convert`, {}, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        alert(`✅ Convertido a cliente #${res.data.customer.id}`);
+                        navigate('/crm');
+                      } catch (error) {
+                        alert("❌ Error al convertir");
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                  >
+                    ✓ Convertir a Cliente
+                  </button>
+                </div>
               </div>
             )}
           </div>
