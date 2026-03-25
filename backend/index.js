@@ -2712,6 +2712,7 @@ async function start() {
     const messagesRoutes = require('./routes/messages');
     const socialMediaRoutes = require('./routes/social-media');
     const approvalsRoutes = require('./routes/approvals');
+    const expensesRoutes = require('./routes/expenses');
     
     app.use(whatsappRoutes);
     app.use(leadsRoutes);
@@ -2777,7 +2778,13 @@ async function start() {
       next();
     }, approvalsRoutes);
     
-    console.log("✅ WhatsApp, Leads, Income, Customer Import, HR, Notifications, Messages, Social Media, and Approvals routes loaded");
+    // Expenses routes (marketing agency expenses with accounting)
+    app.use('/api/expenses', (req, res, next) => {
+      req.pool = pool;
+      next();
+    }, authenticateToken, expensesRoutes);
+    
+    console.log("✅ WhatsApp, Leads, Income, Customer Import, HR, Notifications, Messages, Social Media, Approvals, and Expenses routes loaded");
 
     // Log all registered routes before starting server
     app._router.stack
