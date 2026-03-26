@@ -21,6 +21,7 @@ const InvoiceGenerator = () => {
   const [includeAddons, setIncludeAddons] = useState(false);
   const [customItems, setCustomItems] = useState([]);
   const [notes, setNotes] = useState("");
+  const [isFiscal, setIsFiscal] = useState(true); // Toggle for fiscal (with IVA) vs non-fiscal
   
   // Preview state
   const [invoicePreview, setInvoicePreview] = useState(null);
@@ -133,7 +134,8 @@ const InvoiceGenerator = () => {
       }
     });
 
-    const iva = Math.round(subtotal * 0.16 * 100) / 100;
+    // IVA only if fiscal invoice
+    const iva = isFiscal ? Math.round(subtotal * 0.16 * 100) / 100 : 0;
     const total = subtotal + iva;
 
     return { subtotal, iva, total };
@@ -159,7 +161,9 @@ const InvoiceGenerator = () => {
         billing_period_end: billingPeriodEnd,
         include_unbilled_addons: includeAddons,
         custom_items: customItems.filter(item => item.description && item.unit_price),
-        notes
+        notes,
+        is_fiscal: isFiscal,
+        tax_percentage: isFiscal ? 16 : 0
       };
 
       const res = await axios.post(
@@ -174,7 +178,8 @@ const InvoiceGenerator = () => {
       console.log('Invoice generated:', res.data);
       console.log('Line items:', res.data.line_items);
       
-      alert(`¡Factura ${res.data.invoice_number} generada exitosamente!\n\nSubtotal: $${res.data.subtotal?.toFixed(2) || '0.00'} MXN\nIVA (16%): $${res.data.iva?.toFixed(2) || '0.00'} MXN\nTotal: $${res.data.total.toFixed(2)} MXN`);
+      const ivaMessage = isFiscal ? `\nIVA (16%): $${res.data.iva?.toFixed(2) || '0.00'} MXN` : '\n(Sin IVA - Factura No Fiscal)';
+      alert(`¡Factura ${res.data.invoice_number} generada exitosamente!\n\nSubtotal: $${res.data.subtotal?.toFixed(2) || '0.00'} MXN${ivaMessage}\nTotal: $${res.data.total.toFixed(2)} MXN`);
       
       // Redirect to invoice detail page
       if (res.data.invoice_id) {
@@ -208,7 +213,9 @@ const InvoiceGenerator = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-black">📄 Generar Factura</h1>
-                <p className="text-gray-500 text-sm mt-1">IVA (16%) se calcula automáticamente</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  {isFiscal ? 'IVA (16%) se calcula automáticamente' : 'Factura No Fiscal (Sin IVA)'}
+                </p>
               </div>
               <Link
                 to="/income"
@@ -471,10 +478,18 @@ const InvoiceGenerator = () => {
                           <span className="text-gray-600">Subtotal (custom):</span>
                           <span className="font-semibold">{formatCurrency(preview.subtotal)}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">IVA (16%):</span>
-                          <span className="font-semibold">{formatCurrency(preview.iva)}</span>
-                        </div>
+                        {isFiscal && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">IVA (16%):</span>
+                            <span className="font-semibold">{formatCurrency(preview.iva)}</span>
+                          </div>
+                        )}
+                        {!isFiscal && (
+                          <div className="flex justify-between text-sm text-gray-500">
+                            <span>IVA:</span>
+                            <span>No Aplica (Factura No Fiscal)</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-lg font-bold border-t pt-2">
                           <span>Total estimado:</span>
                           <span className="text-zionx-primary">{formatCurrency(preview.total)}</span>
