@@ -259,6 +259,41 @@ const InvoiceGenerator = () => {
                   </select>
                 </div>
 
+                {/* Fiscal vs Non-Fiscal Toggle */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isFiscal}
+                        onChange={(e) => setIsFiscal(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 mr-3 cursor-pointer"
+                      />
+                      <div>
+                        <span className="font-semibold text-gray-800 block">
+                          {isFiscal ? '📋 Factura Fiscal (con IVA)' : '📄 Factura No Fiscal (sin IVA)'}
+                        </span>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {isFiscal 
+                            ? 'Incluye IVA 16% - Requiere RFC del cliente' 
+                            : 'Sin IVA - Para clientes que no requieren factura fiscal'}
+                        </p>
+                      </div>
+                    </label>
+                    <div>
+                      {isFiscal ? (
+                        <span className="inline-block bg-blue-600 text-white px-3 py-1 rounded-full font-medium text-sm">
+                          +16% IVA
+                        </span>
+                      ) : (
+                        <span className="inline-block bg-gray-400 text-white px-3 py-1 rounded-full font-medium text-sm">
+                          Sin IVA
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Subscription Selection */}
                 {selectedCustomer && subscriptions.length > 0 && (
                   <div>
