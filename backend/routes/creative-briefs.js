@@ -317,18 +317,27 @@ router.post('/:id/generate-link', async (req, res) => {
 /**
  * GET /api/briefs/public/:token
  * Get brief by public token (no auth required)
+ * If brief doesn't exist, creates a new one with this token
  */
 router.get('/public/:token', async (req, res) => {
   try {
     const { token } = req.params;
     
-    const result = await req.pool.query(
+    let result = await req.pool.query(
       'SELECT * FROM creative_briefs WHERE public_token = $1',
       [token]
     );
     
+    // If brief doesn't exist yet, create it
     if (!result.rows.length) {
-      return res.status(404).json({ error: 'Brief not found or link expired' });
+      console.log(`Creating new public brief with token ${token}`);
+      
+      result = await req.pool.query(`
+        INSERT INTO creative_briefs (
+          public_token, status, prospect_name
+        ) VALUES ($1, 'draft', 'Nuevo Prospecto')
+        RETURNING *
+      `, [token]);
     }
     
     // Return brief data (excluding sensitive fields)
