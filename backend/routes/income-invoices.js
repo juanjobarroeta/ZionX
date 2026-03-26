@@ -473,7 +473,9 @@ router.post('/invoices/generate', async (req, res) => {
       include_unbilled_expenses = true,
       custom_items = [], // Array of custom line items
       notes,
-      auto_send = false
+      auto_send = false,
+      is_fiscal = true, // NEW: Whether this is a fiscal invoice (with IVA)
+      tax_percentage = 16 // NEW: Tax percentage (0 for non-fiscal, 16 for fiscal)
     } = req.body;
     
     if (!customer_id) {
@@ -710,6 +712,11 @@ router.post('/invoices/generate', async (req, res) => {
     const subtotal = parseFloat(itemsTotalResult.rows[0].subtotal || 0);
     const totals = calculateInvoiceTotals(subtotal, 0);
     
+    // Calculate tax based on provided percentage (0 for non-fiscal, 16 for fiscal)
+    const taxRate = parseFloat(tax_percentage) / 100;
+    const calculatedTax = Math.round(totals.subtotal * taxRate * 100) / 100;
+    const finalTotal = totals.subtotal + calculatedTax;
+    
     // Update invoice with totals
     await client.query(`
       UPDATE invoices SET
@@ -719,29 +726,43 @@ router.post('/invoices/generate', async (req, res) => {
         total = $4,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
-    `, [totals.subtotal, IVA_RATE * 100, totals.taxAmount, totals.total, invoice_id]);
+    `, [totals.subtotal, tax_percentage, calculatedTax, finalTotal, invoice_id]);
     
     // Create accounting entries (revenue recognition)
     const customerCode = customer_id.toString().padStart(4, '0');
+    
+    // Always create receivable and revenue entries
     await client.query(`
       INSERT INTO journal_entries (date, description, account_code, debit, credit, source_type, source_id, created_by)
       VALUES
         (CURRENT_DATE, $1, $2, $3, 0, 'invoice_generated', $4, $5),
-        (CURRENT_DATE, $1, '4002', 0, $6, 'invoice_generated', $4, $5),
-        (CURRENT_DATE, $1, '2003', 0, $7, 'invoice_generated', $4, $5)
+        (CURRENT_DATE, $1, '4002', 0, $6, 'invoice_generated', $4, $5)
     `, [
-      `Factura ${invoice_number} - Cliente ${customer_id}`,
+      `Factura ${invoice_number} - Cliente ${customer_id}${is_fiscal ? '' : ' (No Fiscal)'}`,
       `1103-${customerCode}`, // Debit: Accounts Receivable
-      totals.total,
+      finalTotal,
       invoice_id,
       req.user.id,
-      totals.subtotal, // Credit: Revenue
-      totals.taxAmount // Credit: IVA
+      totals.subtotal // Credit: Revenue
     ]);
+    
+    // Only create IVA entry if fiscal invoice (tax > 0)
+    if (calculatedTax > 0) {
+      await client.query(`
+        INSERT INTO journal_entries (date, description, account_code, debit, credit, source_type, source_id, created_by)
+        VALUES (CURRENT_DATE, $1, '2003', 0, $2, 'invoice_generated', $3, $4)
+      `, [
+        `IVA Factura ${invoice_number}`,
+        calculatedTax, // Credit: IVA
+        invoice_id,
+        req.user.id
+      ]);
+    }
     
     await client.query('COMMIT');
     
-    console.log(`✅ Generated invoice ${invoice_number} for customer ${customer_id}. Total: $${totals.total} MXN (including IVA)`);
+    const invoiceType = is_fiscal ? 'Fiscal (con IVA)' : 'No Fiscal (sin IVA)';
+    console.log(`✅ Generated ${invoiceType} invoice ${invoice_number} for customer ${customer_id}. Total: $${finalTotal} MXN`);
     
     // If auto_send, mark as sent (in real implementation, send email/WhatsApp here)
     if (auto_send) {
@@ -756,8 +777,11 @@ router.post('/invoices/generate', async (req, res) => {
       invoice_number,
       customer_id,
       subtotal: totals.subtotal,
-      iva: totals.taxAmount,
-      total: totals.total,
+      iva: calculatedTax,
+      tax_amount: calculatedTax,
+      tax_percentage: tax_percentage,
+      total: finalTotal,
+      is_fiscal,
       line_items,
       status: auto_send ? 'sent' : 'draft'
     });
