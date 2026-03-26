@@ -2786,16 +2786,17 @@ async function start() {
     }, authenticateToken, expensesRoutes);
     
     // Creative Briefs routes (prospect questionnaires)
-    // Public routes don't require auth, protected routes do
+    // Mount public routes WITHOUT auth first
+    app.use('/api/briefs/public', (req, res, next) => {
+      req.pool = pool;
+      next(); // No auth check
+    }, creativeBriefsRoutes);
+    
+    // Mount protected routes WITH auth
     app.use('/api/briefs', (req, res, next) => {
       req.pool = pool;
-      // Skip auth for public endpoints
-      if (req.path.startsWith('/public/')) {
-        return next();
-      }
-      // Require auth for everything else
-      return authenticateToken(req, res, next);
-    }, creativeBriefsRoutes);
+      next();
+    }, authenticateToken, creativeBriefsRoutes);
     
     console.log("✅ WhatsApp, Leads, Income, Customer Import, HR, Notifications, Messages, Social Media, Approvals, Expenses, and Creative Briefs routes loaded");
 
