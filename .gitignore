@@ -17,6 +17,11 @@ out/
 .env.test.local
 .env.production.local
 
+# Local backup files (pre-refactor snapshots, personal notes)
+*.backup.js
+backend/index.backup.js
+CREATIVE_BRIEF_GUIDE.md
+
 # IDE files
 .vscode/
 .idea/

@@ -7,7 +7,7 @@ const axios = require('axios');
 
 class MetaService {
   constructor() {
-    this.apiVersion = 'v18.0';
+    this.apiVersion = 'v21.0';
     this.baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
   }
 
@@ -19,6 +19,28 @@ class MetaService {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     };
+  }
+
+  /**
+   * Wait for Instagram media container to be ready before publishing.
+   * Containers can take several seconds to process, especially for carousels.
+   */
+  async waitForContainerReady(containerId, accessToken, maxAttempts = 10) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const response = await axios.get(
+        `${this.baseUrl}/${containerId}`,
+        { params: { fields: 'status_code,status', access_token: accessToken } }
+      );
+
+      const statusCode = response.data.status_code;
+      if (statusCode === 'FINISHED') return { ready: true };
+      if (statusCode === 'ERROR') {
+        return { ready: false, error: response.data.status || 'Container processing failed' };
+      }
+      // IN_PROGRESS — wait and retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    return { ready: false, error: 'Container processing timed out' };
   }
 
   // =====================================================
@@ -221,11 +243,17 @@ class MetaService {
           access_token: accessToken
         }
       );
-      
+
       const containerId = containerResponse.data.id;
       console.log(`📦 Created Instagram container: ${containerId}`);
 
-      // Step 2: Publish the container
+      // Step 2: Wait for container to finish processing
+      const status = await this.waitForContainerReady(containerId, accessToken);
+      if (!status.ready) {
+        return { success: false, error: status.error };
+      }
+
+      // Step 3: Publish the container
       const publishResponse = await axios.post(
         `${this.baseUrl}/${igAccountId}/media_publish`,
         {
@@ -233,7 +261,7 @@ class MetaService {
           access_token: accessToken
         }
       );
-      
+
       console.log(`✅ Published to Instagram: ${publishResponse.data.id}`);
       return {
         success: true,
@@ -270,7 +298,15 @@ class MetaService {
         containerIds.push(response.data.id);
       }
 
-      // Step 2: Create carousel container
+      // Step 2: Wait for all item containers to be ready
+      for (const containerId of containerIds) {
+        const status = await this.waitForContainerReady(containerId, accessToken);
+        if (!status.ready) {
+          return { success: false, error: `Carousel item failed: ${status.error}` };
+        }
+      }
+
+      // Step 3: Create carousel container
       const carouselResponse = await axios.post(
         `${this.baseUrl}/${igAccountId}/media`,
         {
@@ -281,7 +317,13 @@ class MetaService {
         }
       );
 
-      // Step 3: Publish
+      // Step 4: Wait for carousel container to be ready
+      const carouselStatus = await this.waitForContainerReady(carouselResponse.data.id, accessToken);
+      if (!carouselStatus.ready) {
+        return { success: false, error: `Carousel failed: ${carouselStatus.error}` };
+      }
+
+      // Step 5: Publish
       const publishResponse = await axios.post(
         `${this.baseUrl}/${igAccountId}/media_publish`,
         {
@@ -289,7 +331,7 @@ class MetaService {
           access_token: accessToken
         }
       );
-      
+
       return {
         success: true,
         mediaId: publishResponse.data.id
@@ -342,11 +384,13 @@ class MetaService {
    */
   async getInstagramInsights(igAccountId, accessToken, period = 'day') {
     try {
+      // v21.0 uses metric_type parameter; 'impressions' and 'reach' require period='day'
+      // 'follower_count' requires period='day' and metric_type='time_series'
       const metrics = [
         'impressions',
         'reach',
         'profile_views',
-        'website_clicks',
+        'accounts_engaged',
         'follower_count'
       ].join(',');
 
@@ -356,17 +400,51 @@ class MetaService {
           params: {
             metric: metrics,
             period: period,
+            metric_type: 'time_series',
             access_token: accessToken
           }
         }
       );
-      
+
       return {
         success: true,
         insights: response.data.data || []
       };
     } catch (error) {
       console.error('Error fetching Instagram insights:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message
+      };
+    }
+  }
+
+  /**
+   * Refresh a long-lived token before it expires.
+   * Long-lived tokens can be refreshed as long as they haven't expired yet.
+   * Returns a new long-lived token valid for another 60 days.
+   */
+  async refreshLongLivedToken(longLivedToken, appId, appSecret) {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/oauth/access_token`,
+        {
+          params: {
+            grant_type: 'fb_exchange_token',
+            client_id: appId,
+            client_secret: appSecret,
+            fb_exchange_token: longLivedToken
+          }
+        }
+      );
+
+      return {
+        success: true,
+        accessToken: response.data.access_token,
+        expiresIn: response.data.expires_in
+      };
+    } catch (error) {
+      console.error('Error refreshing token:', error.response?.data || error.message);
       return {
         success: false,
         error: error.response?.data?.error?.message || error.message

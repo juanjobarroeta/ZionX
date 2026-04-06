@@ -48,24 +48,37 @@ const SocialAccountsManager = () => {
 
   const handleOAuthCallback = async (code) => {
     try {
+      // Check for OAuth error from Meta
+      const oauthError = searchParams.get('error');
+      if (oauthError) {
+        const errorDesc = searchParams.get('error_description') || 'Authorization was denied';
+        alert(`Error de Meta: ${errorDesc}`);
+        navigate('/social/accounts', { replace: true });
+        return;
+      }
+
       setConnecting(true);
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
+      // Pass state back for CSRF validation
+      const state = searchParams.get('state');
+
       const response = await axios.post(
         `${API_BASE_URL}/api/social/callback`,
-        { code },
+        { code, state },
         { headers }
       );
 
       alert(`✅ ${response.data.message}`);
-      
+
       // Clear URL params
       navigate('/social/accounts', { replace: true });
       fetchData();
     } catch (error) {
       console.error('OAuth callback error:', error);
       alert('Error al conectar la cuenta: ' + (error.response?.data?.error || error.message));
+      navigate('/social/accounts', { replace: true });
     } finally {
       setConnecting(false);
     }
@@ -301,6 +314,16 @@ META_REDIRECT_URI=http://localhost:5174/social/accounts`}
                 </div>
                 
                 <div className="p-4">
+                  {account.token_expired && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 text-xs text-red-700">
+                      Token expirado — reconecta esta cuenta
+                    </div>
+                  )}
+                  {account.token_expiring_soon && !account.token_expired && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-3 text-xs text-yellow-700">
+                      Token expira pronto — reconecta para renovar
+                    </div>
+                  )}
                   {account.account_username && (
                     <p className="text-gray-600 text-sm mb-3">@{account.account_username}</p>
                   )}

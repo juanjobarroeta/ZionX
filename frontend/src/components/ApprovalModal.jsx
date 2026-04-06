@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { PlatformPreview } from './SocialPreviews';
 
 const ApprovalModal = ({ isOpen, onClose, content, onActionComplete }) => {
   const [action, setAction] = useState(null); // 'approve', 'reject', 'reassign'
@@ -230,30 +231,17 @@ const ApprovalModal = ({ isOpen, onClose, content, onActionComplete }) => {
 
             {/* Right: Preview & Actions */}
             <div className="space-y-4">
-              {/* Arte Preview */}
-              {content.arte && (
-                <div className="bg-gray-100 rounded-xl p-4">
-                  <h4 className="font-semibold text-gray-700 mb-2">🎨 Arte</h4>
-                  <div className="bg-white rounded-lg p-2 flex items-center justify-center min-h-[200px]">
-                    {content.arte.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                      <img 
-                        src={content.arte} 
-                        alt="Arte" 
-                        className="max-w-full max-h-[300px] object-contain rounded"
-                      />
-                    ) : (
-                      <a 
-                        href={content.arte} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        📎 Ver archivo adjunto
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Platform Preview */}
+              <div className="bg-gray-900 rounded-xl p-4 flex items-center justify-center min-h-[300px]">
+                <PlatformPreview post={{
+                  customer: content.customer_name,
+                  platform: content.platform,
+                  copy_out: content.copy_out,
+                  image_url: content.arte ? (content.arte.startsWith('http') ? content.arte : `${API_BASE_URL}${content.arte}`) : null,
+                  arte_files: content.arte_files ? (typeof content.arte_files === 'string' ? JSON.parse(content.arte_files) : content.arte_files) : [],
+                  scheduled_date: content.scheduled_date
+                }} />
+              </div>
 
               {/* History Toggle */}
               <button

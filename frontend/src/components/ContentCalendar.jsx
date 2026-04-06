@@ -787,6 +787,25 @@ const ContentCalendar = ({ customerId, customerData }) => {
               />
             </div>
             <button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('token');
+                  const res = await axios.post(`${API_BASE_URL}/api/approvals/generate-client-link`, {
+                    customer_id: customerId,
+                    month_year: currentMonth,
+                    client_name: customerData?.business_name || customerData?.commercial_name
+                  }, { headers: { Authorization: `Bearer ${token}` } });
+                  await navigator.clipboard.writeText(res.data.url);
+                  alert('Enlace copiado al portapapeles:\n' + res.data.url);
+                } catch (err) {
+                  alert('Error: ' + (err.response?.data?.error || err.message));
+                }
+              }}
+              className="bg-white border border-zionx-secondary text-zionx-primary px-4 py-2 rounded-lg hover:bg-gray-50 transition-all"
+            >
+              🔗 Enlace Cliente
+            </button>
+            <button
               onClick={addNewRow}
               className="bg-gradient-to-r from-zionx-accent to-zionx-primary text-white px-4 py-2 rounded-lg hover:from-zionx-primary hover:to-zionx-accent transition-all"
             >

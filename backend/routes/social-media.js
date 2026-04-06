@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const metaService = require('../services/metaService');
 
@@ -14,12 +15,37 @@ const getMetaConfig = () => ({
   redirectUri: process.env.META_REDIRECT_URI || 'http://localhost:5174/social/callback'
 });
 
+// In-memory store for OAuth state tokens (use Redis in production)
+const pendingOAuthStates = new Map();
+
 // Log config at startup
 console.log('📱 Meta API Config:', {
   hasAppId: !!(process.env.META_APP_ID || process.env.FACEBOOK_APP_ID),
   hasAppSecret: !!(process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET),
   redirectUri: process.env.META_REDIRECT_URI || 'http://localhost:5174/social/callback'
 });
+
+// =====================================================
+// HELPER: Validate token before API calls
+// =====================================================
+async function getValidAccount(pool, accountId) {
+  const result = await pool.query(
+    'SELECT * FROM social_accounts WHERE id = $1 AND is_active = true',
+    [accountId]
+  );
+
+  if (!result.rows.length) {
+    return { error: 'Account not found', status: 404 };
+  }
+
+  const account = result.rows[0];
+
+  if (account.token_expires_at && new Date(account.token_expires_at) < new Date()) {
+    return { error: 'Token expired — please reconnect this account from Social Accounts', status: 401 };
+  }
+
+  return { account };
+}
 
 // =====================================================
 // OAUTH / ACCOUNT CONNECTION
@@ -32,27 +58,29 @@ console.log('📱 Meta API Config:', {
 router.get('/auth-url', (req, res) => {
   try {
     const { appId, redirectUri } = getMetaConfig();
-    
-    console.log('🔑 Auth URL request - App ID:', appId, 'Redirect:', redirectUri);
-    
+
     if (!appId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Meta App ID not configured. Add META_APP_ID to your .env file.',
         setup_required: true
       });
     }
 
-    const state = Buffer.from(JSON.stringify({ 
+    // Generate cryptographically secure state token for CSRF protection
+    const stateToken = crypto.randomBytes(32).toString('hex');
+    pendingOAuthStates.set(stateToken, {
       userId: req.user.id,
-      timestamp: Date.now()
-    })).toString('base64');
-
-    const authUrl = metaService.getOAuthUrl(appId, redirectUri, state);
-    
-    res.json({ 
-      authUrl,
-      configured: true
+      createdAt: Date.now()
     });
+
+    // Clean up stale states older than 10 minutes
+    for (const [key, val] of pendingOAuthStates) {
+      if (Date.now() - val.createdAt > 600000) pendingOAuthStates.delete(key);
+    }
+
+    const authUrl = metaService.getOAuthUrl(appId, redirectUri, stateToken);
+
+    res.json({ authUrl, configured: true });
   } catch (error) {
     console.error('Error generating auth URL:', error);
     res.status(500).json({ error: 'Failed to generate auth URL' });
@@ -71,13 +99,24 @@ router.post('/callback', async (req, res) => {
       return res.status(400).json({ error: 'Authorization code is required' });
     }
 
+    // Validate CSRF state token
+    if (!state || !pendingOAuthStates.has(state)) {
+      return res.status(400).json({ error: 'Invalid or expired OAuth state. Please try connecting again.' });
+    }
+    const stateData = pendingOAuthStates.get(state);
+    pendingOAuthStates.delete(state);
+
+    if (stateData.userId !== req.user.id) {
+      return res.status(403).json({ error: 'OAuth state mismatch' });
+    }
+
     const { appId, appSecret, redirectUri } = getMetaConfig();
-    
+
     if (!appId || !appSecret) {
       return res.status(400).json({ error: 'Meta App credentials not configured' });
     }
 
-    // Exchange code for access token
+    // Exchange code for short-lived access token
     const tokenResult = await metaService.exchangeCodeForToken(
       code, appId, appSecret, redirectUri
     );
@@ -86,36 +125,38 @@ router.post('/callback', async (req, res) => {
       return res.status(400).json({ error: tokenResult.error });
     }
 
-    // Get long-lived token
+    // Exchange for long-lived token (60 days)
     const longLivedResult = await metaService.getLongLivedToken(
       tokenResult.accessToken, appId, appSecret
     );
 
     const accessToken = longLivedResult.success ? longLivedResult.accessToken : tokenResult.accessToken;
+    // Use actual expiration from Meta, fall back to 60 days
+    const expiresInSeconds = longLivedResult.success ? (longLivedResult.expiresIn || 5184000) : 3600;
 
-    // Get Facebook Pages
+    // Get Facebook Pages the user manages
     const pagesResult = await metaService.getFacebookPages(accessToken);
 
     if (!pagesResult.success) {
       return res.status(400).json({ error: pagesResult.error });
     }
 
-    // Store each page as a connected account
     const connectedAccounts = [];
 
     for (const page of pagesResult.pages) {
-      // Check if already connected
+      // Page access tokens from long-lived user tokens are already long-lived and don't expire
+      const pageToken = page.access_token;
+
       const existing = await req.pool.query(
         'SELECT id FROM social_accounts WHERE platform = $1 AND platform_account_id = $2',
         ['facebook', page.id]
       );
 
       if (existing.rows.length > 0) {
-        // Update existing
         await req.pool.query(`
           UPDATE social_accounts SET
             access_token = $1,
-            token_expires_at = NOW() + INTERVAL '60 days',
+            token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
             account_name = $2,
             account_picture_url = $3,
             instagram_account_id = $4,
@@ -123,39 +164,38 @@ router.post('/callback', async (req, res) => {
             updated_at = NOW()
           WHERE id = $5
         `, [
-          page.access_token,
+          pageToken,
           page.name,
           page.picture?.data?.url,
           page.instagram_business_account?.id,
           existing.rows[0].id
         ]);
-        
+
         connectedAccounts.push({ id: existing.rows[0].id, name: page.name, updated: true });
       } else {
-        // Insert new
         const result = await req.pool.query(`
           INSERT INTO social_accounts (
-            user_id, platform, platform_account_id, account_name, 
-            account_picture_url, account_type, access_token, 
+            user_id, platform, platform_account_id, account_name,
+            account_picture_url, account_type, access_token,
             token_expires_at, instagram_account_id
-          ) VALUES ($1, 'facebook', $2, $3, $4, 'page', $5, NOW() + INTERVAL '60 days', $6)
+          ) VALUES ($1, 'facebook', $2, $3, $4, 'page', $5, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $6)
           RETURNING id
         `, [
           req.user.id,
           page.id,
           page.name,
           page.picture?.data?.url,
-          page.access_token,
+          pageToken,
           page.instagram_business_account?.id
         ]);
 
         connectedAccounts.push({ id: result.rows[0].id, name: page.name, new: true });
 
-        // If page has Instagram, also create Instagram account entry
+        // If page has linked Instagram Business account, store it too
         if (page.instagram_business_account?.id) {
           const igResult = await metaService.getInstagramAccount(
-            page.instagram_business_account.id, 
-            page.access_token
+            page.instagram_business_account.id,
+            pageToken
           );
 
           if (igResult.success) {
@@ -164,10 +204,10 @@ router.post('/callback', async (req, res) => {
                 user_id, platform, platform_account_id, account_name,
                 account_username, account_picture_url, account_type,
                 access_token, token_expires_at, followers_count
-              ) VALUES ($1, 'instagram', $2, $3, $4, $5, 'business', $6, NOW() + INTERVAL '60 days', $7)
+              ) VALUES ($1, 'instagram', $2, $3, $4, $5, 'business', $6, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $7)
               ON CONFLICT (platform, platform_account_id) DO UPDATE SET
                 access_token = $6,
-                token_expires_at = NOW() + INTERVAL '60 days',
+                token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
                 followers_count = $7,
                 updated_at = NOW()
             `, [
@@ -176,13 +216,13 @@ router.post('/callback', async (req, res) => {
               igResult.account.name,
               igResult.account.username,
               igResult.account.profile_picture_url,
-              page.access_token,
+              pageToken,
               igResult.account.followers_count
             ]);
 
-            connectedAccounts.push({ 
-              platform: 'instagram', 
-              username: igResult.account.username 
+            connectedAccounts.push({
+              platform: 'instagram',
+              username: igResult.account.username
             });
           }
         }
@@ -190,8 +230,8 @@ router.post('/callback', async (req, res) => {
     }
 
     console.log(`✅ Connected ${connectedAccounts.length} social accounts for user ${req.user.id}`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       accounts: connectedAccounts,
       message: `Successfully connected ${connectedAccounts.length} account(s)`
     });
@@ -210,9 +250,11 @@ router.get('/accounts', async (req, res) => {
     const { customer_id } = req.query;
 
     let query = `
-      SELECT 
+      SELECT
         sa.*,
-        CONCAT(c.first_name, ' ', c.last_name) as customer_name
+        CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+        CASE WHEN sa.token_expires_at < NOW() THEN true ELSE false END as token_expired,
+        CASE WHEN sa.token_expires_at < NOW() + INTERVAL '7 days' THEN true ELSE false END as token_expiring_soon
       FROM social_accounts sa
       LEFT JOIN customers c ON sa.customer_id = c.id
       WHERE sa.is_active = true
@@ -227,8 +269,8 @@ router.get('/accounts', async (req, res) => {
     query += ' ORDER BY sa.platform, sa.account_name';
 
     const result = await req.pool.query(query, params);
-    
-    // Remove sensitive data
+
+    // Remove sensitive data but include token status
     const accounts = result.rows.map(acc => ({
       ...acc,
       access_token: acc.access_token ? '••••••' : null
@@ -261,6 +303,241 @@ router.delete('/accounts/:id', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/social/accounts/refresh-tokens
+ * Refresh tokens for all accounts expiring within 7 days
+ */
+router.post('/accounts/refresh-tokens', async (req, res) => {
+  try {
+    const { appId, appSecret } = getMetaConfig();
+
+    if (!appId || !appSecret) {
+      return res.status(400).json({ error: 'Meta App credentials not configured' });
+    }
+
+    // Find accounts expiring within 7 days
+    const expiring = await req.pool.query(`
+      SELECT * FROM social_accounts
+      WHERE is_active = true
+        AND access_token IS NOT NULL
+        AND token_expires_at IS NOT NULL
+        AND token_expires_at < NOW() + INTERVAL '7 days'
+        AND token_expires_at > NOW()
+    `);
+
+    let refreshed = 0;
+    let failed = 0;
+
+    for (const account of expiring.rows) {
+      const result = await metaService.refreshLongLivedToken(
+        account.access_token, appId, appSecret
+      );
+
+      if (result.success) {
+        const expiresIn = result.expiresIn || 5184000;
+        await req.pool.query(`
+          UPDATE social_accounts SET
+            access_token = $1,
+            token_expires_at = NOW() + INTERVAL '${Math.floor(expiresIn)} seconds',
+            updated_at = NOW()
+          WHERE id = $2
+        `, [result.accessToken, account.id]);
+        refreshed++;
+      } else {
+        console.error(`Failed to refresh token for account ${account.id}:`, result.error);
+        failed++;
+      }
+    }
+
+    console.log(`🔄 Token refresh: ${refreshed} refreshed, ${failed} failed out of ${expiring.rows.length} expiring`);
+    res.json({
+      message: `Refreshed ${refreshed} tokens`,
+      refreshed,
+      failed,
+      total_expiring: expiring.rows.length
+    });
+  } catch (error) {
+    console.error('Error refreshing tokens:', error);
+    res.status(500).json({ error: 'Failed to refresh tokens' });
+  }
+});
+
+// =====================================================
+// CONTENT CALENDAR → SCHEDULED POSTS BRIDGE
+// =====================================================
+
+/**
+ * POST /api/social/schedule-from-calendar
+ * Create a scheduled post from a content calendar entry.
+ * Links the calendar item to a social account for automated publishing.
+ */
+router.post('/schedule-from-calendar', async (req, res) => {
+  try {
+    const { calendar_entry_id, account_id, scheduled_for } = req.body;
+
+    if (!calendar_entry_id || !account_id) {
+      return res.status(400).json({ error: 'calendar_entry_id and account_id are required' });
+    }
+
+    // Fetch the calendar entry
+    const calendarResult = await req.pool.query(
+      'SELECT * FROM content_calendar WHERE id = $1',
+      [calendar_entry_id]
+    );
+
+    if (!calendarResult.rows.length) {
+      return res.status(404).json({ error: 'Calendar entry not found' });
+    }
+
+    const entry = calendarResult.rows[0];
+
+    // Build the post message from calendar fields
+    const message = entry.copy_out || entry.copy_in || '';
+    if (!message.trim()) {
+      return res.status(400).json({ error: 'Calendar entry has no copy text (copy_out/copy_in)' });
+    }
+
+    // Build media URLs from arte or fotos_video fields
+    const mediaUrls = [];
+    if (entry.arte) mediaUrls.push(entry.arte);
+    if (entry.fotos_video) mediaUrls.push(entry.fotos_video);
+
+    // Use scheduled_date from calendar if no explicit time provided
+    const publishAt = scheduled_for || entry.scheduled_date || entry.publish_date;
+    if (!publishAt) {
+      return res.status(400).json({ error: 'No publish date found — set scheduled_for or update the calendar entry date' });
+    }
+
+    // Check for duplicate
+    const existing = await req.pool.query(
+      'SELECT id FROM scheduled_posts WHERE social_account_id = $1 AND message = $2 AND scheduled_for::date = $3::date AND status != $4',
+      [account_id, message, publishAt, 'cancelled']
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'A post with this content is already scheduled for this date' });
+    }
+
+    // Create the scheduled post
+    const result = await req.pool.query(`
+      INSERT INTO scheduled_posts (
+        social_account_id, customer_id, content_type, message,
+        media_urls, scheduled_for, created_by, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+      RETURNING *
+    `, [
+      account_id,
+      entry.customer_id,
+      entry.content_type || entry.formato || 'post',
+      message,
+      mediaUrls.length > 0 ? mediaUrls : null,
+      publishAt,
+      req.user.id
+    ]);
+
+    // Update calendar entry status
+    await req.pool.query(
+      "UPDATE content_calendar SET status = 'programado', updated_at = NOW() WHERE id = $1",
+      [calendar_entry_id]
+    );
+
+    console.log(`📅 Calendar entry #${calendar_entry_id} → scheduled post #${result.rows[0].id}`);
+    res.status(201).json({
+      success: true,
+      scheduled_post: result.rows[0],
+      message: 'Post scheduled from calendar entry'
+    });
+  } catch (error) {
+    console.error('Error scheduling from calendar:', error);
+    res.status(500).json({ error: 'Failed to schedule post from calendar' });
+  }
+});
+
+/**
+ * POST /api/social/schedule-batch-from-calendar
+ * Schedule multiple calendar entries at once for a customer's month.
+ */
+router.post('/schedule-batch-from-calendar', async (req, res) => {
+  try {
+    const { customer_id, month_year, account_id } = req.body;
+
+    if (!customer_id || !month_year || !account_id) {
+      return res.status(400).json({ error: 'customer_id, month_year, and account_id are required' });
+    }
+
+    // Get all approved calendar entries for this customer/month that haven't been scheduled
+    const entries = await req.pool.query(`
+      SELECT * FROM content_calendar
+      WHERE customer_id = $1
+        AND month_year = $2
+        AND status IN ('aprobado', 'approved')
+        AND (scheduled_date IS NOT NULL OR publish_date IS NOT NULL)
+        AND (copy_out IS NOT NULL OR copy_in IS NOT NULL)
+      ORDER BY post_number ASC
+    `, [customer_id, month_year]);
+
+    if (entries.rows.length === 0) {
+      return res.status(404).json({ error: 'No approved calendar entries with dates and copy found' });
+    }
+
+    let scheduled = 0;
+    let skipped = 0;
+    const results = [];
+
+    for (const entry of entries.rows) {
+      const message = entry.copy_out || entry.copy_in;
+      const publishAt = entry.scheduled_date || entry.publish_date;
+      const mediaUrls = [];
+      if (entry.arte) mediaUrls.push(entry.arte);
+      if (entry.fotos_video) mediaUrls.push(entry.fotos_video);
+
+      // Skip if already scheduled
+      const existing = await req.pool.query(
+        'SELECT id FROM scheduled_posts WHERE social_account_id = $1 AND message = $2 AND scheduled_for::date = $3::date AND status != $4',
+        [account_id, message, publishAt, 'cancelled']
+      );
+
+      if (existing.rows.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      const result = await req.pool.query(`
+        INSERT INTO scheduled_posts (
+          social_account_id, customer_id, content_type, message,
+          media_urls, scheduled_for, created_by, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+        RETURNING id
+      `, [
+        account_id, customer_id,
+        entry.content_type || entry.formato || 'post',
+        message, mediaUrls.length > 0 ? mediaUrls : null,
+        publishAt, req.user.id
+      ]);
+
+      await req.pool.query(
+        "UPDATE content_calendar SET status = 'programado', updated_at = NOW() WHERE id = $1",
+        [entry.id]
+      );
+
+      results.push({ calendar_id: entry.id, post_id: result.rows[0].id });
+      scheduled++;
+    }
+
+    console.log(`📅 Batch scheduled: ${scheduled} posts from calendar (${skipped} skipped)`);
+    res.status(201).json({
+      success: true,
+      scheduled,
+      skipped,
+      total_entries: entries.rows.length,
+      posts: results
+    });
+  } catch (error) {
+    console.error('Error batch scheduling from calendar:', error);
+    res.status(500).json({ error: 'Failed to batch schedule' });
+  }
+});
+
 // =====================================================
 // POSTING
 // =====================================================
@@ -277,17 +554,9 @@ router.post('/post', async (req, res) => {
       return res.status(400).json({ error: 'account_id and message are required' });
     }
 
-    // Get account
-    const accountResult = await req.pool.query(
-      'SELECT * FROM social_accounts WHERE id = $1 AND is_active = true',
-      [account_id]
-    );
+    const { account, error, status } = await getValidAccount(req.pool, account_id);
+    if (error) return res.status(status).json({ error });
 
-    if (!accountResult.rows.length) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
-
-    const account = accountResult.rows[0];
     let result;
 
     if (account.platform === 'facebook') {
@@ -322,7 +591,7 @@ router.post('/post', async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    // Log the post
+    // Log the published post
     await req.pool.query(`
       INSERT INTO scheduled_posts (
         social_account_id, message, media_urls, link_url,
@@ -331,8 +600,8 @@ router.post('/post', async (req, res) => {
     `, [account_id, message, media_urls, link_url, result.postId || result.mediaId, req.user.id]);
 
     console.log(`📱 Posted to ${account.platform}: ${result.postId || result.mediaId}`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       postId: result.postId || result.mediaId,
       platform: account.platform
     });
@@ -348,9 +617,9 @@ router.post('/post', async (req, res) => {
  */
 router.post('/schedule', async (req, res) => {
   try {
-    const { 
-      account_id, customer_id, message, media_urls, link_url, 
-      scheduled_for, content_type = 'post' 
+    const {
+      account_id, customer_id, message, media_urls, link_url,
+      scheduled_for, content_type = 'post'
     } = req.body;
 
     if (!account_id || !message || !scheduled_for) {
@@ -359,7 +628,7 @@ router.post('/schedule', async (req, res) => {
 
     const result = await req.pool.query(`
       INSERT INTO scheduled_posts (
-        social_account_id, customer_id, content_type, message, 
+        social_account_id, customer_id, content_type, message,
         media_urls, link_url, scheduled_for, created_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
@@ -382,7 +651,7 @@ router.get('/scheduled', async (req, res) => {
     const { customer_id, status = 'scheduled' } = req.query;
 
     let query = `
-      SELECT 
+      SELECT
         sp.*,
         sa.platform,
         sa.account_name,
@@ -441,16 +710,9 @@ router.get('/accounts/:id/insights', async (req, res) => {
     const { id } = req.params;
     const { period = 'days_28' } = req.query;
 
-    const accountResult = await req.pool.query(
-      'SELECT * FROM social_accounts WHERE id = $1',
-      [id]
-    );
+    const { account, error, status } = await getValidAccount(req.pool, id);
+    if (error) return res.status(status).json({ error });
 
-    if (!accountResult.rows.length) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
-
-    const account = accountResult.rows[0];
     let insights;
 
     if (account.platform === 'facebook') {
@@ -487,16 +749,9 @@ router.get('/accounts/:id/posts', async (req, res) => {
     const { id } = req.params;
     const { limit = 10 } = req.query;
 
-    const accountResult = await req.pool.query(
-      'SELECT * FROM social_accounts WHERE id = $1',
-      [id]
-    );
+    const { account, error, status } = await getValidAccount(req.pool, id);
+    if (error) return res.status(status).json({ error });
 
-    if (!accountResult.rows.length) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
-
-    const account = accountResult.rows[0];
     let posts;
 
     if (account.platform === 'facebook') {
@@ -531,7 +786,9 @@ router.get('/accounts/:id/posts', async (req, res) => {
 router.post('/sync-analytics', async (req, res) => {
   try {
     const accounts = await req.pool.query(
-      'SELECT * FROM social_accounts WHERE is_active = true'
+      `SELECT * FROM social_accounts
+       WHERE is_active = true
+         AND (token_expires_at IS NULL OR token_expires_at > NOW())`
     );
 
     let synced = 0;
@@ -540,7 +797,7 @@ router.post('/sync-analytics', async (req, res) => {
     for (const account of accounts.rows) {
       try {
         let insights;
-        
+
         if (account.platform === 'facebook') {
           insights = await metaService.getFacebookPageInsights(
             account.platform_account_id,
@@ -552,16 +809,16 @@ router.post('/sync-analytics', async (req, res) => {
             account.platform_account_id,
             account.access_token
           );
-          
+
           if (accountInfo.success) {
             await req.pool.query(`
-              UPDATE social_accounts SET 
+              UPDATE social_accounts SET
                 followers_count = $1,
                 last_synced_at = NOW()
               WHERE id = $2
             `, [accountInfo.account.followers_count, account.id]);
           }
-          
+
           insights = await metaService.getInstagramInsights(
             account.platform_account_id,
             account.access_token,
@@ -570,9 +827,8 @@ router.post('/sync-analytics', async (req, res) => {
         }
 
         if (insights?.success) {
-          // Parse and store analytics snapshot
           let impressions = 0, reach = 0;
-          
+
           for (const metric of insights.insights || []) {
             if (metric.name.includes('impressions')) impressions = metric.values?.[0]?.value || 0;
             if (metric.name.includes('reach')) reach = metric.values?.[0]?.value || 0;
@@ -585,7 +841,7 @@ router.post('/sync-analytics', async (req, res) => {
               total_impressions = $3,
               total_reach = $4
           `, [account.id, today, impressions, reach]);
-          
+
           synced++;
         }
       } catch (err) {
@@ -612,11 +868,11 @@ router.get('/config', (req, res) => {
     hasAppId: !!appId,
     hasAppSecret: !!appSecret,
     redirectUri: redirectUri,
-    instructions: !appId ? 
-      'To enable Meta integration, add META_APP_ID and META_APP_SECRET to your .env file. Get these from developers.facebook.com' : 
+    apiVersion: 'v21.0',
+    instructions: !appId ?
+      'To enable Meta integration, add META_APP_ID and META_APP_SECRET to your .env file. Get these from developers.facebook.com' :
       null
   });
 });
 
 module.exports = router;
-
