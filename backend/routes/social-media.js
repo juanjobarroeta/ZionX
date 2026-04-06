@@ -12,7 +12,8 @@ const metaService = require('../services/metaService');
 const getMetaConfig = () => ({
   appId: process.env.META_APP_ID || process.env.FACEBOOK_APP_ID,
   appSecret: process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET,
-  redirectUri: process.env.META_REDIRECT_URI || 'http://localhost:5174/social/callback'
+  redirectUri: process.env.META_REDIRECT_URI || 'http://localhost:5174/social/callback',
+  configId: process.env.META_CONFIG_ID || null
 });
 
 // In-memory store for OAuth state tokens (use Redis in production)
@@ -57,7 +58,7 @@ async function getValidAccount(pool, accountId) {
  */
 router.get('/auth-url', (req, res) => {
   try {
-    const { appId, redirectUri } = getMetaConfig();
+    const { appId, redirectUri, configId } = getMetaConfig();
 
     if (!appId) {
       return res.status(400).json({
@@ -78,9 +79,9 @@ router.get('/auth-url', (req, res) => {
       if (Date.now() - val.createdAt > 600000) pendingOAuthStates.delete(key);
     }
 
-    const authUrl = metaService.getOAuthUrl(appId, redirectUri, stateToken);
+    const authUrl = metaService.getOAuthUrl(appId, redirectUri, stateToken, configId);
 
-    res.json({ authUrl, configured: true });
+    res.json({ authUrl, configured: true, usesConfigId: !!configId });
   } catch (error) {
     console.error('Error generating auth URL:', error);
     res.status(500).json({ error: 'Failed to generate auth URL' });
@@ -862,13 +863,15 @@ router.post('/sync-analytics', async (req, res) => {
  * Get current Meta API configuration status
  */
 router.get('/config', (req, res) => {
-  const { appId, appSecret, redirectUri } = getMetaConfig();
+  const { appId, appSecret, redirectUri, configId } = getMetaConfig();
   res.json({
     configured: !!(appId && appSecret),
     hasAppId: !!appId,
     hasAppSecret: !!appSecret,
+    hasConfigId: !!configId,
     redirectUri: redirectUri,
     apiVersion: 'v21.0',
+    loginFlow: configId ? 'facebook_login_for_business' : 'classic_oauth',
     instructions: !appId ?
       'To enable Meta integration, add META_APP_ID and META_APP_SECRET to your .env file. Get these from developers.facebook.com' :
       null

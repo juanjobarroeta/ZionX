@@ -521,12 +521,30 @@ class MetaService {
   }
 
   /**
-   * Get the OAuth login URL for connecting accounts
+   * Get the OAuth login URL for connecting accounts.
+   * Uses Facebook Login for Business flow with config_id (required for new Business apps).
+   * The config_id is created in Meta Dev Portal → Facebook Login for Business → Configuraciones.
+   * Permissions are defined inside the configuration, not passed as scopes.
+   *
    * @param {string} appId - Facebook App ID
    * @param {string} redirectUri - Redirect URI after auth
-   * @param {string} state - Optional state parameter
+   * @param {string} state - Optional state parameter for CSRF protection
+   * @param {string} configId - Facebook Login for Business configuration ID
    */
-  getOAuthUrl(appId, redirectUri, state = '') {
+  getOAuthUrl(appId, redirectUri, state = '', configId = null) {
+    // Facebook Login for Business uses config_id + override_default_response_type
+    // instead of the classic scope parameter
+    if (configId) {
+      return `https://www.facebook.com/${this.apiVersion}/dialog/oauth?` +
+             `client_id=${appId}` +
+             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+             `&config_id=${configId}` +
+             `&override_default_response_type=true` +
+             `&response_type=code` +
+             `&state=${state}`;
+    }
+
+    // Fallback: classic Facebook Login with scope parameter (legacy apps)
     const scopes = [
       'pages_show_list',
       'pages_read_engagement',
