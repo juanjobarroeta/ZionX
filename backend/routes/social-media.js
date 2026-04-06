@@ -872,6 +872,22 @@ router.get('/config', (req, res) => {
     redirectUri: redirectUri,
     apiVersion: 'v21.0',
     loginFlow: configId ? 'facebook_login_for_business' : 'classic_oauth',
+    // TEMPORARY diagnostic — remove after OAuth is working
+    debug: {
+      appIdLength: (appId || '').length,
+      appIdStart: (appId || '').substring(0, 6),
+      appIdEnd: (appId || '').substring((appId || '').length - 4),
+      secretLength: (appSecret || '').length,
+      secretStart: (appSecret || '').substring(0, 4),
+      secretEnd: (appSecret || '').substring((appSecret || '').length - 4),
+      secretHasWhitespace: (appSecret || '') !== (appSecret || '').trim(),
+      configIdValue: configId,
+      redirectUriRaw: redirectUri,
+      envMetaAppId: !!process.env.META_APP_ID,
+      envMetaAppSecret: !!process.env.META_APP_SECRET,
+      envFacebookAppId: !!process.env.FACEBOOK_APP_ID,
+      envFacebookAppSecret: !!process.env.FACEBOOK_APP_SECRET
+    },
     instructions: !appId ?
       'To enable Meta integration, add META_APP_ID and META_APP_SECRET to your .env file. Get these from developers.facebook.com' :
       null
