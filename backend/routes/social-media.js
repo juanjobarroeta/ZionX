@@ -138,8 +138,20 @@ router.post('/callback', async (req, res) => {
     // Get Facebook Pages the user manages
     const pagesResult = await metaService.getFacebookPages(accessToken);
 
+    console.log('🔍 OAuth callback - Pages returned by Meta:', JSON.stringify(pagesResult, null, 2));
+
     if (!pagesResult.success) {
-      return res.status(400).json({ error: pagesResult.error });
+      return res.status(400).json({ error: pagesResult.error, debug: 'getFacebookPages failed' });
+    }
+
+    // If no pages found, this is usually because the Instagram API variation
+    // doesn't include page access. Return a helpful error.
+    if (!pagesResult.pages || pagesResult.pages.length === 0) {
+      return res.status(400).json({
+        error: 'No se encontraron paginas de Facebook vinculadas a tu cuenta. Asegurate de que tu Instagram esta conectado a una pagina de Facebook que administras.',
+        debug: 'Meta returned 0 pages — token may not have pages_show_list permission',
+        pagesResponse: pagesResult
+      });
     }
 
     const connectedAccounts = [];
