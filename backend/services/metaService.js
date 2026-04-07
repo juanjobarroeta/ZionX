@@ -197,6 +197,38 @@ class MetaService {
   // =====================================================
 
   /**
+   * Get Instagram account info using the Instagram Graph API (for tokens from
+   * "Instagram API with Facebook Login" / "API Graph de Instagram" variation).
+   * These tokens cannot access Facebook Pages — they can only access Instagram.
+   *
+   * @param {string} accessToken - Instagram access token from OAuth
+   */
+  async getInstagramAccountFromToken(accessToken) {
+    try {
+      const response = await axios.get(
+        'https://graph.instagram.com/v21.0/me',
+        {
+          params: {
+            fields: 'user_id,username,account_type,name,profile_picture_url,followers_count,follows_count,media_count,biography',
+            access_token: accessToken
+          }
+        }
+      );
+
+      return {
+        success: true,
+        account: response.data
+      };
+    } catch (error) {
+      console.error('Error fetching Instagram account from token:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message
+      };
+    }
+  }
+
+  /**
    * Get Instagram Business Account info
    * @param {string} igAccountId - Instagram Business Account ID
    * @param {string} accessToken - Access token

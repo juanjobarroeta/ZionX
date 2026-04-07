@@ -135,111 +135,120 @@ router.post('/callback', async (req, res) => {
     // Use actual expiration from Meta, fall back to 60 days
     const expiresInSeconds = longLivedResult.success ? (longLivedResult.expiresIn || 5184000) : 3600;
 
-    // Get Facebook Pages the user manages
+    // Try Facebook Pages first (General variation). If empty, fall back to
+    // Instagram Business Login flow (API Graph de Instagram variation).
     const pagesResult = await metaService.getFacebookPages(accessToken);
-
-    console.log('🔍 OAuth callback - Pages returned by Meta:', JSON.stringify(pagesResult, null, 2));
-
-    if (!pagesResult.success) {
-      return res.status(400).json({ error: pagesResult.error, debug: 'getFacebookPages failed' });
-    }
-
-    // If no pages found, this is usually because the Instagram API variation
-    // doesn't include page access. Return a helpful error.
-    if (!pagesResult.pages || pagesResult.pages.length === 0) {
-      return res.status(400).json({
-        error: 'No se encontraron paginas de Facebook vinculadas a tu cuenta. Asegurate de que tu Instagram esta conectado a una pagina de Facebook que administras.',
-        debug: 'Meta returned 0 pages — token may not have pages_show_list permission',
-        pagesResponse: pagesResult
-      });
-    }
+    console.log('🔍 OAuth callback - Facebook Pages response:', JSON.stringify(pagesResult, null, 2));
 
     const connectedAccounts = [];
 
-    for (const page of pagesResult.pages) {
-      // Page access tokens from long-lived user tokens are already long-lived and don't expire
-      const pageToken = page.access_token;
+    if (pagesResult.success && pagesResult.pages && pagesResult.pages.length > 0) {
+      // === General variation: list Facebook Pages the user admins ===
+      for (const page of pagesResult.pages) {
+        const pageToken = page.access_token;
+        const existing = await req.pool.query(
+          'SELECT id FROM social_accounts WHERE platform = $1 AND platform_account_id = $2',
+          ['facebook', page.id]
+        );
 
-      const existing = await req.pool.query(
-        'SELECT id FROM social_accounts WHERE platform = $1 AND platform_account_id = $2',
-        ['facebook', page.id]
-      );
+        if (existing.rows.length > 0) {
+          await req.pool.query(`
+            UPDATE social_accounts SET
+              access_token = $1,
+              token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
+              account_name = $2,
+              account_picture_url = $3,
+              instagram_account_id = $4,
+              is_active = true,
+              updated_at = NOW()
+            WHERE id = $5
+          `, [
+            pageToken, page.name, page.picture?.data?.url,
+            page.instagram_business_account?.id, existing.rows[0].id
+          ]);
+          connectedAccounts.push({ id: existing.rows[0].id, name: page.name, updated: true });
+        } else {
+          const result = await req.pool.query(`
+            INSERT INTO social_accounts (
+              user_id, platform, platform_account_id, account_name,
+              account_picture_url, account_type, access_token,
+              token_expires_at, instagram_account_id
+            ) VALUES ($1, 'facebook', $2, $3, $4, 'page', $5, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $6)
+            RETURNING id
+          `, [
+            req.user.id, page.id, page.name,
+            page.picture?.data?.url, pageToken, page.instagram_business_account?.id
+          ]);
+          connectedAccounts.push({ id: result.rows[0].id, name: page.name, new: true });
 
-      if (existing.rows.length > 0) {
-        await req.pool.query(`
-          UPDATE social_accounts SET
-            access_token = $1,
-            token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
-            account_name = $2,
-            account_picture_url = $3,
-            instagram_account_id = $4,
-            is_active = true,
-            updated_at = NOW()
-          WHERE id = $5
-        `, [
-          pageToken,
-          page.name,
-          page.picture?.data?.url,
-          page.instagram_business_account?.id,
-          existing.rows[0].id
-        ]);
-
-        connectedAccounts.push({ id: existing.rows[0].id, name: page.name, updated: true });
-      } else {
-        const result = await req.pool.query(`
-          INSERT INTO social_accounts (
-            user_id, platform, platform_account_id, account_name,
-            account_picture_url, account_type, access_token,
-            token_expires_at, instagram_account_id
-          ) VALUES ($1, 'facebook', $2, $3, $4, 'page', $5, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $6)
-          RETURNING id
-        `, [
-          req.user.id,
-          page.id,
-          page.name,
-          page.picture?.data?.url,
-          pageToken,
-          page.instagram_business_account?.id
-        ]);
-
-        connectedAccounts.push({ id: result.rows[0].id, name: page.name, new: true });
-
-        // If page has linked Instagram Business account, store it too
-        if (page.instagram_business_account?.id) {
-          const igResult = await metaService.getInstagramAccount(
-            page.instagram_business_account.id,
-            pageToken
-          );
-
-          if (igResult.success) {
-            await req.pool.query(`
-              INSERT INTO social_accounts (
-                user_id, platform, platform_account_id, account_name,
-                account_username, account_picture_url, account_type,
-                access_token, token_expires_at, followers_count
-              ) VALUES ($1, 'instagram', $2, $3, $4, $5, 'business', $6, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $7)
-              ON CONFLICT (platform, platform_account_id) DO UPDATE SET
-                access_token = $6,
-                token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
-                followers_count = $7,
-                updated_at = NOW()
-            `, [
-              req.user.id,
-              igResult.account.id,
-              igResult.account.name,
-              igResult.account.username,
-              igResult.account.profile_picture_url,
-              pageToken,
-              igResult.account.followers_count
-            ]);
-
-            connectedAccounts.push({
-              platform: 'instagram',
-              username: igResult.account.username
-            });
+          if (page.instagram_business_account?.id) {
+            const igResult = await metaService.getInstagramAccount(
+              page.instagram_business_account.id, pageToken
+            );
+            if (igResult.success) {
+              await req.pool.query(`
+                INSERT INTO social_accounts (
+                  user_id, platform, platform_account_id, account_name,
+                  account_username, account_picture_url, account_type,
+                  access_token, token_expires_at, followers_count
+                ) VALUES ($1, 'instagram', $2, $3, $4, $5, 'business', $6, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $7)
+                ON CONFLICT (platform, platform_account_id) DO UPDATE SET
+                  access_token = $6,
+                  token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
+                  followers_count = $7, updated_at = NOW()
+              `, [
+                req.user.id, igResult.account.id, igResult.account.name,
+                igResult.account.username, igResult.account.profile_picture_url,
+                pageToken, igResult.account.followers_count
+              ]);
+              connectedAccounts.push({ platform: 'instagram', username: igResult.account.username });
+            }
           }
         }
       }
+    } else {
+      // === Instagram API variation fallback: query graph.instagram.com directly ===
+      console.log('🔍 No Facebook Pages. Trying Instagram Business Login flow...');
+      const igResult = await metaService.getInstagramAccountFromToken(accessToken);
+      console.log('🔍 Instagram account response:', JSON.stringify(igResult, null, 2));
+
+      if (!igResult.success) {
+        return res.status(400).json({
+          error: 'No se pudo conectar ninguna cuenta. Verifica que tu Instagram sea una cuenta Business o Creator vinculada a una pagina de Facebook.',
+          debug: { pagesError: pagesResult.error, igError: igResult.error }
+        });
+      }
+
+      const acc = igResult.account;
+      const igId = acc.user_id || acc.id;
+
+      await req.pool.query(`
+        INSERT INTO social_accounts (
+          user_id, platform, platform_account_id, account_name,
+          account_username, account_picture_url, account_type,
+          access_token, token_expires_at, followers_count
+        ) VALUES ($1, 'instagram', $2, $3, $4, $5, 'business', $6, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', $7)
+        ON CONFLICT (platform, platform_account_id) DO UPDATE SET
+          access_token = $6,
+          token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
+          account_name = $3,
+          account_username = $4,
+          account_picture_url = $5,
+          followers_count = $7,
+          is_active = true,
+          updated_at = NOW()
+        RETURNING id
+      `, [
+        req.user.id,
+        String(igId),
+        acc.name || acc.username,
+        acc.username,
+        acc.profile_picture_url,
+        accessToken,
+        acc.followers_count || 0
+      ]);
+
+      connectedAccounts.push({ platform: 'instagram', username: acc.username, new: true });
     }
 
     console.log(`✅ Connected ${connectedAccounts.length} social accounts for user ${req.user.id}`);
