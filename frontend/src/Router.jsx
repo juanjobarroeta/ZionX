@@ -21,7 +21,6 @@ import AdminInventoryViewer from "./pages/AdminInventoryViewer";
 import ProductProfile from "./pages/ProductProfile";
 import CreateUser from "./pages/CreateUser";
 import UserManagement from "./pages/UserManagement";
-import StoreDashboard from "./pages/StoreDashboard";
 import BudgetManagement from "./pages/BudgetManagement";
 import TeamManagement from "./pages/TeamManagement";
 import TeamDashboardClean from "./pages/TeamDashboardClean";
@@ -200,7 +199,6 @@ const AppRouter = () => (
       <Route path="/admin/aprobaciones" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
       <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
       <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
-      <Route path="/dashboard/store-dashboard" element={<AdminRoute><StoreDashboard /></AdminRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/auth" replace />} />

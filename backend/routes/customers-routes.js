@@ -278,34 +278,12 @@ router.post("/customers/upload", async (req, res) => {
   }
 });
 
-// Get all customers with loan counts and balances
+// Get all customers
 router.get("/customers", async (req, res) => {
   try {
     const pool = req.pool;
     const result = await pool.query(`
-      SELECT
-        c.*,
-        COALESCE(loan_counts.loan_count, 0) as loan_count,
-        COALESCE(loan_balances.total_balance, 0)::NUMERIC as total_balance
-      FROM customers c
-      LEFT JOIN (
-        SELECT
-          customer_id,
-          COUNT(*) as loan_count
-        FROM loans
-        GROUP BY customer_id
-      ) loan_counts ON c.id = loan_counts.customer_id
-      LEFT JOIN (
-        SELECT
-          l.customer_id,
-          COALESCE(SUM(li.amount_due + li.penalty_applied), 0) as total_balance
-        FROM loans l
-        LEFT JOIN loan_installments li ON l.id = li.loan_id
-        WHERE l.status = 'delivered'
-          AND li.status = 'pending'
-        GROUP BY l.customer_id
-      ) loan_balances ON c.id = loan_balances.customer_id
-      ORDER BY c.created_at DESC
+      SELECT * FROM customers ORDER BY created_at DESC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -314,7 +292,7 @@ router.get("/customers", async (req, res) => {
   }
 });
 
-// Retrieve a full customer profile including their info, loans, and related payments
+// Retrieve a full customer profile
 router.get("/customers/:id/profile", async (req, res) => {
   const customerId = req.params.id;
 
@@ -329,24 +307,7 @@ router.get("/customers/:id/profile", async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const customer = customerResult.rows[0];
-
-    const loansResult = await pool.query(
-      "SELECT * FROM loans WHERE customer_id = $1 ORDER BY created_at DESC",
-      [customerId]
-    );
-
-    const loans = await Promise.all(
-      loansResult.rows.map(async (loan) => {
-        const paymentsResult = await pool.query(
-          "SELECT * FROM payments WHERE loan_id = $1 ORDER BY payment_date DESC",
-          [loan.id]
-        );
-        return { ...loan, payments: paymentsResult.rows };
-      })
-    );
-
-    res.json({ ...customer, loans });
+    res.json(customerResult.rows[0]);
   } catch (err) {
     console.error("Error fetching customer profile:", err);
     res.status(500).json({ message: "Error fetching customer profile" });
