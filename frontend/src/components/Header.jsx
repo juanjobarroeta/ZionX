@@ -79,7 +79,7 @@ const Header = () => {
             break;
           case "n":
             e.preventDefault();
-            window.location.href = "/create-loan";
+            window.location.href = "/create-customer";
             break;
         }
       }
@@ -238,7 +238,7 @@ const Header = () => {
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Buscar préstamos, clientes, pagos..."
+                    placeholder="Buscar clientes, facturas, pagos..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-gray-700 text-neutral-800 px-4 py-2 rounded-lg border border-neutral-300 focus:border-primary-500 focus:outline-none"
@@ -248,26 +248,19 @@ const Header = () => {
                     <div className="mt-4 space-y-2">
                       <div className="text-xs text-neutral-600 uppercase tracking-wider">Resultados rápidos</div>
                       <div className="space-y-1">
-                        <Link 
-                          to="/create-loan" 
-                          onClick={() => setShowSearch(false)}
-                          className="block w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm"
-                        >
-                          💳 Crear nuevo préstamo
-                        </Link>
-                        <Link 
-                          to="/create-customer" 
+                        <Link
+                          to="/create-customer"
                           onClick={() => setShowSearch(false)}
                           className="block w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm"
                         >
                           👤 Crear nuevo cliente
                         </Link>
-                        <Link 
-                          to="/register-payment" 
+                        <Link
+                          to="/income/invoice-generator"
                           onClick={() => setShowSearch(false)}
                           className="block w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-sm"
                         >
-                          💰 Registrar pago
+                          🧾 Generar factura
                         </Link>
                       </div>
                     </div>
@@ -284,22 +277,16 @@ const Header = () => {
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
             <Link
-              to="/create-loan"
+              to="/create-customer"
               className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-neutral-800 font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              💳 Nuevo Préstamo
+              👤 Nuevo Cliente
             </Link>
             <Link
-              to="/register-payment"
+              to="/income/invoice-generator"
               className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-cyan-500 hover:to-blue-500 text-neutral-800 font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
-              💰 Registrar Pago
-            </Link>
-            <Link
-              to="/loan-quotes"
-              className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-violet-500 hover:to-purple-500 text-neutral-800 font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              📊 Cotizar
+              🧾 Generar Factura
             </Link>
           </div>
 
@@ -366,8 +353,6 @@ const Header = () => {
                             navigate(`/messages?conversation=${notification.link_id}`);
                           } else if (notification.link_url) {
                             navigate(notification.link_url);
-                          } else if (notification.link_type === 'loan') {
-                            navigate(`/loan/${notification.link_id}`);
                           } else if (notification.link_type === 'customer') {
                             navigate(`/customer-profile/${notification.link_id}`);
                           }

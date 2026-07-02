@@ -1,13 +1,11 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
 import MarketingDashboard from "./pages/MarketingDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import CustomerPage from "./pages/CustomerPage";
 import CustomerProfile from "./pages/CustomerProfile";
 import CreateCustomer from "./pages/CreateCustomer";
-import CustomerDirectory from "./pages/CustomerDirectory";
 import CustomerDirectoryClean from "./pages/CustomerDirectoryClean";
 import PublicRegister from "./pages/PublicRegister";
 import AdminPromotions from "./pages/AdminPromotions";
@@ -26,9 +24,7 @@ import UserManagement from "./pages/UserManagement";
 import StoreDashboard from "./pages/StoreDashboard";
 import BudgetManagement from "./pages/BudgetManagement";
 import TeamManagement from "./pages/TeamManagement";
-import TeamDashboard from "./pages/TeamDashboard";
 import TeamDashboardClean from "./pages/TeamDashboardClean";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeDashboardClean from "./pages/EmployeeDashboardClean";
 import SocialHub from "./pages/SocialHub";
 import ContentPlanningCenter from "./pages/ContentPlanningCenter";
@@ -136,13 +132,11 @@ const AppRouter = () => (
       {/* Core */}
       <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><MarketingDashboard /></ProtectedRoute>} />
-      <Route path="/dashboard-old" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       {/* CRM */}
       <Route path="/customer/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
       <Route path="/create-customer" element={<ProtectedRoute><CreateCustomer /></ProtectedRoute>} />
       <Route path="/crm" element={<ClientsRoute><CustomerDirectoryClean /></ClientsRoute>} />
-      <Route path="/crm-old" element={<ClientsRoute><CustomerDirectory /></ClientsRoute>} />
       <Route path="/customers/import" element={<ProtectedRoute><CustomerImport /></ProtectedRoute>} />
 
       {/* Social Media */}
@@ -181,9 +175,7 @@ const AppRouter = () => (
       {/* Team Management */}
       <Route path="/team-management" element={<HRRoute><TeamManagement /></HRRoute>} />
       <Route path="/team-dashboard" element={<ProtectedRoute><TeamDashboardClean /></ProtectedRoute>} />
-      <Route path="/team-dashboard-old" element={<ProtectedRoute><TeamDashboard /></ProtectedRoute>} />
       <Route path="/employee/:employeeId" element={<ProtectedRoute><EmployeeDashboardClean /></ProtectedRoute>} />
-      <Route path="/employee-old/:employeeId" element={<ProtectedRoute><EmployeeDashboard /></ProtectedRoute>} />
 
       {/* Projects */}
       <Route path="/projects" element={<ProtectedRoute><ProjectManagement /></ProtectedRoute>} />
