@@ -1,50 +1,167 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
 import axios from "axios";
+import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import "../components/AdminShell.css";
+
+// ---------- formatting helpers ----------
+
+const fmtMoneyCompact = (n) => {
+  const v = Number(n) || 0;
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (Math.abs(v) >= 1_000) return `$${Math.round(v / 1_000)}k`;
+  return `$${Math.round(v).toLocaleString("es-MX")}`;
+};
+
+const fmtMoney = (n) =>
+  `$${(Number(n) || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+
+const timeAgoEs = (dateStr) => {
+  if (!dateStr) return "";
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "ahora";
+  if (mins < 60) return `hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "ayer";
+  return `hace ${days} días`;
+};
+
+const startOfDay = (d) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const dueTextEs = (dueDateStr) => {
+  if (!dueDateStr) return { text: "Sin fecha", overdue: false };
+  const days = Math.round((startOfDay(dueDateStr) - startOfDay(new Date())) / 86400000);
+  if (days < 0) return { text: `Vencida · ${Math.abs(days)} ${Math.abs(days) === 1 ? "día" : "días"}`, overdue: true };
+  if (days === 0) return { text: "Vence hoy", overdue: false };
+  if (days === 1) return { text: "Vence mañana", overdue: false };
+  const d = new Date(dueDateStr);
+  return { text: `Vence ${d.getDate()} ${d.toLocaleDateString("es-MX", { month: "short" })}`, overdue: false };
+};
+
+const greetingEs = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+};
+
+const todayLabelEs = () => {
+  const label = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
+
+// Content statuses that mean "ready to go"
+const READY_STATUSES = new Set(["publicado", "programado", "aprobado", "listo", "published", "scheduled", "approved"]);
+const PENDING_STATUSES = new Set(["planificado", "pending", "en_revision", "en revisión", "revision", "diseño", "diseno", "draft"]);
+
+const statusPillEs = (status) => {
+  const s = (status || "").toLowerCase();
+  if (READY_STATUSES.has(s)) return { text: "Listo", solid: true };
+  const short = (status || "Pendiente").replace(/_/g, " ");
+  return { text: short.length > 14 ? `${short.slice(0, 13)}…` : short, solid: false };
+};
 
 const MarketingDashboard = () => {
   const [customers, setCustomers] = useState([]);
-  const [teamMembers, setTeamMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [scheduledPosts, setScheduledPosts] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+    const fetchAll = async () => {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-
-      const [customersRes, teamRes, projectsRes, tasksRes] = await Promise.all([
+      const [customersRes, tasksRes, invoicesRes, leadsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: { team_members: [] } })),
-        axios.get(`${API_BASE_URL}/projects`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${API_BASE_URL}/content-tasks`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${API_BASE_URL}/api/team/content-tasks`, { headers, params: { days: 30 } }).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE_URL}/api/income/invoices`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE_URL}/leads`, { headers, params: { limit: 20 } }).catch(() => ({ data: [] })),
       ]);
 
       setCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
-      setTeamMembers(teamRes.data?.team_members || teamRes.data || []);
-      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
-      setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
+      const t = tasksRes.data?.tasks || tasksRes.data;
+      setTasks(Array.isArray(t) ? t : []);
+      setInvoices(Array.isArray(invoicesRes.data) ? invoicesRes.data : []);
+      const l = leadsRes.data?.leads || leadsRes.data;
+      setLeads(Array.isArray(l) ? l : []);
       setLoading(false);
-    }
-  };
+    };
+    fetchAll();
+  }, []);
+
+  // ---------- derived metrics ----------
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const newCustomersThisMonth = customers.filter(
+    (c) => c.created_at && new Date(c.created_at) >= monthStart
+  ).length;
+
+  // Posts this week (Mon–Sun)
+  const weekStart = startOfDay(new Date(now));
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const postsThisWeek = tasks.filter((t) => {
+    if (!t.scheduled_date) return false;
+    const d = new Date(t.scheduled_date);
+    return d >= weekStart && d < weekEnd;
+  });
+  const pendingApproval = postsThisWeek.filter((t) => PENDING_STATUSES.has((t.status || "").toLowerCase())).length;
+
+  // Invoices
+  const validInvoices = invoices.filter((i) => i.status !== "cancelled");
+  const monthName = now.toLocaleDateString("es-MX", { month: "long" });
+  const prevMonthName = prevMonthStart.toLocaleDateString("es-MX", { month: "long" });
+  const sumInvoices = (from, to) =>
+    validInvoices
+      .filter((i) => i.invoice_date && new Date(i.invoice_date) >= from && new Date(i.invoice_date) < to)
+      .reduce((acc, i) => acc + (Number(i.total) || 0), 0);
+  const incomeThisMonth = sumInvoices(monthStart, now);
+  const incomePrevMonth = sumInvoices(prevMonthStart, monthStart);
+  const incomeDelta =
+    incomePrevMonth > 0 ? Math.round(((incomeThisMonth - incomePrevMonth) / incomePrevMonth) * 100) : null;
+
+  const openInvoices = validInvoices.filter((i) => (i.current_status || i.status) !== "paid");
+  const receivable = openInvoices.reduce((acc, i) => acc + (Number(i.amount_due ?? i.total) || 0), 0);
+  const cobranza = [...openInvoices]
+    .sort((a, b) => new Date(a.due_date || "2099-01-01") - new Date(b.due_date || "2099-01-01"))
+    .slice(0, 3);
+
+  // Today's calendar
+  const todayTasks = tasks
+    .filter((t) => {
+      if (!t.scheduled_date) return false;
+      const d = new Date(t.scheduled_date);
+      return startOfDay(d).getTime() === startOfDay(now).getTime();
+    })
+    .slice(0, 6);
+
+  // Newest leads
+  const newLeads = [...leads]
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 3);
+
+  const firstName = (localStorage.getItem("userName") || "").trim().split(" ")[0] || "hola";
+
+  const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxd" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ opacity: 0.5, fontSize: 15 }}>Cargando mission control…</span>
         </div>
       </Layout>
     );
@@ -52,247 +169,139 @@ const MarketingDashboard = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
+      <div className="zxd">
+        <div className="zxd-inner">
+          {/* Header */}
+          <div className="zxd-header">
+            <div>
+              <span className="zxd-date">{todayLabelEs()}</span>
+              <h1 className="zxd-h1">
+                {greetingEs()}, <span className="zxd-serif">{firstName}.</span>
+              </h1>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link to="/content-calendar" className="zxd-btn-ghost">Nueva publicación</Link>
+              <Link to="/create-customer" className="zxd-btn-solid">+ Nuevo cliente</Link>
+            </div>
+          </div>
+
+          {/* KPIs */}
+          <div className="zxd-kpis">
+            <div className="zxd-kpi">
+              <span className="label">Clientes activos</span>
+              <span className="value">{customers.length}</span>
+              <span className="hint">
+                {newCustomersThisMonth > 0 ? `+${newCustomersThisMonth} este mes` : "Sin altas este mes"}
+              </span>
+            </div>
+            <div className="zxd-kpi">
+              <span className="label">Publicaciones esta semana</span>
+              <span className="value">{postsThisWeek.length}</span>
+              <span className="hint">
+                {pendingApproval > 0 ? `${pendingApproval} pendientes de aprobar` : "Todo aprobado"}
+              </span>
+            </div>
+            <div className="zxd-kpi">
+              <span className="label">Ingresos de {monthName}</span>
+              <span className="value">{fmtMoneyCompact(incomeThisMonth)}</span>
+              <span className="hint">
+                {incomeDelta !== null
+                  ? `MXN · ${incomeDelta >= 0 ? "+" : ""}${incomeDelta}% vs. ${prevMonthName}`
+                  : "MXN"}
+              </span>
+            </div>
+            <div className="zxd-kpi">
+              <span className="label">Por cobrar</span>
+              <span className="value">{fmtMoneyCompact(receivable)}</span>
+              <span className="hint">
+                {openInvoices.length === 1 ? "1 factura abierta" : `${openInvoices.length} facturas abiertas`}
+              </span>
+            </div>
+          </div>
+
+          {/* Two columns */}
+          <div className="zxd-cols">
+            {/* Hoy en el calendario */}
+            <section className="zxd-card">
+              <div className="zxd-card-head">
+                <h2>Hoy en el calendario</h2>
+                <Link to="/content-calendar" className="zxd-card-link">Ver calendario →</Link>
+              </div>
               <div>
-                <h1 className="text-2xl font-semibold text-black">ZIONX Marketing Dashboard</h1>
-                <p className="text-gray-500 text-sm mt-1">Gestión integral de campañas y clientes</p>
-              </div>
-              <div className="flex space-x-3">
-                <select className="bg-white border border-zionx-secondary rounded-lg px-4 py-2 text-zionx-primary focus:border-zionx-highlight focus:outline-none">
-                  <option>Esta Semana</option>
-                  <option>Este Mes</option>
-                  <option>Este Trimestre</option>
-                  <option>Este Año</option>
-                </select>
-                <button className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                  🔄 Actualizar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <Link
-              to="/projects"
-              className="bg-black text-white rounded-xl p-6 hover:bg-gray-800 transition-all"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">🎯</span>
-                <span className="font-bold">Proyectos</span>
-              </div>
-            </Link>
-
-            <Link
-              to="/create-customer"
-              className="bg-white border border-zionx-secondary rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">👤</span>
-                <span className="font-bold text-zionx-primary">Nuevo Cliente</span>
-              </div>
-            </Link>
-
-            <Link
-              to="/crm"
-              className="bg-white border border-zionx-secondary rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">📋</span>
-                <span className="font-bold text-zionx-primary">Directorio</span>
-              </div>
-            </Link>
-
-            <Link
-              to="/team-management"
-              className="bg-white border border-zionx-secondary rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">👥</span>
-                <span className="font-bold text-zionx-primary">Equipo</span>
-              </div>
-            </Link>
-
-            <Link
-              to="/team-dashboard"
-              className="bg-white border border-zionx-secondary rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">📊</span>
-                <span className="font-bold text-zionx-primary">Analíticas</span>
-              </div>
-            </Link>
-
-            <Link
-              to="/income"
-              className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 hover:shadow-lg transition-all transform hover:scale-105"
-            >
-              <div className="flex flex-col items-center text-center">
-                <span className="text-4xl mb-2">💰</span>
-                <span className="font-bold text-white">Ingresos</span>
-              </div>
-            </Link>
-          </div>
-
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Total Clientes</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{customers.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">{customers.length === 0 ? "Sin clientes aún" : "Clientes activos"}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">👥</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Proyectos Activos</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{projects.filter(p => p.status === 'active').length}</p>
-                  <p className="text-xs text-gray-500 mt-1">{projects.length} proyectos total</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">🎯</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Tareas Pendientes</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{tasks.filter(t => t.status === 'pending').length}</p>
-                  <p className="text-xs text-gray-500 mt-1">{tasks.length} tareas total</p>
-                </div>
-                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">📋</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Miembros del Equipo</p>
-                  <p className="text-3xl font-bold text-zionx-primary">{Array.isArray(teamMembers) ? teamMembers.length : 0}</p>
-                  <p className="text-xs text-gray-500 mt-1">{Array.isArray(teamMembers) && teamMembers.filter(m => m.is_active).length} activos</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xl">👨‍💻</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Clients */}
-            <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-zionx-primary">👥 Clientes Recientes</h2>
-                <Link to="/crm" className="text-sm text-zionx-highlight hover:text-zionx-accent">Ver todos →</Link>
-              </div>
-              <div className="space-y-4">
-                {customers.slice(0, 5).map((customer, index) => (
-                  <Link
-                    key={customer.id || index}
-                    to={`/customer/${customer.id}`}
-                    className="flex items-center justify-between p-4 bg-zionx-tertiary rounded-lg hover:bg-zionx-secondary transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
-                        {customer.business_name?.charAt(0) || customer.commercial_name?.charAt(0) || 'C'}
+                {todayTasks.length === 0 && (
+                  <div className="zxd-empty">Sin publicaciones programadas para hoy.</div>
+                )}
+                {todayTasks.map((t) => {
+                  const pill = statusPillEs(t.status);
+                  const time = t.scheduled_date
+                    ? new Date(t.scheduled_date).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false })
+                    : "—";
+                  return (
+                    <div className="zxd-row" key={t.id}>
+                      <span className="time">{time === "00:00" ? "—" : time}</span>
+                      <div className="what">
+                        <div className="title">
+                          {t.content_type ? `${capitalize(t.content_type)} — ` : ""}
+                          {t.idea_tema || t.campaign || t.customer_name || "Publicación"}
+                        </div>
+                        <div className="meta">
+                          {[capitalize(t.platform), t.customer_name].filter(Boolean).join(" · ") || "Contenido"}
+                        </div>
                       </div>
+                      <span className={`zxd-pill ${pill.solid ? "solid" : "line"}`}>{pill.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Right column */}
+            <div className="zxd-right">
+              {/* Leads nuevos */}
+              <section className="zxd-dark">
+                <img className="astro" src="/landing/astronaut.png" alt="" />
+                <h2>Leads nuevos</h2>
+                <div className="zxd-dark-list">
+                  {newLeads.length === 0 && <div className="zxd-empty">Sin leads nuevos por ahora.</div>}
+                  {newLeads.map((l) => (
+                    <div className="zxd-dark-row" key={l.id}>
                       <div>
-                        <p className="font-medium text-zionx-primary">{customer.business_name || customer.commercial_name || 'Cliente'}</p>
-                        <p className="text-sm text-zionx-accent">{customer.industry || 'Sin especificar'}</p>
+                        <div className="title">{l.name || l.whatsapp_name || l.phone_number || "Lead"}</div>
+                        <div className="meta">
+                          {[l.source ? capitalize(l.source) : "Lead", timeAgoEs(l.created_at)].filter(Boolean).join(" · ")}
+                        </div>
                       </div>
+                      <Link to="/leads-inbox">Abrir →</Link>
                     </div>
-                    <span className="text-zionx-highlight">→</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
 
-            {/* Team Overview */}
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-zionx-primary">👨‍💻 Equipo</h2>
-                <Link to="/team-management" className="text-sm text-zionx-highlight hover:text-zionx-accent">Ver equipo →</Link>
-              </div>
-              <div className="space-y-4">
-                {teamMembers.slice(0, 4).map((member) => (
-                  <div key={member.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        {member.name?.charAt(0) || 'T'}
+              {/* Cobranza */}
+              <section className="zxd-light">
+                <div className="zxd-light-head">
+                  <h2>Cobranza</h2>
+                  <Link to="/income/invoices" className="zxd-card-link">Facturas →</Link>
+                </div>
+                <div>
+                  {cobranza.length === 0 && <div className="zxd-empty">Sin facturas abiertas. 🎉</div>}
+                  {cobranza.map((inv) => {
+                    const due = dueTextEs(inv.due_date);
+                    return (
+                      <div className="zxd-light-row" key={inv.id}>
+                        <div>
+                          <div className="title">
+                            {inv.customer_name || "Cliente"}
+                            {inv.invoice_number ? ` — ${inv.invoice_number}` : ""}
+                          </div>
+                          <div className={`meta${due.overdue ? " overdue" : ""}`}>{due.text}</div>
+                        </div>
+                        <span className="amount">{fmtMoney(inv.amount_due ?? inv.total)}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-zionx-primary">{member.name}</p>
-                        <p className="text-xs text-zionx-accent">{member.role}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-zionx-primary">{member.active_assignments || 0}</p>
-                      <p className="text-xs text-zionx-accent">tareas</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Activity Feed */}
-          <div className="mt-6 bg-white rounded-xl p-6 border border-zionx-secondary">
-            <h2 className="text-xl font-bold text-zionx-primary mb-6">📈 Actividad Reciente</h2>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4 p-4 bg-zionx-tertiary rounded-lg">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-medium text-zionx-primary">Post publicado en Instagram</p>
-                  <p className="text-sm text-zionx-accent">GRUPO STELLA • Hace 2 horas</p>
+                    );
+                  })}
                 </div>
-                <span className="text-green-600 text-sm">✅</span>
-              </div>
-
-              <div className="flex items-center space-x-4 p-4 bg-zionx-tertiary rounded-lg">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-medium text-zionx-primary">Nueva tarea asignada a Miranda</p>
-                  <p className="text-sm text-zionx-accent">Diseño para campaña verano • Hace 3 horas</p>
-                </div>
-                <span className="text-blue-600 text-sm">📋</span>
-              </div>
-
-              <div className="flex items-center space-x-4 p-4 bg-zionx-tertiary rounded-lg">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-medium text-zionx-primary">Nuevo cliente registrado</p>
-                  <p className="text-sm text-zionx-accent">Cliente Premium Inc. • Hace 5 horas</p>
-                </div>
-                <span className="text-purple-600 text-sm">👤</span>
-              </div>
-
-              <div className="flex items-center space-x-4 p-4 bg-zionx-tertiary rounded-lg">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="font-medium text-zionx-primary">Post programado para publicación</p>
-                  <p className="text-sm text-zionx-accent">GRUPO STELLA • Mañana 10:00 AM</p>
-                </div>
-                <span className="text-yellow-600 text-sm">⏰</span>
-              </div>
+              </section>
             </div>
           </div>
         </div>
@@ -302,4 +311,3 @@ const MarketingDashboard = () => {
 };
 
 export default MarketingDashboard;
-

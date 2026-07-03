@@ -1,528 +1,244 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import GlobalSearch from "./GlobalSearch";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
+import GlobalSearch from "./GlobalSearch";
 import { API_BASE_URL } from "../utils/constants";
-import { MARKETING_ROLES, getSectionsForRole, getRoleInfo } from "../config/roles";
+import { getRoleInfo } from "../config/roles";
+import "./AdminShell.css";
 
-const sectionList = [
+// Pixel-cross brand mark (same as landing)
+const PixelMark = ({ size = 10, fill = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 3 3" aria-hidden="true">
+    <rect x="0" y="0" width="1" height="1" fill={fill} />
+    <rect x="2" y="0" width="1" height="1" fill={fill} />
+    <rect x="1" y="1" width="1" height="1" fill={fill} />
+    <rect x="0" y="2" width="1" height="1" fill={fill} />
+    <rect x="2" y="2" width="1" height="1" fill={fill} />
+  </svg>
+);
+
+// Grouped nav. Every link carries the role-section key it belongs to,
+// so design grouping and role visibility stay independent.
+const NAV_GROUPS = [
   {
-    key: "social_media",
-    icon: "📱",
-    label: "Social Media & Contenido",
-    color: "from-zionx-accent to-zionx-primary",
+    label: "Contenido",
     links: [
-      { href: "/social/accounts", label: "Cuentas Meta", icon: "🔗" },
-      { href: "/social-hub", label: "Hub de Publicaciones", icon: "📱" },
-      { href: "/content-calendar", label: "Calendario de Contenido", icon: "📅" },
-      { href: "/team-dashboard", label: "Tareas del Equipo", icon: "✅" },
-      { href: "/social-analytics", label: "Analíticas", icon: "📊" },
+      { href: "/social-hub", label: "Hub de Publicaciones", section: "social_media" },
+      { href: "/content-calendar", label: "Calendario", section: "social_media" },
+      { href: "/team-dashboard", label: "Tareas", section: "social_media" },
+      { href: "/projects", label: "Proyectos", section: "social_media" },
+      { href: "/social/accounts", label: "Cuentas Meta", section: "social_media" },
     ],
   },
   {
-    key: "clients",
-    icon: "🏢",
     label: "Clientes",
-    color: "from-blue-400 to-blue-600",
     links: [
-      { href: "/crm", label: "Directorio", icon: "📋" },
-      { href: "/briefs", label: "Creative Briefs", icon: "📝" },
-      { href: "/create-customer", label: "Nuevo Cliente", icon: "➕" },
-      { href: "/customers/import", label: "Importar Clientes", icon: "📤" },
+      { href: "/leads-inbox", label: "Leads", section: "leads", badge: "leads" },
+      { href: "/crm", label: "Directorio", section: "clients" },
+      { href: "/briefs", label: "Creative Briefs", section: "clients" },
+      { href: "/customers/import", label: "Importar Clientes", section: "clients" },
     ],
   },
   {
-    key: "leads",
-    icon: "💬",
-    label: "Leads",
-    color: "from-green-400 to-green-600",
-    links: [
-      { href: "/leads-inbox", label: "Inbox", icon: "💬" },
-      { href: "/leads-capture", label: "Capturar Lead", icon: "➕" },
-      { href: "/leads-manage", label: "Gestionar Leads", icon: "📊" },
-      { href: "/leads-analytics", label: "Analíticas", icon: "📈" },
-    ],
-  },
-  {
-    key: "hr",
-    icon: "👥",
-    label: "Equipo & Nómina",
-    color: "from-orange-400 to-orange-600",
-    links: [
-      { href: "/people", label: "Gestión de Equipo", icon: "👥" },
-      { href: "/hr/payroll", label: "Nómina", icon: "💵" },
-      { href: "/hr/financials", label: "Estados Financieros", icon: "📊" },
-    ],
-  },
-  {
-    key: "ingresos",
-    icon: "💰",
-    label: "Ingresos",
-    color: "from-emerald-400 to-emerald-600",
-    links: [
-      { href: "/income", label: "Dashboard de Ingresos", icon: "📊" },
-      { href: "/income/subscriptions", label: "Suscripciones", icon: "📋" },
-      { href: "/income/payments", label: "Gestión de Pagos", icon: "💳" },
-      { href: "/income/invoice-generator", label: "Generar Factura", icon: "📄" },
-      { href: "/income/invoices", label: "Facturas", icon: "🧾" },
-      { href: "/income/addons", label: "Catálogo Add-ons", icon: "➕" },
-      { href: "/income/reports", label: "Reportes", icon: "📈" },
-    ],
-  },
-  {
-    key: "finanzas",
-    icon: "💰",
     label: "Finanzas",
-    color: "from-green-500 to-emerald-600",
     links: [
-      { href: "/accounting", label: "Libro Diario", icon: "📒" },
-      { href: "/admin/expenses", label: "Gastos", icon: "💸" },
-      { href: "/admin/budgets", label: "Presupuestos", icon: "📊" },
-      { href: "/income-statement", label: "Estado de Resultados", icon: "📈" },
-      { href: "/balance-sheet", label: "Balance General", icon: "⚖️" },
+      { sub: "Facturación" },
+      { href: "/income", label: "Ingresos", section: "ingresos" },
+      { href: "/income/subscriptions", label: "Suscripciones", section: "ingresos" },
+      { href: "/income/payments", label: "Pagos", section: "ingresos" },
+      { href: "/income/invoices", label: "Facturas", section: "ingresos" },
+      { href: "/income/addons", label: "Add-ons", section: "ingresos" },
+      { href: "/income/reports", label: "Reportes", section: "ingresos" },
+      { sub: "Contabilidad" },
+      { href: "/admin/expenses", label: "Gastos", section: "finanzas" },
+      { href: "/admin/budgets", label: "Presupuestos", section: "finanzas" },
+      { href: "/hr/financials", label: "Estados Financieros", section: "finanzas" },
     ],
   },
   {
-    key: "settings",
-    icon: "⚙️",
-    label: "Configuración",
-    color: "from-gray-400 to-gray-600",
+    label: "Equipo",
     links: [
-      { href: "/admin/create-user", label: "Crear Usuario", icon: "➕" },
-      { href: "/admin/user-management", label: "Gestión de Usuarios", icon: "👥" },
+      { href: "/people", label: "Gestión de Equipo", section: "hr" },
+      { href: "/team-management", label: "Miembros", section: "hr" },
+      { href: "/hr/payroll", label: "Nómina", section: "hr" },
+    ],
+  },
+  {
+    label: "Configuración",
+    links: [
+      { href: "/admin/user-management", label: "Usuarios", section: "settings" },
+      { href: "/admin/create-user", label: "Crear Usuario", section: "settings" },
     ],
   },
 ];
 
-const defaultOpenSections = {
-  social_media: true,
-  clients: false,
-  leads: false,
-  projects: false,
-  finances: false,
-  settings: true,
-};
-
-const SIDEBAR_STATE_KEY = "sidebar-state";
-const FAVORITES_KEY = "sidebar-favorites";
-const RECENT_ITEMS_KEY = "sidebar-recent";
-
 const Sidebar = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [openSections, setOpenSections] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
-      if (saved) {
-        return { ...defaultOpenSections, ...JSON.parse(saved) };
-      }
-      return defaultOpenSections;
-    } catch {
-      return defaultOpenSections;
-    }
-  });
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      const saved = localStorage.getItem(FAVORITES_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [recentItems, setRecentItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem(RECENT_ITEMS_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
-  const searchRef = useRef(null);
-  
-  // Notification & Message counts
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [newLeadsCount, setNewLeadsCount] = useState(0);
 
-  // Fetch notification and message counts
+  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole") || "admin");
+
+  useEffect(() => {
+    const handleRoleChange = () => setUserRole(localStorage.getItem("userRole") || "admin");
+    window.addEventListener("roleChanged", handleRoleChange);
+    return () => window.removeEventListener("roleChanged", handleRoleChange);
+  }, []);
+
+  // Unread + leads badges
   useEffect(() => {
     const fetchCounts = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-        
-        const headers = { Authorization: `Bearer ${token}` };
-        
-        const [notifRes, msgRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/notifications/unread-count`, { headers }).catch(() => ({ data: { count: 0 } })),
-          axios.get(`${API_BASE_URL}/api/messages/unread-count`, { headers }).catch(() => ({ data: { count: 0 } }))
-        ]);
-        
-        setUnreadNotifCount(notifRes.data.count || 0);
-        setUnreadMsgCount(msgRes.data.count || 0);
-      } catch (error) {
-        console.log('Could not fetch notification counts');
-      }
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      const [notifRes, msgRes, leadsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/notifications/unread-count`, { headers }).catch(() => ({ data: { count: 0 } })),
+        axios.get(`${API_BASE_URL}/api/messages/unread-count`, { headers }).catch(() => ({ data: { count: 0 } })),
+        axios.get(`${API_BASE_URL}/leads`, { headers, params: { status: "new", limit: 100 } }).catch(() => ({ data: [] })),
+      ]);
+      setUnreadNotifCount(notifRes.data?.count || 0);
+      setUnreadMsgCount(msgRes.data?.count || 0);
+      const leads = Array.isArray(leadsRes.data) ? leadsRes.data : leadsRes.data?.leads || [];
+      setNewLeadsCount(leads.length);
     };
-    
     fetchCounts();
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Update recent items when location changes
+  // Cmd/Ctrl+K opens global search
   useEffect(() => {
-    const currentPath = location.pathname;
-    const currentItem = findItemByPath(currentPath);
-    
-    if (currentItem) {
-      setRecentItems(prev => {
-        const filtered = prev.filter(item => item.href !== currentPath);
-        return [currentItem, ...filtered.slice(0, 4)];
-      });
-    }
-  }, [location]);
-
-  // Save state to localStorage
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(openSections));
-  }, [openSections]);
-
-  useEffect(() => {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-  }, [favorites]);
-
-  useEffect(() => {
-    localStorage.setItem(RECENT_ITEMS_KEY, JSON.stringify(recentItems));
-  }, [recentItems]);
-
-  const findItemByPath = (path) => {
-    for (const section of sectionList) {
-      for (const link of section.links) {
-        if (link.href === path) {
-          return { ...link, section: section.label, sectionIcon: section.icon };
-        }
+    const onKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowGlobalSearch(true);
       }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Close the mobile drawer on navigation
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  const roleInfo = getRoleInfo(userRole);
+  const allowedSections = roleInfo?.sections || [];
+  const canSee = (section) => userRole === "admin" || allowedSections.includes(section);
+
+  const userName = localStorage.getItem("userName") || "Usuario";
+  const initials = userName
+    .split(" ")
+    .map((w) => w.charAt(0))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const isActive = (href) => location.pathname === href;
+
+  const badgeFor = (link) => {
+    if (link.badge === "leads" && newLeadsCount > 0) {
+      return <span className="badge hot">{newLeadsCount > 99 ? "99+" : newLeadsCount}</span>;
     }
     return null;
   };
 
-  const toggleSection = (key) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const toggleFavorite = (item) => {
-    setFavorites(prev => {
-      const exists = prev.find(fav => fav.href === item.href);
-      if (exists) {
-        return prev.filter(fav => fav.href !== item.href);
-      } else {
-        return [...prev, item];
+  const visibleGroups = NAV_GROUPS.map((group) => {
+    const links = [];
+    let pendingSub = null;
+    for (const item of group.links) {
+      if (item.sub) {
+        pendingSub = item;
+        continue;
       }
-    });
+      if (!canSee(item.section)) continue;
+      if (pendingSub) {
+        links.push(pendingSub);
+        pendingSub = null;
+      }
+      links.push(item);
+    }
+    return { ...group, links };
+  }).filter((group) => group.links.some((l) => !l.sub));
+
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/auth";
   };
-
-  const isFavorite = (href) => {
-    return favorites.some(fav => fav.href === href);
-  };
-
-  const isActive = (href) => {
-    return location.pathname === href;
-  };
-
-  // Get user role from localStorage (set during login or via role switcher)
-  const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem('userRole') || 'admin';
-  });
-
-  // Listen for role changes
-  useEffect(() => {
-    const handleRoleChange = () => {
-      setUserRole(localStorage.getItem('userRole') || 'admin');
-    };
-    window.addEventListener('roleChanged', handleRoleChange);
-    return () => window.removeEventListener('roleChanged', handleRoleChange);
-  }, []);
-
-  const roleInfo = getRoleInfo(userRole);
-  const allowedSections = roleInfo?.sections || [];
-
-  const filteredSections = sectionList.filter(section => {
-    // Filter by user role
-    if (userRole !== 'admin' && !allowedSections.includes(section.key)) return false;
-    
-    if (!searchTerm) return true;
-    return section.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           section.links.some(link => link.label.toLowerCase().includes(searchTerm.toLowerCase()));
-  });
-
-  const filteredFavorites = favorites.filter(item => 
-    item.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredRecent = recentItems.filter(item => 
-    item.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-56'} min-h-screen flex-shrink-0 bg-white border-r border-gray-200 text-black transition-all duration-300 ease-in-out relative flex flex-col`}>
-      <div className="flex-1 overflow-y-auto p-6 pb-24">
-        {/* Logo */}
-        {!isCollapsed && (
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-black tracking-tight">ZIONX</h1>
-            <p className="text-xs text-gray-500 mt-1">Marketing</p>
-          </div>
-        )}
+    <>
+      <button className="zxs-burger" onClick={() => setMobileOpen(true)} aria-label="Abrir menú">☰</button>
+      {mobileOpen && <button className="zxs-scrim show" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú" />}
 
-        {/* Notifications & Messages Bar */}
-        {!isCollapsed && (
-          <div className="mb-6 flex items-center gap-2">
-            <button
-              onClick={() => navigate('/messages')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all ${
-                location.pathname === '/messages'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-              title="Mensajes"
-            >
-              <span className="text-lg">💬</span>
-              {unreadMsgCount > 0 && (
-                <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                  {unreadMsgCount > 9 ? '9+' : unreadMsgCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => navigate('/notifications')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg transition-all ${
-                location.pathname === '/notifications'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-              title="Notificaciones"
-            >
-              <span className="text-lg">🔔</span>
-              {unreadNotifCount > 0 && (
-                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
+      <aside className={`zxs${mobileOpen ? " open" : ""}`}>
+        <div className="zxs-head">
+          <Link to="/dashboard" style={{ display: "flex", alignItems: "center" }}>
+            <img src="/landing/logo-wordmark-white.png" alt="ZIONX" />
+          </Link>
+          <span className="tag">{roleInfo?.name || "Admin"}</span>
+        </div>
 
-        {/* Global Search Trigger */}
-        {!isCollapsed && (
-          <div className="mb-8">
-            <button
-              onClick={() => setShowGlobalSearch(true)}
-              className="w-full bg-gray-50 text-gray-500 text-left px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-sm"
-            >
-              🔍 Buscar clientes, equipo...
-            </button>
-          </div>
-        )}
+        <button className="zxs-search" onClick={() => setShowGlobalSearch(true)}>
+          <span>⌕</span>
+          <span>Buscar clientes, equipo…</span>
+          <span className="kbd">⌘K</span>
+        </button>
 
-        {/* Global Search Modal */}
-        <GlobalSearch 
-          isOpen={showGlobalSearch} 
-          onClose={() => setShowGlobalSearch(false)} 
-        />
+        <GlobalSearch isOpen={showGlobalSearch} onClose={() => setShowGlobalSearch(false)} />
 
-        {/* Dashboard Link */}
-        {!isCollapsed && (
-          <div className="mb-8">
-            <Link
-              to="/dashboard"
-              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm ${
-                isActive("/dashboard") 
-                  ? "bg-black text-white font-medium" 
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <span className="text-base">🏠</span>
-              <span>Dashboard</span>
+        <nav className="zxs-nav">
+          <div className="zxs-group">
+            <Link to="/dashboard" className={`zxs-dash${isActive("/dashboard") ? " active" : ""}`}>
+              <PixelMark size={10} />
+              Dashboard
+            </Link>
+            <Link to="/messages" className={`zxs-link${isActive("/messages") ? " active" : ""}`}>
+              Mensajes
+              {unreadMsgCount > 0 && <span className="badge hot">{unreadMsgCount > 9 ? "9+" : unreadMsgCount}</span>}
+            </Link>
+            <Link to="/notifications" className={`zxs-link${isActive("/notifications") ? " active" : ""}`}>
+              Notificaciones
+              {unreadNotifCount > 0 && <span className="badge hot">{unreadNotifCount > 9 ? "9+" : unreadNotifCount}</span>}
             </Link>
           </div>
-        )}
 
-        {/* Favorites Section */}
-        {!isCollapsed && favorites.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-zionx-primary opacity-70 uppercase tracking-wider mb-3 px-3">
-              Favorites
-            </h3>
-            <div className="space-y-1">
-              {filteredFavorites.map((item, index) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
-                    isActive(item.href)
-                      ? "bg-gradient-to-r from-zionx-accent to-zionx-primary text-white font-semibold"
-                      : "hover:bg-zionx-secondary text-zionx-primary hover:text-zionx-primary"
-                  }`}
-                >
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="text-sm truncate">{item.label}</span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleFavorite(item);
-                    }}
-                    className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-neutral-600 hover:text-red-300"
+          {visibleGroups.map((group) => (
+            <div className="zxs-group" key={group.label}>
+              <span className="zxs-group-label">{group.label}</span>
+              {group.links.map((item, i) =>
+                item.sub ? (
+                  <span className="zxs-sub-label" key={`sub-${i}`}>{item.sub}</span>
+                ) : (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={`zxs-link${isActive(item.href) ? " active" : ""}`}
                   >
-                    ❌
-                  </button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Recent Items */}
-        {!isCollapsed && recentItems.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-zionx-primary opacity-70 uppercase tracking-wider mb-3 px-3">
-              Recent
-            </h3>
-            <div className="space-y-1">
-              {filteredRecent.slice(0, 3).map((item, index) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
-                    isActive(item.href)
-                      ? "bg-gradient-to-r from-zionx-accent to-zionx-primary text-white font-semibold"
-                      : "hover:bg-zionx-secondary text-zionx-primary hover:text-zionx-primary"
-                  }`}
-                >
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="text-sm truncate">{item.label}</span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleFavorite(item);
-                    }}
-                    className={`ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-                      isFavorite(item.href) ? "text-yellow-400" : "text-zionx-primary opacity-50 hover:text-yellow-400"
-                    }`}
-                  >
-                    {isFavorite(item.href) ? "⭐" : "☆"}
-                  </button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Navigation Sections */}
-        <nav className="space-y-2">
-          {filteredSections.map((section) => (
-            <div key={section.key} className="space-y-1">
-              <button
-                onClick={() => toggleSection(section.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm group ${
-                  openSections[section.key]
-                    ? "bg-gray-100 text-black font-medium"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <span className="text-lg">{section.icon}</span>
-                {!isCollapsed && (
-                  <>
-                    <span className="font-semibold flex-1 text-left">{section.label}</span>
-                    <span className={`transition-transform duration-200 ${openSections[section.key] ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
-                  </>
-                )}
-              </button>
-              
-              {openSections[section.key] && (
-                <div className="ml-4 space-y-1 animate-slideDown">
-                  {section.links.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm group ${
-                        isActive(link.href)
-                          ? "bg-black text-white font-medium"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-black"
-                      }`}
-                    >
-                      <span className="text-sm">{link.icon}</span>
-                      {!isCollapsed && (
-                        <>
-                          <span className="text-sm flex-1">{link.label}</span>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              toggleFavorite({ ...link, section: section.label, sectionIcon: section.icon });
-                            }}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-                              isFavorite(link.href) ? "text-yellow-400" : "text-zionx-primary opacity-50 hover:text-yellow-400"
-                            }`}
-                          >
-                            {isFavorite(link.href) ? "⭐" : "☆"}
-                          </button>
-                        </>
-                      )}
-                    </Link>
-                  ))}
-                </div>
+                    {item.label}
+                    {badgeFor(item)}
+                  </Link>
+                )
               )}
             </div>
           ))}
         </nav>
-      </div>
 
-      {/* User Info & Logout at Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-white">
-        {/* User Role Indicator */}
-        {!isCollapsed && (
-          <div className="p-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-lg">
-                {roleInfo?.icon || '👤'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {localStorage.getItem('userName') || 'Usuario'}
-                </p>
-                <p className="text-xs text-gray-500">{roleInfo?.name || 'Usuario'}</p>
-              </div>
-            </div>
+        <div className="zxs-foot">
+          <div className="zxs-avatar">{initials || "U"}</div>
+          <div className="who">
+            <div className="name">{userName}</div>
+            <div className="role">{roleInfo?.name || "Usuario"}</div>
           </div>
-        )}
-        
-        {/* Logout Button */}
-        <div className="p-3">
-          <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.href = '/auth';
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 ${
-              isCollapsed ? 'justify-center' : ''
-            }`}
-          >
-            <span className="text-lg">🚪</span>
-            {!isCollapsed && <span className="font-medium text-sm">Cerrar Sesión</span>}
-          </button>
+          <button className="zxs-logout" onClick={logout} title="Cerrar sesión">⏻</button>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 
