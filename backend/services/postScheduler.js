@@ -2,9 +2,26 @@
  * Post Scheduler Service
  * Checks for scheduled posts that are due and publishes them via Meta API.
  * Runs every minute via setInterval (no external dependency needed).
+ *
+ * Reliability guarantees:
+ *  - Due posts are never silently dropped. Anything past due is either
+ *    published (within the catch-up window) or marked `failed` with a
+ *    "missed window" message so it's visible — never skipped into the void.
+ *  - A post is claimed atomically (status flips scheduled -> publishing via a
+ *    single locking UPDATE with SKIP LOCKED), so two workers or an overlapping
+ *    run can't publish the same post twice.
+ *  - Posts stranded in `publishing` by a crash are recovered on each cycle.
  */
 
 const metaService = require('./metaService');
+
+// How long after its scheduled time a post may still auto-publish. Beyond this
+// it's marked failed ("missed window") rather than posting stale content.
+const MAX_CATCHUP_MIN = parseInt(process.env.SCHEDULER_MAX_DELAY_MINUTES, 10) || 360; // 6h
+// A post left in `publishing` longer than this is assumed crashed and recovered.
+const STUCK_MIN = parseInt(process.env.SCHEDULER_STUCK_MINUTES, 10) || 15;
+const BATCH_SIZE = 10;
+const MAX_RETRIES = 3;
 
 class PostScheduler {
   constructor(pool) {
@@ -19,7 +36,7 @@ class PostScheduler {
   start() {
     if (this.intervalId) return;
 
-    console.log('📅 Post scheduler started — checking every 60s');
+    console.log(`📅 Post scheduler started — checking every 60s (catch-up window ${MAX_CATCHUP_MIN}min)`);
     // Run immediately on start, then every 60 seconds
     this.processDuePosts();
     this.intervalId = setInterval(() => this.processDuePosts(), 60000);
@@ -34,37 +51,84 @@ class PostScheduler {
   }
 
   /**
-   * Find and publish all posts that are due
+   * Recover posts stranded in `publishing` by a crash/restart and put them
+   * back in the queue so they get retried (respecting the retry cap).
+   */
+  async recoverStuck() {
+    try {
+      const stuck = await this.pool.query(
+        `UPDATE scheduled_posts
+           SET status = CASE WHEN retry_count >= $2 THEN 'failed' ELSE 'scheduled' END,
+               error_message = 'Recovered from an interrupted publish',
+               updated_at = NOW()
+         WHERE status = 'publishing'
+           AND updated_at < NOW() - make_interval(mins => $1)
+         RETURNING id, status`,
+        [STUCK_MIN, MAX_RETRIES]
+      );
+      if (stuck.rows.length > 0) {
+        console.log(`🩹 Recovered ${stuck.rows.length} post(s) stuck in publishing`);
+      }
+    } catch (error) {
+      console.error('❌ Stuck-post recovery error:', error.message);
+    }
+  }
+
+  /**
+   * Find and publish all posts that are due.
    */
   async processDuePosts() {
-    if (this.isRunning) return; // Prevent overlapping runs
+    if (this.isRunning) return; // Avoid overlapping timer runs
     this.isRunning = true;
 
     try {
-      // Find posts due for publishing (scheduled time has passed, within last 1 hour)
-      const result = await this.pool.query(`
-        SELECT
-          sp.*,
-          sa.platform,
-          sa.platform_account_id,
-          sa.access_token,
-          sa.token_expires_at,
-          sa.instagram_account_id
-        FROM scheduled_posts sp
-        JOIN social_accounts sa ON sp.social_account_id = sa.id
-        WHERE sp.status = 'scheduled'
-          AND sp.scheduled_for <= NOW()
-          AND sp.scheduled_for > NOW() - INTERVAL '1 hour'
-          AND sa.is_active = true
-        ORDER BY sp.scheduled_for ASC
-        LIMIT 10
-      `);
+      await this.recoverStuck();
 
-      if (result.rows.length === 0) return;
+      // Atomically claim due posts: flip scheduled -> publishing under a row
+      // lock so no other run/instance can grab the same rows. SKIP LOCKED lets
+      // concurrent workers take different rows instead of blocking.
+      const claimed = await this.pool.query(
+        `WITH due AS (
+           SELECT sp.id
+             FROM scheduled_posts sp
+             JOIN social_accounts sa ON sp.social_account_id = sa.id
+            WHERE sp.status = 'scheduled'
+              AND sp.scheduled_for <= NOW()
+              AND sa.is_active = true
+            ORDER BY sp.scheduled_for ASC
+            FOR UPDATE OF sp SKIP LOCKED
+            LIMIT $1
+         )
+         UPDATE scheduled_posts sp
+            SET status = 'publishing', updated_at = NOW()
+           FROM due
+          WHERE sp.id = due.id
+        RETURNING sp.id`,
+        [BATCH_SIZE]
+      );
 
-      console.log(`📤 Processing ${result.rows.length} due post(s)...`);
+      if (claimed.rows.length === 0) return;
 
-      for (const post of result.rows) {
+      const ids = claimed.rows.map((r) => r.id);
+
+      // Hydrate the claimed rows with the account fields needed to publish.
+      const posts = await this.pool.query(
+        `SELECT sp.*,
+                sa.platform,
+                sa.platform_account_id,
+                sa.access_token,
+                sa.token_expires_at,
+                sa.instagram_account_id
+           FROM scheduled_posts sp
+           JOIN social_accounts sa ON sp.social_account_id = sa.id
+          WHERE sp.id = ANY($1::int[])
+          ORDER BY sp.scheduled_for ASC`,
+        [ids]
+      );
+
+      console.log(`📤 Processing ${posts.rows.length} due post(s)...`);
+
+      for (const post of posts.rows) {
         await this.publishPost(post);
       }
     } catch (error) {
@@ -75,23 +139,26 @@ class PostScheduler {
   }
 
   /**
-   * Publish a single scheduled post
+   * Publish a single claimed post (already in `publishing` status).
    */
   async publishPost(post) {
     const postId = post.id;
 
     try {
+      // Too far past its slot — don't silently drop it and don't post stale
+      // content; mark it failed so it surfaces for a human.
+      const overdueMin = (Date.now() - new Date(post.scheduled_for).getTime()) / 60000;
+      if (overdueMin > MAX_CATCHUP_MIN) {
+        const overdueH = Math.max(1, Math.round(overdueMin / 60));
+        await this.markFailed(postId, `Missed publish window — was due ~${overdueH}h ago`);
+        return;
+      }
+
       // Check token expiration
       if (post.token_expires_at && new Date(post.token_expires_at) < new Date()) {
         await this.markFailed(postId, 'Token expired — reconnect the account');
         return;
       }
-
-      // Mark as publishing
-      await this.pool.query(
-        "UPDATE scheduled_posts SET status = 'publishing', updated_at = NOW() WHERE id = $1",
-        [postId]
-      );
 
       let result;
 
@@ -152,13 +219,12 @@ class PostScheduler {
   }
 
   /**
-   * Handle a failed post — retry up to 3 times, then mark as failed
+   * Handle a failed post — retry up to MAX_RETRIES, then mark as failed
    */
   async handleFailure(postId, post, errorMessage) {
     const retryCount = (post.retry_count || 0) + 1;
-    const maxRetries = 3;
 
-    if (retryCount < maxRetries) {
+    if (retryCount < MAX_RETRIES) {
       // Put back to scheduled with incremented retry count and 5-minute delay
       await this.pool.query(`
         UPDATE scheduled_posts SET
@@ -170,7 +236,7 @@ class PostScheduler {
         WHERE id = $3
       `, [retryCount, errorMessage, postId]);
 
-      console.log(`⚠️ Post #${postId} failed (attempt ${retryCount}/${maxRetries}), retrying in 5min: ${errorMessage}`);
+      console.log(`⚠️ Post #${postId} failed (attempt ${retryCount}/${MAX_RETRIES}), retrying in 5min: ${errorMessage}`);
     } else {
       await this.markFailed(postId, errorMessage);
     }

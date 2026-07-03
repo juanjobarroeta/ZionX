@@ -1,72 +1,66 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Auth from "./pages/Auth";
+
+// Public entry points stay eager for fast first paint.
 import Landing from "./pages/Landing";
-import MarketingDashboard from "./pages/MarketingDashboard";
-import AdminPanel from "./pages/AdminPanel";
-import CustomerPage from "./pages/CustomerPage";
-import CustomerProfile from "./pages/CustomerProfile";
-import CreateCustomer from "./pages/CreateCustomer";
-import CustomerDirectoryClean from "./pages/CustomerDirectoryClean";
-import PublicRegister from "./pages/PublicRegister";
-import AdminPromotions from "./pages/AdminPromotions";
-import AdminExpenses from "./pages/AdminExpenses";
-import BriefsList from "./pages/BriefsList";
-import CreativeBrief from "./pages/CreativeBrief";
-import PublicCreativeBrief from "./pages/PublicCreativeBrief";
-import PublicBriefStart from "./pages/PublicBriefStart";
-import PublicClientApproval from "./pages/PublicClientApproval";
-import InventoryRequest from "./pages/InventoryRequest";
-import AdminApprovals from "./pages/AdminApprovals";
-import AdminInventoryViewer from "./pages/AdminInventoryViewer";
-import ProductProfile from "./pages/ProductProfile";
-import CreateUser from "./pages/CreateUser";
-import UserManagement from "./pages/UserManagement";
-import BudgetManagement from "./pages/BudgetManagement";
-import TeamManagement from "./pages/TeamManagement";
-import TeamDashboardClean from "./pages/TeamDashboardClean";
-import EmployeeDashboardClean from "./pages/EmployeeDashboardClean";
-import SocialHub from "./pages/SocialHub";
-import ContentPlanningCenter from "./pages/ContentPlanningCenter";
-
-// Project Management
-import ProjectManagement from "./pages/ProjectManagement";
-import ProjectDetails from "./pages/ProjectDetails";
-import CreateProject from "./pages/CreateProject";
-
-// Leads & WhatsApp
-import LeadsInbox from "./pages/LeadsInbox";
-import LeadsCapture from "./pages/LeadsCapture";
-import LeadsManage from "./pages/LeadsManage";
-import LeadsAnalytics from "./pages/LeadsAnalytics";
-
-// Income Management
-import IncomeDashboard from "./pages/IncomeDashboard";
-import SubscriptionsManager from "./pages/SubscriptionsManager";
-import PaymentManagement from "./pages/PaymentManagement";
-import InvoiceGenerator from "./pages/InvoiceGenerator";
-import InvoicesManager from "./pages/InvoicesManager";
-import InvoiceDetail from "./pages/InvoiceDetail";
-
-// HR & Payroll
-import EmployeeManagement from "./pages/EmployeeManagement";
-import PayrollManagement from "./pages/PayrollManagement";
-import FinancialStatements from "./pages/FinancialStatements";
-import PeopleManagement from "./pages/PeopleManagement";
-import AddonsManager from "./pages/AddonsManager";
-import IncomeReports from "./pages/IncomeReports";
-import CustomerImport from "./pages/CustomerImport";
-
-// Notifications & Messaging
-import NotificationHub from "./pages/NotificationHub";
-import MessageHub from "./pages/MessageHub";
-
-// Social Media Integration
-import SocialAccountsManager from "./pages/SocialAccountsManager";
-
-// Role-based protection
-import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import Auth from "./pages/Auth";
 import Unauthorized from "./pages/Unauthorized";
+import RoleProtectedRoute from "./components/RoleProtectedRoute";
+
+// Everything else is code-split — each route loads its own chunk on demand.
+const MarketingDashboard = lazy(() => import("./pages/MarketingDashboard"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const CustomerProfile = lazy(() => import("./pages/CustomerProfile"));
+const CreateCustomer = lazy(() => import("./pages/CreateCustomer"));
+const CustomerDirectoryClean = lazy(() => import("./pages/CustomerDirectoryClean"));
+const PublicRegister = lazy(() => import("./pages/PublicRegister"));
+const AdminPromotions = lazy(() => import("./pages/AdminPromotions"));
+const AdminExpenses = lazy(() => import("./pages/AdminExpenses"));
+const BriefsList = lazy(() => import("./pages/BriefsList"));
+const CreativeBrief = lazy(() => import("./pages/CreativeBrief"));
+const PublicCreativeBrief = lazy(() => import("./pages/PublicCreativeBrief"));
+const PublicBriefStart = lazy(() => import("./pages/PublicBriefStart"));
+const PublicClientApproval = lazy(() => import("./pages/PublicClientApproval"));
+const InventoryRequest = lazy(() => import("./pages/InventoryRequest"));
+const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
+const AdminInventoryViewer = lazy(() => import("./pages/AdminInventoryViewer"));
+const ProductProfile = lazy(() => import("./pages/ProductProfile"));
+const CreateUser = lazy(() => import("./pages/CreateUser"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const BudgetManagement = lazy(() => import("./pages/BudgetManagement"));
+const TeamManagement = lazy(() => import("./pages/TeamManagement"));
+const TeamDashboardClean = lazy(() => import("./pages/TeamDashboardClean"));
+const EmployeeDashboardClean = lazy(() => import("./pages/EmployeeDashboardClean"));
+const SocialHub = lazy(() => import("./pages/SocialHub"));
+const ContentPlanningCenter = lazy(() => import("./pages/ContentPlanningCenter"));
+const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
+const ProjectDetails = lazy(() => import("./pages/ProjectDetails"));
+const CreateProject = lazy(() => import("./pages/CreateProject"));
+const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
+const LeadsCapture = lazy(() => import("./pages/LeadsCapture"));
+const LeadsManage = lazy(() => import("./pages/LeadsManage"));
+const LeadsAnalytics = lazy(() => import("./pages/LeadsAnalytics"));
+const IncomeDashboard = lazy(() => import("./pages/IncomeDashboard"));
+const SubscriptionsManager = lazy(() => import("./pages/SubscriptionsManager"));
+const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
+const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
+const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
+const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
+const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
+const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
+const PeopleManagement = lazy(() => import("./pages/PeopleManagement"));
+const AddonsManager = lazy(() => import("./pages/AddonsManager"));
+const IncomeReports = lazy(() => import("./pages/IncomeReports"));
+const CustomerImport = lazy(() => import("./pages/CustomerImport"));
+const NotificationHub = lazy(() => import("./pages/NotificationHub"));
+const MessageHub = lazy(() => import("./pages/MessageHub"));
+const SocialAccountsManager = lazy(() => import("./pages/SocialAccountsManager"));
+
+const PageLoader = () => (
+  <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#E8E8E5", color: "#04111A", fontFamily: "'Bricolage', Helvetica, Arial, sans-serif", fontSize: 15, opacity: 0.55 }}>
+    Cargando…
+  </div>
+);
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -120,91 +114,93 @@ const HRRoute = ({ children }) => (
 
 const AppRouter = () => (
   <Router>
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="/registro" element={<PublicRegister />} />
-      <Route path="/brief-publico" element={<PublicBriefStart />} />
-      <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
-      <Route path="/client-approval/:token" element={<PublicClientApproval />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/registro" element={<PublicRegister />} />
+        <Route path="/brief-publico" element={<PublicBriefStart />} />
+        <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
+        <Route path="/client-approval/:token" element={<PublicClientApproval />} />
 
-      {/* Core */}
-      <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><MarketingDashboard /></ProtectedRoute>} />
+        {/* Core */}
+        <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><MarketingDashboard /></ProtectedRoute>} />
 
-      {/* CRM */}
-      <Route path="/customer/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
-      <Route path="/create-customer" element={<ProtectedRoute><CreateCustomer /></ProtectedRoute>} />
-      <Route path="/crm" element={<ClientsRoute><CustomerDirectoryClean /></ClientsRoute>} />
-      <Route path="/customers/import" element={<ProtectedRoute><CustomerImport /></ProtectedRoute>} />
+        {/* CRM */}
+        <Route path="/customer/:id" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+        <Route path="/create-customer" element={<ProtectedRoute><CreateCustomer /></ProtectedRoute>} />
+        <Route path="/crm" element={<ClientsRoute><CustomerDirectoryClean /></ClientsRoute>} />
+        <Route path="/customers/import" element={<ProtectedRoute><CustomerImport /></ProtectedRoute>} />
 
-      {/* Social Media */}
-      <Route path="/social-hub" element={<SocialMediaRoute><SocialHub /></SocialMediaRoute>} />
-      <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
-      <Route path="/social/accounts" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
-      <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
+        {/* Social Media */}
+        <Route path="/social-hub" element={<SocialMediaRoute><SocialHub /></SocialMediaRoute>} />
+        <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
+        <Route path="/social/accounts" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
+        <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
 
-      {/* Leads */}
-      <Route path="/leads-inbox" element={<ProtectedRoute><LeadsInbox /></ProtectedRoute>} />
-      <Route path="/leads-capture" element={<ProtectedRoute><LeadsCapture /></ProtectedRoute>} />
-      <Route path="/leads-manage" element={<ProtectedRoute><LeadsManage /></ProtectedRoute>} />
-      <Route path="/leads-analytics" element={<ProtectedRoute><LeadsAnalytics /></ProtectedRoute>} />
+        {/* Leads */}
+        <Route path="/leads-inbox" element={<ProtectedRoute><LeadsInbox /></ProtectedRoute>} />
+        <Route path="/leads-capture" element={<ProtectedRoute><LeadsCapture /></ProtectedRoute>} />
+        <Route path="/leads-manage" element={<ProtectedRoute><LeadsManage /></ProtectedRoute>} />
+        <Route path="/leads-analytics" element={<ProtectedRoute><LeadsAnalytics /></ProtectedRoute>} />
 
-      {/* Income Management */}
-      <Route path="/income" element={<FinanceRoute><IncomeDashboard /></FinanceRoute>} />
-      <Route path="/income/subscriptions" element={<FinanceRoute><SubscriptionsManager /></FinanceRoute>} />
-      <Route path="/income/payments" element={<FinanceRoute><PaymentManagement /></FinanceRoute>} />
-      <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
-      <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
-      <Route path="/income/invoices/:id" element={<FinanceRoute><InvoiceDetail /></FinanceRoute>} />
-      <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
-      <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
+        {/* Income Management */}
+        <Route path="/income" element={<FinanceRoute><IncomeDashboard /></FinanceRoute>} />
+        <Route path="/income/subscriptions" element={<FinanceRoute><SubscriptionsManager /></FinanceRoute>} />
+        <Route path="/income/payments" element={<FinanceRoute><PaymentManagement /></FinanceRoute>} />
+        <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
+        <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
+        <Route path="/income/invoices/:id" element={<FinanceRoute><InvoiceDetail /></FinanceRoute>} />
+        <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
+        <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
 
-      {/* HR & Payroll */}
-      <Route path="/people" element={<HRRoute><PeopleManagement /></HRRoute>} />
-      <Route path="/hr/employees" element={<HRRoute><PeopleManagement /></HRRoute>} />
-      <Route path="/hr/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
-      <Route path="/hr/financials" element={<HRRoute><FinancialStatements /></HRRoute>} />
-      <Route path="/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
+        {/* HR & Payroll */}
+        <Route path="/people" element={<HRRoute><PeopleManagement /></HRRoute>} />
+        <Route path="/hr/employees" element={<HRRoute><PeopleManagement /></HRRoute>} />
+        <Route path="/hr/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
+        <Route path="/hr/financials" element={<HRRoute><FinancialStatements /></HRRoute>} />
+        <Route path="/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
 
-      {/* Notifications & Messaging */}
-      <Route path="/notifications" element={<ProtectedRoute><NotificationHub /></ProtectedRoute>} />
-      <Route path="/messages" element={<ProtectedRoute><MessageHub /></ProtectedRoute>} />
+        {/* Notifications & Messaging */}
+        <Route path="/notifications" element={<ProtectedRoute><NotificationHub /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute><MessageHub /></ProtectedRoute>} />
 
-      {/* Team Management */}
-      <Route path="/team-management" element={<HRRoute><TeamManagement /></HRRoute>} />
-      <Route path="/team-dashboard" element={<ProtectedRoute><TeamDashboardClean /></ProtectedRoute>} />
-      <Route path="/employee/:employeeId" element={<ProtectedRoute><EmployeeDashboardClean /></ProtectedRoute>} />
+        {/* Team Management */}
+        <Route path="/team-management" element={<HRRoute><TeamManagement /></HRRoute>} />
+        <Route path="/team-dashboard" element={<ProtectedRoute><TeamDashboardClean /></ProtectedRoute>} />
+        <Route path="/employee/:employeeId" element={<ProtectedRoute><EmployeeDashboardClean /></ProtectedRoute>} />
 
-      {/* Projects */}
-      <Route path="/projects" element={<ProtectedRoute><ProjectManagement /></ProtectedRoute>} />
-      <Route path="/projects/new" element={<ProtectedRoute><CreateProject /></ProtectedRoute>} />
-      <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetails /></ProtectedRoute>} />
+        {/* Projects */}
+        <Route path="/projects" element={<ProtectedRoute><ProjectManagement /></ProtectedRoute>} />
+        <Route path="/projects/new" element={<ProtectedRoute><CreateProject /></ProtectedRoute>} />
+        <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetails /></ProtectedRoute>} />
 
-      {/* Creative Briefs */}
-      <Route path="/briefs" element={<ProtectedRoute><BriefsList /></ProtectedRoute>} />
-      <Route path="/briefs/new" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
-      <Route path="/briefs/:id" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
+        {/* Creative Briefs */}
+        <Route path="/briefs" element={<ProtectedRoute><BriefsList /></ProtectedRoute>} />
+        <Route path="/briefs/new" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
+        <Route path="/briefs/:id" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
 
-      {/* Inventory */}
-      <Route path="/inventory-request" element={<ProtectedRoute><InventoryRequest /></ProtectedRoute>} />
-      <Route path="/inventory/:id" element={<ProtectedRoute><ProductProfile /></ProtectedRoute>} />
-      <Route path="/admin/inventory-request" element={<AdminRoute><InventoryRequest /></AdminRoute>} />
-      <Route path="/admin/inventory" element={<AdminInventoryViewer />} />
+        {/* Inventory */}
+        <Route path="/inventory-request" element={<ProtectedRoute><InventoryRequest /></ProtectedRoute>} />
+        <Route path="/inventory/:id" element={<ProtectedRoute><ProductProfile /></ProtectedRoute>} />
+        <Route path="/admin/inventory-request" element={<AdminRoute><InventoryRequest /></AdminRoute>} />
+        <Route path="/admin/inventory" element={<AdminInventoryViewer />} />
 
-      {/* Admin */}
-      <Route path="/admin/promotions" element={<AdminRoute><AdminPromotions /></AdminRoute>} />
-      <Route path="/admin/expenses" element={<AdminRoute><AdminExpenses /></AdminRoute>} />
-      <Route path="/admin/budgets" element={<AdminRoute><BudgetManagement /></AdminRoute>} />
-      <Route path="/admin/aprobaciones" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
-      <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
-      <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
+        {/* Admin */}
+        <Route path="/admin/promotions" element={<AdminRoute><AdminPromotions /></AdminRoute>} />
+        <Route path="/admin/expenses" element={<AdminRoute><AdminExpenses /></AdminRoute>} />
+        <Route path="/admin/budgets" element={<AdminRoute><BudgetManagement /></AdminRoute>} />
+        <Route path="/admin/aprobaciones" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
+        <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
+        <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/auth" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    </Suspense>
   </Router>
 );
 

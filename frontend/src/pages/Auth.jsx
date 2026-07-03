@@ -71,7 +71,7 @@ const Auth = () => {
     <div className="zx-auth">
       {/* Brand / art panel */}
       <div className="zx-auth-art">
-        <img className="wordmark" src="/landing/logo-wordmark-white.png" alt="ZIONX" />
+        <img className="wordmark" src="/landing/logo-wordmark-white.webp" alt="ZIONX" />
         <div>
           <h1 className="tagline">
             Mission <span className="zx-auth-serif">control.</span>
@@ -81,8 +81,8 @@ const Auth = () => {
           </p>
         </div>
         <span className="zx-auth-copyright">© 2026 ZIONX. All systems nominal.</span>
-        <img className="zx-auth-planet" src="/landing/planet.png" alt="" />
-        <img className="zx-auth-astro" src="/landing/astronaut.png" alt="Floating astronaut" />
+        <img className="zx-auth-planet" src="/landing/planet.webp" alt="" />
+        <img className="zx-auth-astro" src="/landing/astronaut.webp" alt="Floating astronaut" />
       </div>
 
       {/* Form panel */}

@@ -59,6 +59,44 @@ router.post("/content-calendar", async (req, res) => {
   }
 });
 
+// Get all content-calendar entries in a date range (across clients), for the
+// calendar/week/month views. Optional customer_id filter.
+router.get("/content-calendar-range", async (req, res) => {
+  try {
+    const { from, to, customer_id } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({ message: "from and to dates are required" });
+    }
+    const pool = req.pool;
+    const params = [from, to];
+    let query = `
+      SELECT
+        cc.id, cc.customer_id, cc.campaign, cc.platform, cc.pilar, cc.content_type,
+        cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_out, cc.priority,
+        cc.assigned_designer, cc.assigned_community_manager,
+        c.business_name AS customer_name,
+        designer.name AS designer_name,
+        cm.name AS cm_name
+      FROM content_calendar cc
+      LEFT JOIN customers c ON cc.customer_id = c.id
+      LEFT JOIN employees designer ON cc.assigned_designer = designer.id
+      LEFT JOIN employees cm ON cc.assigned_community_manager = cm.id
+      WHERE cc.scheduled_date >= $1 AND cc.scheduled_date <= $2
+    `;
+    if (customer_id) {
+      params.push(customer_id);
+      query += ` AND cc.customer_id = $${params.length}`;
+    }
+    query += ` ORDER BY cc.scheduled_date ASC, cc.priority DESC`;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching content-calendar range:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 // Update content calendar entry
 router.put("/content-calendar/:id", async (req, res) => {
   try {

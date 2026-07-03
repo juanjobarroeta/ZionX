@@ -665,6 +665,60 @@ router.post('/schedule', async (req, res) => {
 });
 
 /**
+ * GET /api/social/hub
+ * Publications hub feed — all scheduled_posts (the real publish queue) in a
+ * month, joined to account + customer, with status counts. Optional filters:
+ * customer_id, platform, month (YYYY-MM). Surfaces failed auto-posts.
+ */
+router.get('/hub', async (req, res) => {
+  try {
+    const { customer_id, platform, month } = req.query;
+    const params = [];
+    let where = 'WHERE 1=1';
+
+    if (month) {
+      params.push(month);
+      where += ` AND to_char(sp.scheduled_for, 'YYYY-MM') = $${params.length}`;
+    }
+    if (customer_id) {
+      params.push(customer_id);
+      where += ` AND sp.customer_id = $${params.length}`;
+    }
+    if (platform) {
+      params.push(platform);
+      where += ` AND sa.platform = $${params.length}`;
+    }
+
+    const result = await req.pool.query(`
+      SELECT
+        sp.id, sp.customer_id, sp.content_type, sp.message, sp.media_urls,
+        sp.link_url, sp.scheduled_for, sp.status, sp.published_at,
+        sp.platform_post_id, sp.platform_post_url, sp.error_message,
+        sa.platform, sa.account_name, sa.account_username,
+        COALESCE(c.business_name, c.commercial_name) AS customer_name
+      FROM scheduled_posts sp
+      JOIN social_accounts sa ON sp.social_account_id = sa.id
+      LEFT JOIN customers c ON sp.customer_id = c.id
+      ${where}
+      ORDER BY sp.scheduled_for DESC
+    `, params);
+
+    const posts = result.rows;
+    const counts = { scheduled: 0, published: 0, failed: 0, total: posts.length };
+    for (const p of posts) {
+      if (p.status === 'published') counts.published += 1;
+      else if (p.status === 'failed') counts.failed += 1;
+      else if (p.status === 'scheduled' || p.status === 'publishing') counts.scheduled += 1;
+    }
+
+    res.json({ posts, counts });
+  } catch (error) {
+    console.error('Error fetching publications hub:', error);
+    res.status(500).json({ error: 'Failed to fetch publications hub' });
+  }
+});
+
+/**
  * GET /api/social/scheduled
  * Get scheduled posts
  */
