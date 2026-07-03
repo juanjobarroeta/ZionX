@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import MarketingDashboard from "./pages/MarketingDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import CustomerPage from "./pages/CustomerPage";
@@ -121,6 +122,7 @@ const AppRouter = () => (
   <Router>
     <Routes>
       {/* Public Routes */}
+      <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/registro" element={<PublicRegister />} />

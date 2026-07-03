@@ -1,0 +1,171 @@
+/* ===== ZIONX Landing — space theme ===== */
+@font-face {
+  font-family: 'Bricolage';
+  src: url('/fonts/Bricolage.ttf') format('truetype');
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nyght';
+  src: url('/fonts/NyghtLightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nyght';
+  src: url('/fonts/NyghtBoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@keyframes zxFloat {
+  0%   { transform: translateY(0px) rotate(-2deg); }
+  50%  { transform: translateY(-22px) rotate(2deg); }
+  100% { transform: translateY(0px) rotate(-2deg); }
+}
+@keyframes zxFloatSm {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+@keyframes zxMarquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes zxRise {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Scope everything under .zx-landing so we never leak into the app UI */
+.zx-landing {
+  --ink: #04111A;
+  --paper: #F2F3F1;
+  --paper-2: #E8E8E5;
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif;
+  background: var(--ink);
+  color: var(--paper);
+  min-width: 320px;
+  overflow-x: hidden;
+}
+.zx-landing * { box-sizing: border-box; }
+
+.zx-serif {
+  font-family: 'Nyght', Georgia, serif;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+/* Nav */
+.zx-nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  padding: 18px 48px;
+  background: rgba(4, 17, 26, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(242, 243, 241, 0.08);
+}
+.zx-nav-links { display: flex; align-items: center; gap: 32px; font-size: 15px; font-weight: 500; letter-spacing: 0.02em; }
+.zx-nav-links a { color: var(--paper); text-decoration: none; opacity: 0.72; transition: opacity 0.2s ease; }
+.zx-nav-links a:hover { opacity: 1; }
+/* Solid CTA inside the nav must keep ink-colored text (beat .zx-nav-links a specificity) */
+.zx-nav-links a.zx-btn-solid { color: var(--ink); opacity: 1; }
+
+.zx-btn-solid {
+  background: var(--paper); color: var(--ink); text-decoration: none;
+  padding: 11px 22px; font-weight: 600; border-radius: 2px;
+  transition: background 0.2s ease, transform 0.2s ease; display: inline-block;
+}
+.zx-btn-solid:hover { background: #FFFFFF; transform: translateY(-1px); }
+.zx-btn-ink {
+  background: var(--ink); color: var(--paper); text-decoration: none;
+  padding: 18px 40px; font-size: 17px; font-weight: 600; border-radius: 2px;
+  transition: background 0.2s ease, transform 0.2s ease; display: inline-block;
+}
+.zx-btn-ink:hover { background: #0A2233; transform: translateY(-1px); }
+.zx-link-underline {
+  color: var(--paper); text-decoration: none; padding: 16px 10px; font-size: 16px;
+  font-weight: 500; opacity: 0.72; border-bottom: 1px solid rgba(242, 243, 241, 0.3);
+  transition: opacity 0.2s ease;
+}
+.zx-link-underline:hover { opacity: 1; }
+
+/* Hero */
+.zx-hero {
+  position: relative; overflow: hidden; padding: 88px 48px 104px;
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 48px; align-items: center; max-width: 1440px; margin: 0 auto;
+}
+.zx-eyebrow {
+  display: flex; align-items: center; gap: 14px; font-size: 13px;
+  letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.6; font-weight: 500;
+}
+.zx-h1 { margin: 0; font-size: clamp(52px, 7vw, 96px); line-height: 1.02; font-weight: 700; letter-spacing: -0.02em; }
+.zx-lead { margin: 0; max-width: 46ch; font-size: 19px; line-height: 1.6; opacity: 0.72; }
+.zx-hero-art { position: relative; min-height: 460px; display: flex; align-items: center; justify-content: center; }
+.zx-planet { position: absolute; right: -120px; bottom: -160px; width: 400px; opacity: 0.5; z-index: 0; }
+.zx-astronaut { width: 360px; max-width: 90%; position: relative; z-index: 1; animation: zxFloat 7s ease-in-out infinite; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.45)); }
+
+/* Marquee */
+.zx-marquee { overflow: hidden; border-top: 1px solid rgba(242,243,241,0.1); border-bottom: 1px solid rgba(242,243,241,0.1); padding: 18px 0; }
+.zx-marquee-track { display: flex; width: max-content; animation: zxMarquee 28s linear infinite; }
+.zx-marquee-group { display: flex; gap: 42px; padding-right: 42px; font-size: 15px; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 500; opacity: 0.55; white-space: nowrap; align-items: center; }
+
+/* Services */
+.zx-section-light { background: var(--paper-2); color: var(--ink); padding: 110px 48px; }
+.zx-container { max-width: 1440px; margin: 0 auto; }
+.zx-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 60px; }
+.zx-h2 { margin: 0; font-size: clamp(36px, 4.5vw, 60px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.zx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 2px; background: rgba(4,17,26,0.12); }
+.zx-card { background: var(--paper-2); padding: 40px 32px; display: flex; flex-direction: column; gap: 18px; min-height: 300px; transition: background 0.25s ease; }
+.zx-card:hover { background: #F2F3F1; }
+.zx-card img { width: 92px; height: 92px; object-fit: contain; }
+.zx-card h3 { margin: 0; font-size: 24px; font-weight: 600; }
+.zx-card p { margin: 0; font-size: 15.5px; line-height: 1.6; opacity: 0.65; }
+
+/* Platform */
+.zx-section-dark { background: var(--ink); padding: 118px 48px; position: relative; overflow: hidden; }
+.zx-platform-grid { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 72px; align-items: center; }
+.zx-platform-art { display: flex; align-items: center; justify-content: center; position: relative; }
+.zx-mac { width: min(100%, 420px); animation: zxFloatSm 9s ease-in-out infinite; }
+.zx-ufo { position: absolute; top: -20px; right: 4%; width: 108px; opacity: 0.8; animation: zxFloat 11s ease-in-out infinite; }
+.zx-feature { display: flex; gap: 16px; align-items: baseline; padding: 18px 0; border-top: 1px solid rgba(242,243,241,0.12); }
+.zx-feature:last-child { border-bottom: 1px solid rgba(242,243,241,0.12); }
+.zx-feature .num { font-size: 13px; opacity: 0.45; font-weight: 600; min-width: 32px; }
+
+/* CTA */
+.zx-cta { background: var(--paper-2); color: var(--ink); padding: 128px 48px; text-align: center; }
+.zx-cta-inner { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px; align-items: center; }
+.zx-cta h2 { margin: 0; font-size: clamp(44px, 6vw, 84px); font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.zx-cta-astro { height: 2.4em; margin: -0.7em -0.2em; animation: zxFloatSm 6s ease-in-out infinite; }
+
+/* Footer */
+.zx-footer { background: var(--ink); padding: 40px 48px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; border-top: 1px solid rgba(242,243,241,0.08); }
+.zx-footer nav { display: flex; gap: 28px; font-size: 14px; font-weight: 500; }
+.zx-footer nav a { color: var(--paper); opacity: 0.6; text-decoration: none; transition: opacity 0.2s ease; }
+.zx-footer nav a:hover { opacity: 1; }
+
+.zx-rise { animation: zxRise 0.7s ease both; }
+
+/* Responsive */
+/* Mobile-only nav login (hidden on desktop) */
+.zx-nav-mobile { display: none; padding: 9px 18px; }
+
+@media (max-width: 900px) {
+  .zx-nav { padding: 16px 22px; }
+  .zx-nav .zx-nav-desktop { display: none; }
+  .zx-nav-mobile { display: inline-block; }
+  .zx-hero { grid-template-columns: 1fr; padding: 56px 22px 64px; gap: 16px; }
+  .zx-hero-art { min-height: 320px; order: -1; }
+  .zx-astronaut { width: 240px; }
+  .zx-planet { width: 280px; right: -60px; bottom: -80px; }
+  .zx-section-light, .zx-section-dark, .zx-cta { padding: 72px 22px; }
+  .zx-platform-grid { grid-template-columns: 1fr; gap: 40px; }
+  .zx-footer { padding: 32px 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zx-astronaut, .zx-mac, .zx-ufo, .zx-cta-astro, .zx-marquee-track, .zx-rise { animation: none !important; }
+}
