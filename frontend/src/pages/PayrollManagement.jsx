@@ -4,6 +4,32 @@ import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 
+// Totals derived from the actual entries — the source of truth the detail
+// table and the backend both use. The period-level total_* columns can go
+// stale (e.g. a non-fiscal period whose deductions were later zeroed), so we
+// never trust them for the confirmation total.
+const num = (v) => parseFloat(v) || 0;
+const periodTotals = (period) => {
+  const entries = period?.entries || [];
+  if (!entries.length) {
+    return {
+      gross: num(period?.total_gross),
+      deductions: num(period?.total_deductions),
+      net: num(period?.total_net),
+    };
+  }
+  const gross = entries.reduce(
+    (s, e) => s + num(e.base_salary) + num(e.overtime_pay) + num(e.bonuses) + num(e.commissions) + num(e.other_earnings),
+    0
+  );
+  const deductions = entries.reduce(
+    (s, e) => s + num(e.isr_tax) + num(e.imss_employee) + num(e.infonavit) + num(e.loans_deduction) + num(e.other_deductions),
+    0
+  );
+  const net = entries.reduce((s, e) => s + num(e.net_pay), 0);
+  return { gross, deductions, net };
+};
+
 const PayrollManagement = () => {
   const [periods, setPeriods] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -686,24 +712,31 @@ const PayrollManagement = () => {
                 <p className="text-sm text-gray-600">Período:</p>
                 <p className="font-semibold text-lg">{selectedPeriod.period_name}</p>
                 
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span>Empleados:</span>
-                    <span className="font-medium">{selectedPeriod.entries?.length || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Bruto:</span>
-                    <span className="font-medium">{formatCurrency(selectedPeriod.total_gross)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Deducciones:</span>
-                    <span className="font-medium text-red-600">-{formatCurrency(selectedPeriod.total_deductions)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total a Pagar:</span>
-                    <span className="text-green-600">{formatCurrency(selectedPeriod.total_net)}</span>
-                  </div>
-                </div>
+                {(() => {
+                  const totals = periodTotals(selectedPeriod);
+                  return (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex justify-between">
+                        <span>Empleados:</span>
+                        <span className="font-medium">{selectedPeriod.entries?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Bruto:</span>
+                        <span className="font-medium">{formatCurrency(totals.gross)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Deducciones:</span>
+                        <span className="font-medium text-red-600">
+                          {totals.deductions > 0 ? `-${formatCurrency(totals.deductions)}` : formatCurrency(0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold border-t pt-2">
+                        <span>Total a Pagar:</span>
+                        <span className="text-green-600">{formatCurrency(totals.net)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <p className="text-sm text-gray-500 mb-4">

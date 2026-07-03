@@ -620,15 +620,21 @@ router.post('/payroll/periods/:id/process', async (req, res) => {
     for (const entry of entries.rows) {
       totalGross += parseFloat(entry.gross_pay || 0);
       totalNet += parseFloat(entry.net_pay || 0);
-      totalISR += parseFloat(entry.isr || 0);
-      totalIMSS += parseFloat(entry.imss || 0);
-      totalOtherDeductions += parseFloat(entry.other_deductions || 0);
-      
+      // Real column names are isr_tax / imss_employee (not isr / imss).
+      totalISR += parseFloat(entry.isr_tax || 0);
+      totalIMSS += parseFloat(entry.imss_employee || 0);
+      totalOtherDeductions +=
+        parseFloat(entry.infonavit || 0) +
+        parseFloat(entry.loans_deduction || 0) +
+        parseFloat(entry.other_deductions || 0);
+
       // Mark entry as paid
       await client.query(`
         UPDATE payroll_entries SET status = 'paid', paid_at = $1 WHERE id = $2
       `, [payment_date || new Date(), entry.id]);
     }
+
+    const totalDeductions = totalISR + totalIMSS + totalOtherDeductions;
     
     const periodName = period.rows[0].period_name;
     const payDate = payment_date || new Date();
@@ -671,14 +677,15 @@ router.post('/payroll/periods/:id/process', async (req, res) => {
     
     // Update period status
     await client.query(`
-      UPDATE payroll_periods SET 
-        status = 'paid', 
+      UPDATE payroll_periods SET
+        status = 'paid',
         payment_date = $1,
         total_gross = $2,
         total_net = $3,
+        total_deductions = $4,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $4
-    `, [payment_date || new Date(), totalGross, totalNet, id]);
+      WHERE id = $5
+    `, [payment_date || new Date(), totalGross, totalNet, totalDeductions, id]);
     
     await client.query('COMMIT');
     
