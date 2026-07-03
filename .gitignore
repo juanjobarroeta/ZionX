@@ -51,3 +51,7 @@ temp/
 
 # Railway
 .railway/
+
+# Secrets / local artifacts
+token.json
+backend/token.json

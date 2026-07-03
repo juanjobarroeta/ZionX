@@ -32,14 +32,31 @@ const port = process.env.PORT || 5001;
 app.use(express.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// CORS
-app.use(cors({
-  origin: true,
+// CORS — allow configured origins, any *.vercel.app deployment, and localhost.
+// Set CORS_ORIGINS (comma-separated) to add custom domains.
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin(origin, callback) {
+    // Non-browser requests (curl, server-to-server) have no Origin header.
+    if (!origin) return callback(null, true);
+    let hostname = '';
+    try { hostname = new URL(origin).hostname; } catch { /* malformed origin */ }
+    const ok =
+      allowedOrigins.includes(origin) ||
+      /^(localhost|127\.0\.0\.1)$/.test(hostname) ||
+      /\.vercel\.app$/.test(hostname);
+    return callback(ok ? null : new Error('Not allowed by CORS'), ok);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-app.options('*', cors());
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Static uploads directory
 const uploadDir = path.join(__dirname, 'uploads');
@@ -136,19 +153,16 @@ async function start() {
     await createTables(pool);
     console.log('✅ Database tables created/verified');
 
-    // Create default admin user if no users exist
+    // Warn (do NOT auto-create) when there are no users. Seeding a known
+    // admin@zionx.com / zionx2024 account was a standing backdoor — instead
+    // create the first admin explicitly with create-production-admin.js.
     try {
       const usersCheck = await pool.query('SELECT COUNT(*) FROM users');
       if (parseInt(usersCheck.rows[0].count) === 0) {
-        const hashedPassword = await bcrypt.hash('zionx2024', 10);
-        await pool.query(
-          "INSERT INTO users (name, email, password, role, is_active) VALUES ('Admin', 'admin@zionx.com', $1, 'admin', true)",
-          [hashedPassword]
-        );
-        console.log('✅ Default admin user created: admin@zionx.com / zionx2024');
+        console.log('⚠️ No users found. Create the first admin with: node create-production-admin.js');
       }
     } catch (e) {
-      console.log('⚠️ Could not check/create default user:', e.message);
+      console.log('⚠️ Could not check users table:', e.message);
     }
 
     // --- Existing external route files ---
