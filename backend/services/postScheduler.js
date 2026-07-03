@@ -209,6 +209,14 @@ class PostScheduler {
           WHERE id = $2
         `, [result.postId || result.mediaId, postId]);
 
+        // Backfill the plan entry so the calendar reflects what actually shipped.
+        if (post.content_calendar_id) {
+          await this.pool.query(
+            "UPDATE content_calendar SET status = 'publicado', updated_at = NOW() WHERE id = $1",
+            [post.content_calendar_id]
+          ).catch((e) => console.warn(`⚠️ Could not backfill content_calendar #${post.content_calendar_id}:`, e.message));
+        }
+
         console.log(`✅ Published post #${postId} to ${post.platform}: ${result.postId || result.mediaId}`);
       } else {
         await this.handleFailure(postId, post, result.error);

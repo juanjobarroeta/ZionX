@@ -101,6 +101,32 @@ const rangeLabel = (view, anchor) => {
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+// ---------- publish readiness (mirrors backend publishSync) ----------
+
+const PLAT_NAME = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", linkedin: "LinkedIn" };
+const APPROVED_INTERNAL = new Set(["aprobado", "approved", "publicado", "published", "listo"]);
+const CLIENT_BLOCKED = new Set(["changes_requested", "rejected", "rechazado"]);
+
+const readinessOf = (p) => {
+  const missing = [];
+  if (!APPROVED_INTERNAL.has((p.status || "").toLowerCase())) missing.push("aprobación interna");
+  if (CLIENT_BLOCKED.has((p.client_status || "").toLowerCase())) missing.push("aprobación del cliente");
+  if (!(p.copy_out || p.copy_in || "").trim()) missing.push("copy");
+  if ((p.platform || "").toLowerCase() === "instagram" && !(p.arte || "").trim()) missing.push("arte");
+  if (!p.scheduled_date) missing.push("fecha");
+  if (!p.has_account) missing.push(`cuenta de ${PLAT_NAME[(p.platform || "").toLowerCase()] || "la plataforma"} conectada`);
+  return { ready: missing.length === 0, missing };
+};
+
+const PUBLISH_META = {
+  scheduled: { label: "En cola", variant: "accent" },
+  publishing: { label: "Publicando", variant: "accent" },
+  published: { label: "Publicada", variant: "published" },
+  failed: { label: "Falló", variant: "failed" },
+  cancelled: { label: "Cancelada", variant: "draft" },
+};
+const publishMeta = (s) => PUBLISH_META[(s || "").toLowerCase()] || null;
+
 const ContentPlanningCenter = () => {
   const [view, setView] = useState("week");
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
@@ -180,13 +206,46 @@ const ContentPlanningCenter = () => {
   };
   const goToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); setAnchor(d); };
 
+  const [busy, setBusy] = useState(false);
+
+  const applyPatch = (postId, patch) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
+    setSelected((s) => (s && s.id === postId ? { ...s, ...patch } : s));
+  };
+
   const updateStatus = async (post, status) => {
     try {
       await axios.put(`${API_BASE_URL}/content-calendar/${post.id}`, { status }, { headers });
-      setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, status } : p)));
-      setSelected((s) => (s && s.id === post.id ? { ...s, status } : s));
+      applyPatch(post.id, { status });
     } catch {
       /* keep UI responsive; a failed status write just no-ops */
+    }
+  };
+
+  const schedulePost = async (post) => {
+    setBusy(true);
+    try {
+      const r = await axios.post(`${API_BASE_URL}/content-calendar/${post.id}/schedule`, {}, { headers });
+      applyPatch(post.id, {
+        publish_status: r.data?.scheduled_post?.status || "scheduled",
+        scheduled_post_id: r.data?.scheduled_post?.id || post.id,
+      });
+    } catch {
+      /* button only shows when ready; ignore transient failures */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unschedulePost = async (post) => {
+    setBusy(true);
+    try {
+      await axios.delete(`${API_BASE_URL}/content-calendar/${post.id}/schedule`, { headers });
+      applyPatch(post.id, { publish_status: null, scheduled_post_id: null });
+    } catch {
+      /* no-op */
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -240,7 +299,11 @@ const ContentPlanningCenter = () => {
       <button className={`zxc-post v-${variant}`} onClick={() => setSelected(post)}>
         <div className="top">
           <span>{[postTime(post), platAbbr(post.platform)].filter(Boolean).join(" · ")}</span>
-          <span>{statusInfo(post.status).label}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {post.publish_status === "scheduled" && <i className="zxc-qdot" title="En cola de publicación" />}
+            {post.publish_status === "failed" && <i className="zxc-qdot fail" title="Falló la publicación" />}
+            {statusInfo(post.status).label}
+          </span>
         </div>
         <div className="title">{postTitle(post)}</div>
         <div className="client">{customerName(post)}</div>
@@ -414,6 +477,45 @@ const ContentPlanningCenter = () => {
                   <option value="" disabled>Selecciona…</option>
                   {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+              </div>
+
+              {/* Publish (plan → queue) */}
+              <div className="zxc-field">
+                <span className="k">Publicación</span>
+                {(() => {
+                  const pm = publishMeta(selected.publish_status);
+                  if (pm) {
+                    return (
+                      <div className="zxc-pub">
+                        <span className={`zxc-pill v-${pm.variant}`}>{pm.label}</span>
+                        {selected.publish_status === "failed" && selected.publish_error && (
+                          <div className="zxc-pub-err">⚠ {selected.publish_error}</div>
+                        )}
+                        {selected.publish_status === "scheduled" && (
+                          <button className="zxc-btn-ghost" disabled={busy} onClick={() => unschedulePost(selected)}>
+                            Quitar de la cola
+                          </button>
+                        )}
+                        {selected.publish_status === "failed" && readinessOf(selected).ready && (
+                          <button className="zxc-btn-solid" disabled={busy} onClick={() => schedulePost(selected)}>
+                            {busy ? "Reintentando…" : "Reintentar"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+                  const rd = readinessOf(selected);
+                  return rd.ready ? (
+                    <button className="zxc-btn-solid" disabled={busy} onClick={() => schedulePost(selected)}>
+                      {busy ? "Programando…" : "Programar publicación"}
+                    </button>
+                  ) : (
+                    <div className="zxc-missing">
+                      <span>Falta para publicar:</span>
+                      <ul>{rd.missing.map((m) => <li key={m}>{m}</li>)}</ul>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </aside>

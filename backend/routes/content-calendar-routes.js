@@ -3,6 +3,11 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const publishSync = require('../services/publishSync');
+
+// Public base for building absolute media URLs Meta can fetch.
+const publicBase = (req) =>
+  process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`;
 
 // Multer setup for file uploads
 const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -72,15 +77,25 @@ router.get("/content-calendar-range", async (req, res) => {
     let query = `
       SELECT
         cc.id, cc.customer_id, cc.campaign, cc.platform, cc.pilar, cc.content_type,
-        cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_out, cc.priority,
+        cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_in, cc.copy_out, cc.arte,
+        cc.priority, cc.client_status, cc.scheduled_post_id,
         cc.assigned_designer, cc.assigned_community_manager,
         c.business_name AS customer_name,
         designer.name AS designer_name,
-        cm.name AS cm_name
+        cm.name AS cm_name,
+        sp.status AS publish_status,
+        sp.error_message AS publish_error,
+        EXISTS (
+          SELECT 1 FROM social_accounts sa
+          WHERE sa.customer_id = cc.customer_id AND sa.is_active = true
+            AND (LOWER(sa.platform) = LOWER(cc.platform)
+                 OR (LOWER(cc.platform) = 'instagram' AND sa.instagram_account_id IS NOT NULL))
+        ) AS has_account
       FROM content_calendar cc
       LEFT JOIN customers c ON cc.customer_id = c.id
       LEFT JOIN employees designer ON cc.assigned_designer = designer.id
       LEFT JOIN employees cm ON cc.assigned_community_manager = cm.id
+      LEFT JOIN scheduled_posts sp ON sp.id = cc.scheduled_post_id
       WHERE cc.scheduled_date >= $1 AND cc.scheduled_date <= $2
     `;
     if (customer_id) {
@@ -94,6 +109,33 @@ router.get("/content-calendar-range", async (req, res) => {
   } catch (error) {
     console.error("Error fetching content-calendar range:", error);
     res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// Promote a plan entry into the publish queue. 422 with `missing` if not ready.
+router.post("/content-calendar/:id/schedule", async (req, res) => {
+  try {
+    const result = await publishSync.promote(req.pool, req.params.id, publicBase(req));
+    if (result.notFound) return res.status(404).json({ message: "Entrada no encontrada" });
+    if (!result.ok) {
+      return res.status(422).json({ message: "La publicación aún no está lista", missing: result.readiness.missing });
+    }
+    res.json({ success: true, scheduled_post: result.scheduled_post });
+  } catch (error) {
+    console.error("Error scheduling calendar entry:", error);
+    res.status(500).json({ message: "No se pudo programar la publicación" });
+  }
+});
+
+// Remove a plan entry from the publish queue.
+router.delete("/content-calendar/:id/schedule", async (req, res) => {
+  try {
+    const result = await publishSync.unschedule(req.pool, req.params.id);
+    if (result.notFound) return res.status(404).json({ message: "Entrada no encontrada" });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error unscheduling calendar entry:", error);
+    res.status(500).json({ message: "No se pudo quitar de la cola" });
   }
 });
 

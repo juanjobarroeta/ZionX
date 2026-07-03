@@ -552,9 +552,23 @@ const createTables = async (pool) => {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='content_calendar' AND column_name='client_reviewed_at') THEN
           ALTER TABLE content_calendar ADD COLUMN client_reviewed_at TIMESTAMP DEFAULT NULL;
         END IF;
+        -- Link a plan entry to the publish-queue post it was promoted to.
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='content_calendar' AND column_name='scheduled_post_id') THEN
+          ALTER TABLE content_calendar ADD COLUMN scheduled_post_id INTEGER DEFAULT NULL;
+        END IF;
       END $$;
     `);
     console.log("✅ Client approval tables created");
+
+    // Reverse link: which plan entry a scheduled post came from (for status backfill).
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='scheduled_posts' AND column_name='content_calendar_id') THEN
+          ALTER TABLE scheduled_posts ADD COLUMN content_calendar_id INTEGER DEFAULT NULL;
+        END IF;
+      END $$;
+    `);
 
     // Add missing columns to messaging tables
     await pool.query(`

@@ -139,6 +139,18 @@
 
 .zxc-empty { padding: 60px 20px; text-align: center; opacity: 0.5; font-size: 15px; }
 
+/* Queue indicator on a post chip */
+.zxc-qdot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink); display: inline-block; }
+.zxc-qdot.fail { background: var(--crit); }
+
+/* Publish section in drawer */
+.zxc-pub { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.zxc-pub-err { background: rgba(138,28,28,0.08); border: 1px solid rgba(138,28,28,0.3); color: var(--crit); padding: 10px 12px; border-radius: 3px; font-size: 13.5px; }
+.zxc-missing { font-size: 14px; color: var(--muted); }
+.zxc-missing ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.zxc-missing li { color: var(--ink); }
+.zxc-pill.v-muted { border: 1px solid rgba(4,17,26,0.2); opacity: 0.6; }
+
 /* Status pill (drawer/legend) */
 .zxc-pill { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap; }
 .zxc-pill.v-published { background: var(--ink); color: var(--paper); }
