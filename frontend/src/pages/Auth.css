@@ -1,0 +1,97 @@
+/* ===== ZIONX Login — space theme (reuses fonts/keyframes from Landing.css) ===== */
+.zx-auth {
+  --ink: #04111A;
+  --paper: #F2F3F1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif;
+  background: var(--ink);
+  color: var(--paper);
+  overflow: hidden;
+}
+.zx-auth * { box-sizing: border-box; }
+
+/* Left brand / art panel */
+.zx-auth-art {
+  position: relative;
+  overflow: hidden;
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid rgba(242, 243, 241, 0.08);
+}
+.zx-auth-art .wordmark { height: 22px; width: auto; opacity: 0.95; align-self: flex-start; flex: 0 0 auto; object-fit: contain; }
+.zx-auth-art .tagline {
+  margin: 0;
+  font-size: clamp(34px, 4vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 12ch;
+  position: relative;
+  z-index: 2;
+}
+.zx-auth-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+.zx-auth-art .subtag { margin: 18px 0 0; font-size: 16px; line-height: 1.6; opacity: 0.6; max-width: 40ch; position: relative; z-index: 2; }
+.zx-auth-planet { position: absolute; right: -120px; top: 8%; width: 360px; opacity: 0.28; z-index: 0; }
+.zx-auth-astro {
+  position: absolute; right: 6%; top: 26%; width: 300px; z-index: 1;
+  animation: zxFloat 7s ease-in-out infinite;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.5));
+}
+.zx-auth-copyright { font-size: 12.5px; opacity: 0.4; position: relative; z-index: 2; }
+
+/* Right form panel */
+.zx-auth-form-wrap { display: flex; align-items: center; justify-content: center; padding: 48px; }
+.zx-auth-card { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; }
+.zx-auth-eyebrow {
+  display: flex; align-items: center; gap: 12px; font-size: 12px;
+  letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.55; font-weight: 500; margin-bottom: 6px;
+}
+.zx-auth-title { margin: 0 0 4px; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.zx-auth-sub { margin: 0 0 22px; font-size: 15px; opacity: 0.6; }
+
+.zx-auth-msg {
+  margin-bottom: 16px; padding: 12px 14px; font-size: 14px; border-radius: 3px;
+  background: rgba(242, 243, 241, 0.08); border: 1px solid rgba(242, 243, 241, 0.15); color: var(--paper);
+}
+.zx-auth-msg.error { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 90, 90, 0.35); }
+
+.zx-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+.zx-field label { font-size: 13px; font-weight: 500; opacity: 0.7; letter-spacing: 0.01em; }
+.zx-field input {
+  width: 100%; padding: 13px 14px; font-size: 15px; font-family: inherit;
+  color: var(--paper); background: rgba(242, 243, 241, 0.04);
+  border: 1px solid rgba(242, 243, 241, 0.16); border-radius: 3px; outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.zx-field input::placeholder { color: rgba(242, 243, 241, 0.35); }
+.zx-field input:focus { border-color: rgba(242, 243, 241, 0.7); background: rgba(242, 243, 241, 0.07); }
+
+.zx-auth-submit {
+  width: 100%; margin-top: 6px; padding: 14px; font-size: 15px; font-weight: 600; font-family: inherit;
+  color: var(--ink); background: var(--paper); border: none; border-radius: 3px; cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.zx-auth-submit:hover { background: #FFFFFF; transform: translateY(-1px); }
+.zx-auth-submit:active { transform: translateY(0); }
+
+.zx-auth-switch { margin: 20px 0 0; text-align: center; font-size: 14px; opacity: 0.7; }
+.zx-auth-switch button {
+  background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--paper); text-decoration: underline; text-underline-offset: 3px; padding: 0;
+}
+.zx-auth-back { margin-top: 26px; text-align: center; }
+.zx-auth-back a { color: var(--paper); opacity: 0.5; text-decoration: none; font-size: 13px; transition: opacity 0.2s ease; }
+.zx-auth-back a:hover { opacity: 0.9; }
+
+@media (max-width: 860px) {
+  .zx-auth { grid-template-columns: 1fr; }
+  .zx-auth-art { display: none; }
+  .zx-auth-form-wrap { padding: 40px 22px; min-height: 100vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zx-auth-astro { animation: none !important; }
+}

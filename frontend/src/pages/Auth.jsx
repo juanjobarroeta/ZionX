@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import Layout from "../components/Layout";
+import { Link } from "react-router-dom";
 import { API_BASE_URL } from "../utils/constants";
+import "./Landing.css";
+import "./Auth.css";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -63,27 +65,45 @@ const Auth = () => {
     }
   };
 
+  const isError = message && /error|no response|unexpected/i.test(message);
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-surface-50 to-surface-100 text-neutral-800 px-4">
-      <div className="flex flex-col items-center">
-        <div className="mb-6 w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-          <span className="text-neutral-800 font-bold text-2xl">F</span>
+    <div className="zx-auth">
+      {/* Brand / art panel */}
+      <div className="zx-auth-art">
+        <img className="wordmark" src="/landing/logo-wordmark-white.png" alt="ZIONX" />
+        <div>
+          <h1 className="tagline">
+            Mission <span className="zx-auth-serif">control.</span>
+          </h1>
+          <p className="subtag">
+            Sign in to run briefs, content calendars, budgets and reporting — all from one place.
+          </p>
         </div>
-        <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-xl border border-neutral-200">
-          <h2 className="mb-6 text-2xl font-semibold text-center text-primary-600">
-            {isLogin ? "Sign In" : "Sign Up"}
-          </h2>
+        <span className="zx-auth-copyright">© 2026 ZIONX. All systems nominal.</span>
+        <img className="zx-auth-planet" src="/landing/planet.png" alt="" />
+        <img className="zx-auth-astro" src="/landing/astronaut.png" alt="Floating astronaut" />
+      </div>
+
+      {/* Form panel */}
+      <div className="zx-auth-form-wrap">
+        <div className="zx-auth-card">
+          <div className="zx-auth-eyebrow">
+            <span>ZIONX Platform</span>
+          </div>
+          <h2 className="zx-auth-title">{isLogin ? "Welcome back" : "Create account"}</h2>
+          <p className="zx-auth-sub">
+            {isLogin ? "Sign in to your mission control." : "Join the crew and get to work."}
+          </p>
+
           {message && (
-            <div className="mb-4 p-3 text-center text-sm text-blue-700 bg-blue-100 rounded">
-              {message}
-            </div>
+            <div className={`zx-auth-msg${isError ? " error" : ""}`}>{message}</div>
           )}
+
           <form onSubmit={handleSubmit}>
             {!isLogin && (
-              <div className="mb-4">
-                <label className="block mb-1 text-gray-700 font-medium" htmlFor="name">
-                  Nombre
-                </label>
+              <div className="zx-field">
+                <label htmlFor="name">Nombre</label>
                 <input
                   type="text"
                   id="name"
@@ -91,14 +111,12 @@ const Auth = () => {
                   value={form.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-primary-500 bg-white text-neutral-800 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Tu nombre"
                 />
               </div>
             )}
-            <div className="mb-4">
-              <label className="block mb-1 text-gray-700 font-medium" htmlFor="email">
-                Correo Electrónico
-              </label>
+            <div className="zx-field">
+              <label htmlFor="email">Correo electrónico</label>
               <input
                 type="email"
                 id="email"
@@ -106,13 +124,11 @@ const Auth = () => {
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-primary-500 bg-white text-neutral-800 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="tu@correo.com"
               />
             </div>
-            <div className="mb-6">
-              <label className="block mb-1 text-gray-700 font-medium" htmlFor="password">
-                Contraseña
-              </label>
+            <div className="zx-field">
+              <label htmlFor="password">Contraseña</label>
               <input
                 type="password"
                 id="password"
@@ -120,25 +136,23 @@ const Auth = () => {
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border border-primary-500 bg-white text-neutral-800 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="••••••••"
               />
             </div>
-            <button
-              type="submit"
-              className="w-full py-2 bg-primary-500 text-neutral-800 font-semibold rounded hover:bg-white hover:text-primary-500 transition"
-            >
+            <button type="submit" className="zx-auth-submit">
               {isLogin ? "Ingresar" : "Registrarse"}
             </button>
           </form>
-          <p className="mt-6 text-center text-gray-600">
+
+          <p className="zx-auth-switch">
             {isLogin ? "¿No tienes una cuenta?" : "¿Ya tienes una cuenta?"}{" "}
-            <button
-              className="text-primary-500 hover:underline font-medium"
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "Registrarse" : "Iniciar Sesión"}
+            <button type="button" onClick={() => setIsLogin(!isLogin)}>
+              {isLogin ? "Registrarse" : "Iniciar sesión"}
             </button>
           </p>
+          <div className="zx-auth-back">
+            <Link to="/">← Volver al inicio</Link>
+          </div>
         </div>
       </div>
     </div>
