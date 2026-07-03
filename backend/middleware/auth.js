@@ -1,27 +1,33 @@
 const jwt = require("jsonwebtoken");
 
+// Fail closed: never run with a guessable signing key. Without a strong
+// JWT_SECRET anyone can forge an admin token, so refuse to start instead.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET environment variable is required. Set it (a long random string) before starting the server."
+  );
+}
+
 const generateToken = (user) => {
   const role = user.role || (user.is_admin ? "admin" : "user");
   return jwt.sign(
     { id: user.id, email: user.email, role },
-    process.env.JWT_SECRET || "secretkey",
+    JWT_SECRET,
     { expiresIn: "7d" }
   );
 };
 
 const authenticateToken = (req, res, next) => {
   const token = req.header("Authorization");
-  console.log("🛡️ Incoming token header:", token);
   if (!token) return res.status(403).json({ message: "Access denied" });
 
   try {
     const cleanToken = token.replace("Bearer ", "");
-    const decoded = jwt.verify(cleanToken, process.env.JWT_SECRET || "secretkey");
-    console.log("✅ Token decoded:", decoded);
+    const decoded = jwt.verify(cleanToken, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
-    console.error("❌ Token verification failed:", err);
     return res.status(403).json({ message: "Invalid token" });
   }
 };
