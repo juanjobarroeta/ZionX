@@ -259,7 +259,7 @@ const MarketingDashboard = () => {
             <div className="zxd-right">
               {/* Leads nuevos */}
               <section className="zxd-dark">
-                <img className="astro" src="/landing/astronaut.png" alt="" />
+                <img className="astro" src="/landing/astronaut.webp" alt="" />
                 <h2>Leads nuevos</h2>
                 <div className="zxd-dark-list">
                   {newLeads.length === 0 && <div className="zxd-empty">Sin leads nuevos por ahora.</div>}

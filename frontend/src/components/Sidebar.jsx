@@ -179,7 +179,7 @@ const Sidebar = () => {
       <aside className={`zxs${mobileOpen ? " open" : ""}`}>
         <div className="zxs-head">
           <Link to="/dashboard" style={{ display: "flex", alignItems: "center" }}>
-            <img src="/landing/logo-wordmark-white.png" alt="ZIONX" />
+            <img src="/landing/logo-wordmark-white.webp" alt="ZIONX" />
           </Link>
           <span className="tag">{roleInfo?.name || "Admin"}</span>
         </div>

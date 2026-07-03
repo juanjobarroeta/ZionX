@@ -47,7 +47,7 @@ const Landing = () => {
       {/* ============ NAV ============ */}
       <header className="zx-nav">
         <a href="#top" style={{ display: "flex", alignItems: "center" }}>
-          <img src="/landing/logo-wordmark-white.png" alt="ZIONX" style={{ height: 22, display: "block" }} />
+          <img src="/landing/logo-wordmark-white.webp" alt="ZIONX" style={{ height: 22, display: "block" }} />
         </a>
         <nav className="zx-nav-links zx-nav-desktop">
           <a href="#services">Services</a>
@@ -79,8 +79,8 @@ const Landing = () => {
           </div>
         </div>
         <div className="zx-hero-art">
-          <img className="zx-planet" src="/landing/planet.png" alt="" />
-          <img className="zx-astronaut" src="/landing/astronaut.png" alt="Floating astronaut" />
+          <img className="zx-planet" src="/landing/planet.webp" alt="" />
+          <img className="zx-astronaut" src="/landing/astronaut.webp" alt="Floating astronaut" />
           <PixelMark size={18} style={{ position: "absolute", top: "12%", left: "8%", opacity: 0.35 }} />
           <PixelMark size={10} style={{ position: "absolute", bottom: "18%", left: "20%", opacity: 0.25 }} />
         </div>
@@ -119,8 +119,8 @@ const Landing = () => {
       <section id="platform" className="zx-section-dark">
         <div className="zx-platform-grid">
           <div className="zx-platform-art">
-            <img className="zx-mac" src="/landing/mac.png" alt="Retro Macintosh computer" />
-            <img className="zx-ufo" src="/landing/ufo.png" alt="" />
+            <img className="zx-mac" src="/landing/mac.webp" alt="Retro Macintosh computer" />
+            <img className="zx-ufo" src="/landing/ufo.webp" alt="" />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
             <div className="zx-eyebrow">
@@ -152,7 +152,7 @@ const Landing = () => {
         <div className="zx-cta-inner">
           <h2>
             <span>hey</span>
-            <img className="zx-cta-astro" src="/landing/astronaut.png" alt="Astronaut" />
+            <img className="zx-cta-astro" src="/landing/astronaut.webp" alt="Astronaut" />
             <span>there<span className="zx-serif">!</span></span>
           </h2>
           <p style={{ margin: 0, fontSize: 19, lineHeight: 1.6, opacity: 0.65, maxWidth: "44ch" }}>
@@ -164,7 +164,7 @@ const Landing = () => {
 
       {/* ============ FOOTER ============ */}
       <footer className="zx-footer">
-        <img src="/landing/logo-zx-white.png" alt="ZX" style={{ height: 88, margin: -18 }} />
+        <img src="/landing/logo-zx-white.webp" alt="ZX" style={{ height: 88, margin: -18 }} />
         <nav>
           <a href="#services">Services</a>
           <a href="#platform">Platform</a>
