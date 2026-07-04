@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { CONTENT_STATUS_OPTIONS, contentStatusBadge } from '../config/contentStatus';
+
+// Canonical content-status values for the STATUS dropdown (now includes `cliente`).
+const CONTENT_STATUS_VALUES = CONTENT_STATUS_OPTIONS.map((o) => o.value);
 
 const ContentCalendar = ({ customerId, customerData }) => {
   const [contentData, setContentData] = useState([]);
@@ -27,7 +32,7 @@ const ContentCalendar = ({ customerId, customerData }) => {
     { key: 'post_number', label: 'NUMERO POST', width: '80px', type: 'readonly' },
     { key: 'scheduled_date', label: 'FECHA', width: '120px', type: 'date' },
     { key: 'campaign', label: 'Campaña', width: '150px', type: 'text' },
-    { key: 'status', label: 'STATUS', width: '120px', type: 'select', options: ['planificado', 'en_diseño', 'revision', 'aprobado', 'publicado'] },
+    { key: 'status', label: 'STATUS', width: '120px', type: 'select', options: CONTENT_STATUS_VALUES },
     { key: 'platform', label: 'PLATAFORMA', width: '130px', type: 'select', options: ['instagram', 'facebook', 'tiktok', 'linkedin', 'twitter'] },
     { key: 'pilar', label: 'PILAR', width: '120px', type: 'text' },
     { key: 'content_type', label: 'FORMATO', width: '100px', type: 'dynamic_select' }, // Dynamic based on platform
@@ -683,16 +688,7 @@ const ContentCalendar = ({ customerId, customerData }) => {
       }
     };
 
-    const getStatusColor = (status) => {
-      switch (status) {
-        case 'planificado': return 'bg-zionx-secondary text-zionx-primary';
-        case 'en_diseño': return 'bg-yellow-100 text-yellow-800';
-        case 'revision': return 'bg-orange-100 text-orange-800';
-        case 'aprobado': return 'bg-green-100 text-green-800';
-        case 'publicado': return 'bg-zionx-highlight text-white';
-        default: return 'bg-zionx-tertiary text-zionx-primary';
-      }
-    };
+    const getStatusColor = (status) => contentStatusBadge(status);
 
     return (
       <div
@@ -775,8 +771,17 @@ const ContentCalendar = ({ customerId, customerData }) => {
       {/* Header Controls */}
       <div className="bg-zionx-tertiary rounded-xl p-6 border border-zionx-secondary">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-zionx-primary">📅 Calendario de Contenido</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-zionx-primary">🗓️ Planeación mensual</h2>
+            <p className="text-sm text-gray-500">Planeación en bloque de este cliente. El calendario unificado es la vista principal de contenido.</p>
+          </div>
           <div className="flex items-center space-x-4">
+            <Link
+              to={`/content-calendar?customer=${customerId}`}
+              className="bg-zionx-primary text-white px-4 py-2 rounded-lg hover:bg-zionx-accent transition-all"
+            >
+              Ver en el calendario →
+            </Link>
             <div className="flex items-center space-x-2">
               <label className="text-zionx-primary font-medium">Mes:</label>
               <input

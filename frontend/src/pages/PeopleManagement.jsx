@@ -74,21 +74,9 @@ const PeopleManagement = () => {
       setEmployees(res.data);
     } catch (error) {
       console.error("Error fetching employees:", error);
-      // Mock data for development
-      setEmployees([
-        {
-          id: 1, name: "Ana García", email: "ana@zionx.com", phone: "+52 555 1234",
-          role: "designer", department: "Diseño", employee_type: "full_time",
-          monthly_wage: 15000, skills: ["Photoshop", "Figma"], is_active: true,
-          hire_date: "2024-01-15", current_tasks: 3
-        },
-        {
-          id: 2, name: "Carlos López", email: "carlos@zionx.com", phone: "+52 555 5678",
-          role: "community_manager", department: "Marketing", employee_type: "full_time",
-          monthly_wage: 12000, skills: ["Instagram", "TikTok"], is_active: true,
-          hire_date: "2024-03-01", current_tasks: 5
-        }
-      ]);
+      // Don't fabricate employees on error — show the real (empty) state so a
+      // failed load isn't mistaken for actual team data.
+      setEmployees([]);
     } finally {
       setLoading(false);
     }

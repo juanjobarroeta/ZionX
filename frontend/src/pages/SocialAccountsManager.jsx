@@ -352,12 +352,6 @@ META_REDIRECT_URI=http://localhost:5174/social/accounts`}
                       ✏️ Publicar
                     </button>
                     <button
-                      onClick={() => navigate(`/social/insights/${account.id}`)}
-                      className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 text-sm"
-                    >
-                      📊 Insights
-                    </button>
-                    <button
                       onClick={() => disconnectAccount(account.id)}
                       className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm"
                       title="Desconectar"

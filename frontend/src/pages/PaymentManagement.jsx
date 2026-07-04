@@ -220,7 +220,7 @@ const PaymentManagement = () => {
 
       // Record payment
       await axios.post(
-        `${API_BASE_URL}/api/income/invoices/${invoiceId}/payments`,
+        `${API_BASE_URL}/api/income/invoices/${invoiceId}/payment`,
         {
           amount: parseFloat(paymentAmount) * 1.16, // Include IVA
           payment_method: paymentMethod,

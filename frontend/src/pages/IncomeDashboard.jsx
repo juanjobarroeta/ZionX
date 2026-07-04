@@ -398,7 +398,7 @@ const IncomeDashboard = () => {
               <h3 className="text-sm font-semibold text-purple-100 mb-3">⚡ Acciones Rápidas</h3>
               <div className="space-y-2">
                 <Link
-                  to="/income/subscriptions/new"
+                  to="/income/subscriptions?new=1"
                   className="block bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg px-3 py-2 text-sm transition-all"
                 >
                   ➕ Nueva Suscripción
