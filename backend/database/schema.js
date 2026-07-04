@@ -529,6 +529,25 @@ const createTables = async (pool) => {
       );
     `);
 
+    // Per-post client approval: a token can now be scoped to a single post
+    // (content_calendar_id set) instead of a whole month. Replace the table-level
+    // UNIQUE(customer_id, month_year) with two partial unique indexes so month
+    // tokens and per-post tokens can coexist in the same month.
+    await pool.query(`
+      ALTER TABLE client_approval_tokens ADD COLUMN IF NOT EXISTS content_calendar_id INTEGER;
+    `);
+    await pool.query(`
+      ALTER TABLE client_approval_tokens DROP CONSTRAINT IF EXISTS client_approval_tokens_customer_id_month_year_key;
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_cat_month
+        ON client_approval_tokens (customer_id, month_year) WHERE content_calendar_id IS NULL;
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_cat_post
+        ON client_approval_tokens (content_calendar_id) WHERE content_calendar_id IS NOT NULL;
+    `);
+
     // Load external schema files (content calendar, approvals, briefs, etc.)
     await runSqlFile(pool, 'content-calendar-schema.sql');
     await runSqlFile(pool, 'approval-workflow-schema.sql');
