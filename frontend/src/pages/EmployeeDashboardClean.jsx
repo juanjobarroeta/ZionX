@@ -730,14 +730,14 @@ const EmployeeDashboardClean = () => {
                             <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
                               {file.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                 <img 
-                                  src={`http://localhost:5001${file.url}`} 
+                                  src={`${API_BASE_URL}${file.url}`} 
                                   alt={`ARTE ${idx + 1}`} 
                                   className="w-full h-auto rounded cursor-pointer"
-                                  onClick={() => window.open(`http://localhost:5001${file.url}`, '_blank')}
+                                  onClick={() => window.open(`${API_BASE_URL}${file.url}`, '_blank')}
                                 />
                               ) : (
                                 <a 
-                                  href={`http://localhost:5001${file.url}`} 
+                                  href={`${API_BASE_URL}${file.url}`} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="flex items-center space-x-2 text-blue-600 hover:underline"
@@ -756,13 +756,13 @@ const EmployeeDashboardClean = () => {
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                           {postData.arte.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                             <img 
-                              src={`http://localhost:5001${postData.arte}`} 
+                              src={`${API_BASE_URL}${postData.arte}`} 
                               alt="ARTE" 
                               className="max-w-full h-auto rounded"
                             />
                           ) : (
                             <a 
-                              href={`http://localhost:5001${postData.arte}`} 
+                              href={`${API_BASE_URL}${postData.arte}`} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="flex items-center space-x-2 text-blue-600 hover:underline"
@@ -787,14 +787,14 @@ const EmployeeDashboardClean = () => {
                             <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
                               {file.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                 <img 
-                                  src={`http://localhost:5001${file}`} 
+                                  src={`${API_BASE_URL}${file}`} 
                                   alt={`Elemento ${idx + 1}`} 
                                   className="w-full h-24 object-cover rounded cursor-pointer"
-                                  onClick={() => window.open(`http://localhost:5001${file}`, '_blank')}
+                                  onClick={() => window.open(`${API_BASE_URL}${file}`, '_blank')}
                                 />
                               ) : (
                                 <a 
-                                  href={`http://localhost:5001${file}`} 
+                                  href={`${API_BASE_URL}${file}`} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="block text-center text-xs text-blue-600 hover:underline"
