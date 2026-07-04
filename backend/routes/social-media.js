@@ -440,12 +440,13 @@ router.post('/schedule-from-calendar', async (req, res) => {
       return res.status(409).json({ error: 'A post with this content is already scheduled for this date' });
     }
 
-    // Create the scheduled post
+    // Create the scheduled post. Set content_calendar_id so the scheduler can
+    // backfill the plan entry's status on publish (matches publishSync.promote).
     const result = await req.pool.query(`
       INSERT INTO scheduled_posts (
         social_account_id, customer_id, content_type, message,
-        media_urls, scheduled_for, created_by, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+        media_urls, scheduled_for, created_by, status, content_calendar_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
       RETURNING *
     `, [
       account_id,
@@ -454,13 +455,14 @@ router.post('/schedule-from-calendar', async (req, res) => {
       message,
       mediaUrls.length > 0 ? mediaUrls : null,
       publishAt,
-      req.user.id
+      req.user.id,
+      calendar_entry_id
     ]);
 
-    // Update calendar entry status
+    // Update calendar entry status + set the reverse link (scheduled_post_id).
     await req.pool.query(
-      "UPDATE content_calendar SET status = 'programado', updated_at = NOW() WHERE id = $1",
-      [calendar_entry_id]
+      "UPDATE content_calendar SET status = 'programado', scheduled_post_id = $2, updated_at = NOW() WHERE id = $1",
+      [calendar_entry_id, result.rows[0].id]
     );
 
     console.log(`📅 Calendar entry #${calendar_entry_id} → scheduled post #${result.rows[0].id}`);

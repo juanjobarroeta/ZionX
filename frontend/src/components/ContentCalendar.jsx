@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { CONTENT_STATUS_OPTIONS, contentStatusBadge } from '../config/contentStatus';
+
+// Canonical content-status values for the STATUS dropdown (now includes `cliente`).
+const CONTENT_STATUS_VALUES = CONTENT_STATUS_OPTIONS.map((o) => o.value);
 
 const ContentCalendar = ({ customerId, customerData }) => {
   const [contentData, setContentData] = useState([]);
@@ -27,7 +31,7 @@ const ContentCalendar = ({ customerId, customerData }) => {
     { key: 'post_number', label: 'NUMERO POST', width: '80px', type: 'readonly' },
     { key: 'scheduled_date', label: 'FECHA', width: '120px', type: 'date' },
     { key: 'campaign', label: 'Campaña', width: '150px', type: 'text' },
-    { key: 'status', label: 'STATUS', width: '120px', type: 'select', options: ['planificado', 'en_diseño', 'revision', 'aprobado', 'publicado'] },
+    { key: 'status', label: 'STATUS', width: '120px', type: 'select', options: CONTENT_STATUS_VALUES },
     { key: 'platform', label: 'PLATAFORMA', width: '130px', type: 'select', options: ['instagram', 'facebook', 'tiktok', 'linkedin', 'twitter'] },
     { key: 'pilar', label: 'PILAR', width: '120px', type: 'text' },
     { key: 'content_type', label: 'FORMATO', width: '100px', type: 'dynamic_select' }, // Dynamic based on platform
@@ -683,16 +687,7 @@ const ContentCalendar = ({ customerId, customerData }) => {
       }
     };
 
-    const getStatusColor = (status) => {
-      switch (status) {
-        case 'planificado': return 'bg-zionx-secondary text-zionx-primary';
-        case 'en_diseño': return 'bg-yellow-100 text-yellow-800';
-        case 'revision': return 'bg-orange-100 text-orange-800';
-        case 'aprobado': return 'bg-green-100 text-green-800';
-        case 'publicado': return 'bg-zionx-highlight text-white';
-        default: return 'bg-zionx-tertiary text-zionx-primary';
-      }
-    };
+    const getStatusColor = (status) => contentStatusBadge(status);
 
     return (
       <div

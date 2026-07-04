@@ -2,18 +2,25 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import { publishStatusInfo } from "../config/contentStatus";
 import "./Hub.css";
 
 // ---------- mappings ----------
-
-const STATUS_MAP = {
-  scheduled: { label: "Programada", variant: "line", group: "scheduled" },
-  publishing: { label: "Publicando", variant: "line", group: "scheduled" },
-  published: { label: "Publicada", variant: "solid", group: "published" },
-  failed: { label: "Fallida", variant: "failed", group: "failed" },
-  cancelled: { label: "Cancelada", variant: "muted", group: "cancelled" },
+// Labels come from the canonical publish-status module; the Hub keeps its own
+// CSS variant + grouping (Hub.css) mapped per status value.
+const HUB_STYLE = {
+  scheduled: { variant: "line", group: "scheduled" },
+  publishing: { variant: "line", group: "scheduled" },
+  published: { variant: "solid", group: "published" },
+  failed: { variant: "failed", group: "failed" },
+  cancelled: { variant: "muted", group: "cancelled" },
 };
-const statusInfo = (s) => STATUS_MAP[(s || "").toLowerCase()] || { label: s || "—", variant: "muted", group: "other" };
+const statusInfo = (s) => {
+  const key = (s || "").toString().toLowerCase();
+  const info = publishStatusInfo(key);
+  const style = HUB_STYLE[key] || { variant: "muted", group: "other" };
+  return { label: info?.label || s || "—", ...style };
+};
 
 const PLATFORM_LABEL = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", linkedin: "LinkedIn", youtube: "YouTube" };
 const platLabel = (p) => PLATFORM_LABEL[(p || "").toLowerCase()] || (p ? p.charAt(0).toUpperCase() + p.slice(1) : "—");

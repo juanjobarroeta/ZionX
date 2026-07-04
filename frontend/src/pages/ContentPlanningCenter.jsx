@@ -2,47 +2,19 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import {
+  contentStatusInfo,
+  CONTENT_STATUS_OPTIONS,
+  publishStatusInfo,
+  APPROVED_INTERNAL,
+  CLIENT_BLOCKED,
+} from "../config/contentStatus";
 import "./Calendar.css";
 
 // ---------- status + platform mapping ----------
-
-const STATUS_MAP = {
-  publicado: { label: "Publicado", variant: "published" },
-  published: { label: "Publicado", variant: "published" },
-  completed: { label: "Publicado", variant: "published" },
-  aprobado: { label: "Aprobado", variant: "accent" },
-  approved: { label: "Aprobado", variant: "accent" },
-  revision: { label: "En revisión", variant: "accent" },
-  en_revision: { label: "En revisión", variant: "accent" },
-  "en revisión": { label: "En revisión", variant: "accent" },
-  review: { label: "En revisión", variant: "accent" },
-  cliente: { label: "Cliente", variant: "accent" },
-  client: { label: "Cliente", variant: "accent" },
-  en_diseño: { label: "En diseño", variant: "draft" },
-  "en diseño": { label: "En diseño", variant: "draft" },
-  diseno: { label: "En diseño", variant: "draft" },
-  in_progress: { label: "En diseño", variant: "draft" },
-  planificado: { label: "Planificado", variant: "draft" },
-  pending: { label: "Planificado", variant: "draft" },
-  fallido: { label: "Fallida", variant: "failed" },
-  failed: { label: "Fallida", variant: "failed" },
-  error: { label: "Fallida", variant: "failed" },
-};
-
-const statusInfo = (raw) => {
-  const key = (raw || "").toString().toLowerCase();
-  return STATUS_MAP[key] || { label: raw ? raw.replace(/_/g, " ") : "Planificado", variant: "draft" };
-};
-
-// The status options a user can set from the drawer, in workflow order.
-const STATUS_OPTIONS = [
-  { value: "planificado", label: "Planificado" },
-  { value: "en_diseño", label: "En diseño" },
-  { value: "revision", label: "En revisión" },
-  { value: "aprobado", label: "Aprobado" },
-  { value: "cliente", label: "Esperando cliente" },
-  { value: "publicado", label: "Publicado" },
-];
+// Canonical content/publish status now lives in config/contentStatus.
+const statusInfo = contentStatusInfo;
+const STATUS_OPTIONS = CONTENT_STATUS_OPTIONS;
 
 const PLATFORM_ABBR = {
   instagram: "IG", facebook: "FB", tiktok: "TikTok",
@@ -104,8 +76,6 @@ const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 // ---------- publish readiness (mirrors backend publishSync) ----------
 
 const PLAT_NAME = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", linkedin: "LinkedIn" };
-const APPROVED_INTERNAL = new Set(["aprobado", "approved", "publicado", "published", "listo"]);
-const CLIENT_BLOCKED = new Set(["changes_requested", "rejected", "rechazado"]);
 
 const readinessOf = (p) => {
   const missing = [];
@@ -118,14 +88,12 @@ const readinessOf = (p) => {
   return { ready: missing.length === 0, missing };
 };
 
-const PUBLISH_META = {
-  scheduled: { label: "En cola", variant: "accent" },
-  publishing: { label: "Publicando", variant: "accent" },
-  published: { label: "Publicada", variant: "published" },
-  failed: { label: "Falló", variant: "failed" },
-  cancelled: { label: "Cancelada", variant: "draft" },
+// Map the canonical publish tone → this surface's Calendar.css variant.
+const PUBLISH_VARIANT = { queued: "accent", active: "accent", success: "published", failed: "failed", muted: "draft" };
+const publishMeta = (s) => {
+  const info = publishStatusInfo(s);
+  return info ? { label: info.label, variant: PUBLISH_VARIANT[info.tone] } : null;
 };
-const publishMeta = (s) => PUBLISH_META[(s || "").toLowerCase()] || null;
 
 const ContentPlanningCenter = () => {
   const [view, setView] = useState("week");
