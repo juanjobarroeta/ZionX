@@ -2,6 +2,19 @@ const express = require('express');
 const router = express.Router();
 const { createNotification, notifyAllUsers, NotificationTemplates } = require('../utils/notifications');
 const { calculateQuincenalPayroll } = require('../utils/mexicanTaxCalculations');
+const { requireSection } = require('../middleware/authorize');
+
+// This router mixes a shared read (the employee LIST, which content roles need
+// for the calendar's designer/CM assignment dropdowns) with sensitive HR/finance
+// routes (payroll, financial statements, employee mutations). Allow the employee
+// list/detail reads for any authenticated user; require the `hr` section for
+// everything else.
+const isSharedEmployeeRead = (req) =>
+  req.method === 'GET' && (req.path === '/employees' || /^\/employees\/\d+$/.test(req.path) || req.path === '/test');
+router.use((req, res, next) => {
+  if (isSharedEmployeeRead(req)) return next();
+  return requireSection('hr')(req, res, next);
+});
 
 // Debug route to test HR endpoints
 router.get('/test', (req, res) => {

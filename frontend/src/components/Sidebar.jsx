@@ -68,7 +68,6 @@ const NAV_GROUPS = [
   {
     label: "Configuración",
     links: [
-      { href: "/admin/user-management", label: "Usuarios", section: "settings" },
       { href: "/admin/create-user", label: "Crear Usuario", section: "settings" },
     ],
   },
@@ -199,6 +198,9 @@ const Sidebar = () => {
             <Link to="/dashboard" className={`zxs-dash${isActive("/dashboard") ? " active" : ""}`}>
               <PixelMark size={10} />
               Dashboard
+            </Link>
+            <Link to="/my-work" className={`zxs-link${isActive("/my-work") ? " active" : ""}`}>
+              Mi trabajo
             </Link>
             <Link to="/messages" className={`zxs-link${isActive("/messages") ? " active" : ""}`}>
               Mensajes

@@ -70,7 +70,7 @@ export const MARKETING_ROLES = {
     },
     visiblePages: [
       '/dashboard',
-      '/employee-dashboard',
+      '/employee/:employeeId',
       '/content-calendar',
       '/social-hub',
       '/social-analytics',
@@ -98,7 +98,7 @@ export const MARKETING_ROLES = {
     },
     visiblePages: [
       '/dashboard',
-      '/employee-dashboard',
+      '/employee/:employeeId',
       '/content-calendar',
       '/team-dashboard',
       '/notifications',
@@ -121,7 +121,7 @@ export const MARKETING_ROLES = {
     },
     visiblePages: [
       '/dashboard',
-      '/employee-dashboard',
+      '/employee/:employeeId',
       '/content-calendar',
       '/team-dashboard',
       '/notifications',

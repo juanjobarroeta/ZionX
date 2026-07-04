@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { userIdsForTeamMembers, userIdsForEmployees, employeeIdForUser } = require('../services/identity');
 
 // Multer setup for task file uploads
 const storage = multer.diskStorage({
@@ -18,6 +19,51 @@ const upload = multer({ storage });
 // =====================================================
 // TEAM CONTENT TASKS
 // =====================================================
+
+// GET /api/team/my-work
+// The logged-in person's own content: every content_calendar item where they
+// are the assigned designer, community manager, or approver. Resolves the login
+// user → their employees.id (content is assigned by employee id). Returns the
+// raw items + which role(s) the caller holds on each, so the UI can bucket them.
+router.get("/api/team/my-work", async (req, res) => {
+  try {
+    const pool = req.pool;
+    const employeeId = await employeeIdForUser(pool, req.user.id);
+    if (!employeeId) {
+      // No employee record (e.g. an admin who isn't an assignee) → nothing assigned.
+      return res.json({ employeeId: null, items: [] });
+    }
+    const { rows } = await pool.query(
+      `SELECT
+         cc.id, cc.customer_id, cc.campaign, cc.platform, cc.content_type,
+         cc.scheduled_date, cc.status, cc.approval_status, cc.idea_tema,
+         cc.copy_out, cc.arte, cc.rejection_reason, cc.current_revision,
+         cc.assigned_designer, cc.assigned_community_manager, cc.assigned_approver,
+         c.business_name AS customer_name,
+         sp.status AS publish_status, sp.error_message AS publish_error
+       FROM content_calendar cc
+       LEFT JOIN customers c ON cc.customer_id = c.id
+       LEFT JOIN scheduled_posts sp ON sp.id = cc.scheduled_post_id
+       WHERE cc.assigned_designer = $1
+          OR cc.assigned_community_manager = $1
+          OR cc.assigned_approver = $1
+       ORDER BY cc.scheduled_date ASC NULLS LAST, cc.id DESC`,
+      [employeeId]
+    );
+    const items = rows.map((r) => ({
+      ...r,
+      roles: [
+        r.assigned_designer === employeeId && "designer",
+        r.assigned_community_manager === employeeId && "cm",
+        r.assigned_approver === employeeId && "approver",
+      ].filter(Boolean),
+    }));
+    res.json({ employeeId, items });
+  } catch (error) {
+    console.error("Error fetching my-work:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
 
 router.get("/api/team/content-tasks", async (req, res) => {
   try {
@@ -570,17 +616,20 @@ router.put("/tasks/:id/status", async (req, res) => {
       };
 
       if (notificationMessages[status] && assignedTo) {
-        // Notify the assigned user
-        await pool.query(`
-          INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-          VALUES ($1, $2, $3, $4, $5, 'task')
-        `, [assignedTo, notificationMessages[status].type, notificationMessages[status].message, '/employee-dashboard', id]);
-        console.log(`🔔 Notification sent to user ${assignedTo}: ${notificationMessages[status].message}`);
+        // assignedTo is a team_members.id → resolve to the person's login user.
+        const assignedUserId = (await userIdsForTeamMembers(pool, [assignedTo])).get(assignedTo);
+        if (assignedUserId) {
+          await pool.query(`
+            INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
+            VALUES ($1, $2, $3, $4, $5, 'task')
+          `, [assignedUserId, notificationMessages[status].type, notificationMessages[status].message, `/employee/${assignedTo}`, id]);
+          console.log(`🔔 Notification sent to user ${assignedUserId}: ${notificationMessages[status].message}`);
+        }
       }
 
       // If sent to review, notify managers/approvers
       if (status === 'review') {
-        // Get all users who can approve (managers, leads, admins)
+        // Get all employees who can approve (managers, leads, admins)…
         const approversResult = await pool.query(`
           SELECT id FROM employees
           WHERE is_active = true
@@ -588,15 +637,18 @@ router.put("/tasks/:id/status", async (req, res) => {
           LIMIT 5
         `);
 
+        // …then resolve those employees.id to login users.id for the bell.
+        const approverUserMap = await userIdsForEmployees(pool, approversResult.rows.map((r) => r.id));
         for (const approver of approversResult.rows) {
-          if (approver.id !== assignedTo) {
+          const approverUserId = approverUserMap.get(approver.id);
+          if (approverUserId && approver.id !== assignedTo) {
             await pool.query(`
               INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
               VALUES ($1, 'approval_needed', $2, '/team-dashboard', $3, 'task')
-            `, [approver.id, `📋 Nueva tarea para revisar: "${taskTitle}"`, id]);
+            `, [approverUserId, `📋 Nueva tarea para revisar: "${taskTitle}"`, id]);
           }
         }
-        console.log(`🔔 Notified ${approversResult.rows.length} approvers about new review`);
+        console.log(`🔔 Notified ${approverUserMap.size} approvers about new review`);
       }
 
     } catch (notifError) {

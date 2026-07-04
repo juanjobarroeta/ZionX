@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
+const { resolveNotifyUserIds } = require('../services/identity');
 
 // =====================================================
 // PUBLIC CLIENT APPROVAL ENDPOINTS (no auth required)
@@ -85,9 +86,13 @@ router.post('/client/:token/approve/:postId', async (req, res) => {
       autoScheduled = await tryAutoSchedule(req.pool, post);
     }
 
-    // Notify internal team
-    const usersToNotify = [post.assigned_designer, post.assigned_community_manager, post.assigned_approver, post.submitted_by].filter(Boolean);
-    for (const userId of [...new Set(usersToNotify)]) {
+    // Notify internal team. assigned_* are employees.id (resolve to users.id
+    // via email); submitted_by is already a users.id.
+    const notifyUserIds = await resolveNotifyUserIds(req.pool, {
+      employeeIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
+      userIds: [post.submitted_by],
+    });
+    for (const userId of notifyUserIds) {
       await req.pool.query(`
         INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
         VALUES ($1, 'client_approved', $2, '/content-calendar', $3, 'content')
@@ -130,10 +135,13 @@ router.post('/client/:token/request-changes/:postId', async (req, res) => {
       WHERE id = $1
     `, [postId, feedback]);
 
-    // Notify internal team
+    // Notify internal team (assigned_* are employees.id → users.id; submitted_by is users.id)
     const post = validation.post;
-    const usersToNotify = [post.assigned_designer, post.assigned_community_manager, post.assigned_approver, post.submitted_by].filter(Boolean);
-    for (const userId of [...new Set(usersToNotify)]) {
+    const notifyUserIds = await resolveNotifyUserIds(req.pool, {
+      employeeIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
+      userIds: [post.submitted_by],
+    });
+    for (const userId of notifyUserIds) {
       await req.pool.query(`
         INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
         VALUES ($1, 'client_revision', $2, '/content-calendar', $3, 'content')
@@ -358,10 +366,14 @@ router.post('/submit/:contentId', async (req, res) => {
 
     if (assigned_approver) {
       const content = result.rows[0];
-      await req.pool.query(`
-        INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-        VALUES ($1, 'approval_needed', $2, '/team-dashboard', $3, 'content')
-      `, [assigned_approver, `📋 Contenido pendiente de aprobacion: "${content.campaign || 'Post'}"`, contentId]);
+      // assigned_approver is an employees.id → resolve to the approver's login.
+      const [approverUserId] = await resolveNotifyUserIds(req.pool, { employeeIds: [assigned_approver] });
+      if (approverUserId) {
+        await req.pool.query(`
+          INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
+          VALUES ($1, 'approval_needed', $2, '/approvals', $3, 'content')
+        `, [approverUserId, `📋 Contenido pendiente de aprobacion: "${content.campaign || 'Post'}"`, contentId]);
+      }
     }
 
     res.json({ success: true, data: result.rows[0] });
@@ -403,10 +415,14 @@ router.post('/approve/:contentId', async (req, res) => {
       VALUES ($1, 'calendar_post', $2, CURRENT_TIMESTAMP, 'approved', $3, $4, $5)
     `, [contentId, approvedBy, feedback, internal_notes, result.rows[0].current_revision || 1]);
 
-    // Notify team
+    // Notify team. assigned_* are employees.id → users.id; submitted_by and
+    // approvedBy are already users.id, so the self-skip is now a like-for-like compare.
     const content = result.rows[0];
-    const usersToNotify = [content.assigned_designer, content.assigned_community_manager, content.submitted_by].filter(Boolean);
-    for (const userId of [...new Set(usersToNotify)]) {
+    const notifyUserIds = await resolveNotifyUserIds(req.pool, {
+      employeeIds: [content.assigned_designer, content.assigned_community_manager],
+      userIds: [content.submitted_by],
+    });
+    for (const userId of notifyUserIds) {
       if (userId !== approvedBy) {
         await req.pool.query(`
           INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
@@ -472,13 +488,19 @@ router.post('/reject/:contentId', async (req, res) => {
       VALUES ($1, 'calendar_post', $2, CURRENT_TIMESTAMP, 'rejected', $3, $4, $5)
     `, [contentId, rejectedBy, reason, feedback, result.rows[0].current_revision || 1]);
 
+    // send_back_to + assigned_* are employees.id → users.id; submitted_by and
+    // rejectedBy are users.id. Link points at the real route (/content-calendar),
+    // not the dead /employee-dashboard.
     const content = result.rows[0];
-    const usersToNotify = [send_back_to, content.assigned_designer, content.assigned_community_manager, content.submitted_by].filter(Boolean);
-    for (const userId of [...new Set(usersToNotify)]) {
+    const notifyUserIds = await resolveNotifyUserIds(req.pool, {
+      employeeIds: [send_back_to, content.assigned_designer, content.assigned_community_manager],
+      userIds: [content.submitted_by],
+    });
+    for (const userId of notifyUserIds) {
       if (userId !== rejectedBy) {
         await req.pool.query(`
           INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-          VALUES ($1, 'revision_requested', $2, '/employee-dashboard', $3, 'content')
+          VALUES ($1, 'revision_requested', $2, '/content-calendar', $3, 'content')
         `, [userId, `↩️ Correcciones solicitadas: "${content.campaign || 'Post'}" - ${reason.substring(0, 50)}...`, contentId]);
       }
     }

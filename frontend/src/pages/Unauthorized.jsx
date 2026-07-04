@@ -14,7 +14,7 @@ const Unauthorized = () => {
       case 'community_manager':
       case 'designer':
       case 'copywriter':
-        return '/employee-dashboard';
+        return '/content-calendar';
       case 'accountant':
         return '/income';
       case 'hr_manager':

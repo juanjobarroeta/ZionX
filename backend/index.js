@@ -23,6 +23,7 @@ require('dotenv').config();
 
 // Auth & DB modules
 const { authenticateToken, isAdmin } = require('./middleware/auth');
+const { requireSection } = require('./middleware/authorize');
 const { createTables } = require('./database/schema');
 
 // Express setup
@@ -193,10 +194,10 @@ async function start() {
     app.use(whatsappRoutes);
     app.use(leadsRoutes);
 
-    // Income management
-    app.use('/api/income', withPool, authenticateToken, incomeRoutes);
-    app.use('/api/income', withPool, authenticateToken, incomeInvoicesRoutes);
-    app.use('/api/income', withPool, authenticateToken, incomePaymentsRoutes);
+    // Income management (finance — ingresos section)
+    app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomeRoutes);
+    app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomeInvoicesRoutes);
+    app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomePaymentsRoutes);
 
     // Customer import
     app.use('/api', withPool, authenticateToken, customerImportRoutes);
@@ -210,22 +211,22 @@ async function start() {
     // Messages
     app.use('/api/messages', withPool, authenticateToken, messagesRoutes);
 
-    // Social Media (public /config endpoint, auth for rest)
+    // Social Media (public /config endpoint; auth + social_media section for rest)
     app.use('/api/social', (req, res, next) => {
       req.pool = pool;
       if (req.path === '/config' && req.method === 'GET') return next();
-      return authenticateToken(req, res, next);
+      return authenticateToken(req, res, () => requireSection('social_media')(req, res, next));
     }, socialMediaRoutes);
 
-    // Approvals (public /client/* endpoints, auth for rest)
+    // Approvals (public /client/* endpoints; auth + social_media section for rest)
     app.use('/api/approvals', (req, res, next) => {
       req.pool = pool;
       if (req.path.startsWith('/client/')) return next();
-      return authenticateToken(req, res, next);
+      return authenticateToken(req, res, () => requireSection('social_media')(req, res, next));
     }, approvalsRoutes);
 
-    // Expenses
-    app.use('/api/expenses', withPool, authenticateToken, expensesRoutes);
+    // Expenses (finance — finanzas section)
+    app.use('/api/expenses', withPool, authenticateToken, requireSection('finanzas'), expensesRoutes);
 
     // Creative Briefs (has its own public/auth split)
     app.use('/api/briefs', withPool, creativeBriefsRoutes);
@@ -246,8 +247,8 @@ async function start() {
     // Inventory & warehouse
     app.use('/', withPool, authenticateToken, inventoryRoutes);
 
-    // Budgets
-    app.use('/budgets', withPool, authenticateToken, budgetsRoutes);
+    // Budgets (finance — finanzas section)
+    app.use('/budgets', withPool, authenticateToken, requireSection('finanzas'), budgetsRoutes);
 
     // Admin (stores, users)
     app.use('/admin', withPool, authenticateToken, isAdmin, adminRoutes);
