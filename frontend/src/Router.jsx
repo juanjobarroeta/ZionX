@@ -46,6 +46,7 @@ const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
 const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
 const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
 const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
+const CfdiFiscal = lazy(() => import("./pages/CfdiFiscal"));
 const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
 const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
 const PeopleManagement = lazy(() => import("./pages/PeopleManagement"));
@@ -154,6 +155,7 @@ const AppRouter = () => (
         <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
         <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
         <Route path="/income/invoices/:id" element={<FinanceRoute><InvoiceDetail /></FinanceRoute>} />
+        <Route path="/income/cfdi" element={<FinanceRoute><CfdiFiscal /></FinanceRoute>} />
         <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
         <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
 
@@ -187,7 +189,7 @@ const AppRouter = () => (
         <Route path="/inventory-request" element={<ProtectedRoute><InventoryRequest /></ProtectedRoute>} />
         <Route path="/inventory/:id" element={<ProtectedRoute><ProductProfile /></ProtectedRoute>} />
         <Route path="/admin/inventory-request" element={<AdminRoute><InventoryRequest /></AdminRoute>} />
-        <Route path="/admin/inventory" element={<AdminInventoryViewer />} />
+        <Route path="/admin/inventory" element={<AdminRoute><AdminInventoryViewer /></AdminRoute>} />
 
         {/* Admin */}
         <Route path="/admin/promotions" element={<AdminRoute><AdminPromotions /></AdminRoute>} />

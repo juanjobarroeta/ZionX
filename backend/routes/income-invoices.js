@@ -16,6 +16,18 @@ router.get('/cfdi/health', (req, res) => {
   res.json({ configured: contaHub.isConfigured() });
 });
 
+// Surface the company's real CFDIs from contabilidad-os (read-only mirror).
+router.get('/cfdi/invoices', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false, invoices: [] });
+    const invoices = await contaHub.listInvoices({ q: req.query.q, take: parseInt(req.query.take, 10) || 50 });
+    res.json({ configured: true, invoices });
+  } catch (error) {
+    console.error('Error listing hub CFDIs:', error.message);
+    res.status(502).json({ configured: true, error: error.message, invoices: [] });
+  }
+});
+
 /**
  * POST /api/income/invoices/:id/stamp
  * Mirror a ZionX invoice into contabilidad-os as a stamped CFDI. Idempotent:

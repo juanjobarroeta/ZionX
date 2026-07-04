@@ -1,0 +1,49 @@
+/* ===== ZIONX Fiscal (CFDI surface) ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxf {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --muted: rgba(4,17,26,0.55);
+  --ok: #235B44; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 48px 64px;
+}
+.zxf *, .zxf { box-sizing: border-box; }
+.zxf-inner { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.zxf-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+.zxf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxf-eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
+.zxf-h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -0.02em; }
+.zxf-search {
+  font-family: inherit; font-size: 14px; padding: 10px 14px; border: 1px solid var(--line);
+  border-radius: 3px; background: var(--surface); color: var(--ink); min-width: 260px; outline: none;
+}
+.zxf-search:focus { border-color: var(--ink); }
+
+.zxf-summary { display: flex; gap: 2px; background: var(--line); border: 1px solid var(--line); }
+.zxf-summary > div { background: var(--paper); padding: 18px 24px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.zxf-summary .k { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+.zxf-summary .v { font-size: 26px; font-weight: 700; }
+
+.zxf-tablewrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+.zxf-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.zxf-table th { text-align: left; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.5; font-weight: 700; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.zxf-table td { padding: 14px 16px; border-bottom: 1px solid rgba(4,17,26,0.07); font-size: 14px; }
+.zxf-table tr:last-child td { border-bottom: none; }
+.zxf-table .r { text-align: right; }
+.zxf-table .bold { font-weight: 700; }
+.zxf-table .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+
+.zxf-pill { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; }
+.zxf-pill.ok { background: var(--ink); color: var(--paper); }
+.zxf-pill.bad { background: var(--bad); color: var(--paper); }
+.zxf-pill.muted { border: 1px solid var(--line); opacity: 0.65; }
+
+.zxf-empty { padding: 40px 20px; text-align: center; opacity: 0.5; font-size: 15px; }
+.zxf-note { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ink); padding: 20px 22px; border-radius: 3px; max-width: 640px; }
+.zxf-note.error { border-left-color: var(--bad); }
+.zxf-note p { margin: 8px 0 0; opacity: 0.7; font-size: 14px; }
+.zxf-note code { font-family: ui-monospace, monospace; font-size: 12px; background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+
+@media (max-width: 900px) { .zxf { padding: 72px 16px 48px; } }
