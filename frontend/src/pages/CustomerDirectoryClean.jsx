@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import { customerName } from "../utils/customerName";
 import "./Directory.css";
 
 const CustomerDirectoryClean = () => {
@@ -29,7 +30,7 @@ const CustomerDirectoryClean = () => {
     fetchCustomers();
   }, []);
 
-  const nameOf = (c) => c.business_name || c.commercial_name || "Cliente sin nombre";
+  const nameOf = customerName;
   const emailOf = (c) => c.contact_email || c.email || "";
 
   const filtered = useMemo(() => {
