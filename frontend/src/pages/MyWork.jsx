@@ -41,15 +41,15 @@ const GROUPS = [
 ];
 
 const MyWork = () => {
-  const [state, setState] = useState({ loading: true, items: [], employeeId: undefined, error: null });
+  const [state, setState] = useState({ loading: true, items: [], memberId: undefined, error: null });
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
   const userName = localStorage.getItem("userName") || "";
   const firstName = userName.split(" ")[0] || "";
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/api/team/my-work`, { headers })
-      .then((r) => setState({ loading: false, items: r.data?.items || [], employeeId: r.data?.employeeId ?? null, error: null }))
-      .catch((e) => setState({ loading: false, items: [], employeeId: null, error: e.response?.data?.message || e.message }));
+      .then((r) => setState({ loading: false, items: r.data?.items || [], memberId: r.data?.memberId ?? null, error: null }))
+      .catch((e) => setState({ loading: false, items: [], memberId: null, error: e.response?.data?.message || e.message }));
   }, [headers]);
 
   const grouped = useMemo(() => {
@@ -98,7 +98,7 @@ const MyWork = () => {
 
           {state.loading ? (
             <div className="zxw-loading">Cargando tu trabajo…</div>
-          ) : state.employeeId === null && state.items.length === 0 ? (
+          ) : state.memberId === null && state.items.length === 0 ? (
             <div className="zxw-empty">
               <span className="big">🗂️</span>
               <div className="lead">No tienes contenido asignado</div>

@@ -93,8 +93,8 @@ router.get("/content-calendar-range", async (req, res) => {
         ) AS has_account
       FROM content_calendar cc
       LEFT JOIN customers c ON cc.customer_id = c.id
-      LEFT JOIN employees designer ON cc.assigned_designer = designer.id
-      LEFT JOIN employees cm ON cc.assigned_community_manager = cm.id
+      LEFT JOIN team_members designer ON cc.assigned_designer = designer.id
+      LEFT JOIN team_members cm ON cc.assigned_community_manager = cm.id
       LEFT JOIN scheduled_posts sp ON sp.id = cc.scheduled_post_id
       WHERE cc.scheduled_date >= $1 AND cc.scheduled_date <= $2
     `;

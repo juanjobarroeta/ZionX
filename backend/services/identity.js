@@ -1,46 +1,30 @@
 // ============================================================================
-// Identity bridge: employees.id → users.id
+// Identity resolution, standardized on team_members.
 //
-// ZionX has three unlinked "person" tables: `users` (login accounts),
-// `employees` (content assignees: designer / CM / approver), and `team_members`
-// (tasks). Content is assigned by employees.id, but notifications are addressed
-// by users.id — so notifications inserted with an employee id never reached the
-// person (the "silent bell"). The tables share no FK; the only real link is the
-// email address (login already bridges them by email). This resolves an
-// employee to their login user via that email match.
+// The person table in this app is `team_members` — it holds the team (HR fields,
+// payroll, the assignment dropdown all use it) and, crucially, it already has a
+// `user_id` FK to the login `users` table. Content is assigned by team_members.id
+// (content-calendar-schema.sql: "assigned_designer -- Team member ID").
+//
+// (`employees` is a phantom: never created in the repo, only referenced by some
+// read JOINs — a latent bug. Everything identity-related resolves through
+// team_members here, via the user_id FK, with an email fallback for legacy rows
+// created before user_id was populated.)
 // ============================================================================
 
 /**
- * Map a list of employee ids to their matching login users.id (by email,
- * case-insensitive). Returns a Map(employeeId → userId); employees with no
- * matching active login are simply absent from the map.
+ * Login users.id → their team_members.id. Prefers the user_id FK; falls back to
+ * an email match for rows created before the FK was set. null if no match.
  */
-async function userIdsForEmployees(pool, employeeIds) {
-  const ids = [...new Set((employeeIds || []).filter((v) => v != null))];
-  if (!ids.length) return new Map();
-  const { rows } = await pool.query(
-    `SELECT e.id AS employee_id, u.id AS user_id
-       FROM employees e
-       JOIN users u ON LOWER(u.email) = LOWER(e.email)
-      WHERE e.id = ANY($1::int[]) AND u.is_active = true`,
-    [ids]
-  );
-  const map = new Map();
-  for (const r of rows) map.set(r.employee_id, r.user_id);
-  return map;
-}
-
-/**
- * Reverse of userIdsForEmployees: given a login users.id, find their employees.id
- * (by email). Returns null if the user has no matching employee record.
- */
-async function employeeIdForUser(pool, userId) {
+async function teamMemberIdForUser(pool, userId) {
   if (userId == null) return null;
   const { rows } = await pool.query(
-    `SELECT e.id
-       FROM employees e
-       JOIN users u ON LOWER(u.email) = LOWER(e.email)
-      WHERE u.id = $1 AND e.is_active = true
+    `SELECT id
+       FROM team_members
+      WHERE is_active = true
+        AND (user_id = $1
+             OR (user_id IS NULL AND LOWER(email) = (SELECT LOWER(email) FROM users WHERE id = $1)))
+      ORDER BY (user_id = $1) DESC
       LIMIT 1`,
     [userId]
   );
@@ -48,8 +32,8 @@ async function employeeIdForUser(pool, userId) {
 }
 
 /**
- * Map team_members ids to users.id. team_members already carries a user_id FK,
- * so prefer that; fall back to an email match for rows created before it was set.
+ * Map team_members ids → users.id (for addressing notifications). Prefers the
+ * user_id FK; email fallback for legacy rows. Returns Map(teamMemberId → userId).
  */
 async function userIdsForTeamMembers(pool, teamMemberIds) {
   const ids = [...new Set((teamMemberIds || []).filter((v) => v != null))];
@@ -68,20 +52,20 @@ async function userIdsForTeamMembers(pool, teamMemberIds) {
 }
 
 /**
- * Given employee-id fields (assignees) and user-id fields (already users.id,
- * e.g. content_calendar.submitted_by which stores req.user.id), return the
- * deduped set of users.id to notify. Employee ids that resolve to no login are
- * dropped so we never insert a notification nobody can read.
+ * Resolve a mix of member-id fields (assignees — team_members.id) and user-id
+ * fields (already users.id, e.g. content_calendar.submitted_by which stores
+ * req.user.id) into the deduped set of users.id to notify. Assignees with no
+ * resolvable login are dropped so we never write a notification nobody can read.
  */
-async function resolveNotifyUserIds(pool, { employeeIds = [], userIds = [] } = {}) {
-  const empToUser = await userIdsForEmployees(pool, employeeIds);
+async function resolveNotifyUserIds(pool, { memberIds = [], userIds = [] } = {}) {
+  const memberToUser = await userIdsForTeamMembers(pool, memberIds);
   const out = new Set();
-  for (const eid of employeeIds) {
-    const uid = empToUser.get(eid);
+  for (const mid of memberIds) {
+    const uid = memberToUser.get(mid);
     if (uid != null) out.add(uid);
   }
   for (const uid of userIds) if (uid != null) out.add(uid);
   return [...out];
 }
 
-module.exports = { userIdsForEmployees, employeeIdForUser, userIdsForTeamMembers, resolveNotifyUserIds };
+module.exports = { teamMemberIdForUser, userIdsForTeamMembers, resolveNotifyUserIds };

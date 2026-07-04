@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { userIdsForTeamMembers, userIdsForEmployees, employeeIdForUser } = require('../services/identity');
+const { userIdsForTeamMembers, teamMemberIdForUser } = require('../services/identity');
 
 // Multer setup for task file uploads
 const storage = multer.diskStorage({
@@ -23,15 +23,15 @@ const upload = multer({ storage });
 // GET /api/team/my-work
 // The logged-in person's own content: every content_calendar item where they
 // are the assigned designer, community manager, or approver. Resolves the login
-// user → their employees.id (content is assigned by employee id). Returns the
-// raw items + which role(s) the caller holds on each, so the UI can bucket them.
+// user → their team_members.id (content is assigned by team_member id, via the
+// user_id FK). Returns the raw items + which role(s) the caller holds on each.
 router.get("/api/team/my-work", async (req, res) => {
   try {
     const pool = req.pool;
-    const employeeId = await employeeIdForUser(pool, req.user.id);
-    if (!employeeId) {
-      // No employee record (e.g. an admin who isn't an assignee) → nothing assigned.
-      return res.json({ employeeId: null, items: [] });
+    const memberId = await teamMemberIdForUser(pool, req.user.id);
+    if (!memberId) {
+      // No team_member record (e.g. an admin who isn't an assignee) → nothing.
+      return res.json({ memberId: null, items: [] });
     }
     const { rows } = await pool.query(
       `SELECT
@@ -48,17 +48,17 @@ router.get("/api/team/my-work", async (req, res) => {
           OR cc.assigned_community_manager = $1
           OR cc.assigned_approver = $1
        ORDER BY cc.scheduled_date ASC NULLS LAST, cc.id DESC`,
-      [employeeId]
+      [memberId]
     );
     const items = rows.map((r) => ({
       ...r,
       roles: [
-        r.assigned_designer === employeeId && "designer",
-        r.assigned_community_manager === employeeId && "cm",
-        r.assigned_approver === employeeId && "approver",
+        r.assigned_designer === memberId && "designer",
+        r.assigned_community_manager === memberId && "cm",
+        r.assigned_approver === memberId && "approver",
       ].filter(Boolean),
     }));
-    res.json({ employeeId, items });
+    res.json({ memberId, items });
   } catch (error) {
     console.error("Error fetching my-work:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -97,8 +97,8 @@ router.get("/api/team/content-tasks", async (req, res) => {
         cm.name as cm_name
       FROM content_calendar cc
       LEFT JOIN customers c ON cc.customer_id = c.id
-      LEFT JOIN employees designer ON cc.assigned_designer = designer.id
-      LEFT JOIN employees cm ON cc.assigned_community_manager = cm.id
+      LEFT JOIN team_members designer ON cc.assigned_designer = designer.id
+      LEFT JOIN team_members cm ON cc.assigned_community_manager = cm.id
       WHERE cc.scheduled_date >= CURRENT_DATE - INTERVAL '7 days'
         AND cc.scheduled_date <= CURRENT_DATE + $1 * INTERVAL '1 day'
     `;
@@ -153,7 +153,7 @@ router.get("/api/team/workload", async (req, res) => {
               AND cc.status NOT IN ('publicado', 'completed') THEN 1 END) as active_tasks,
         COUNT(CASE WHEN (cc.assigned_designer = e.id OR cc.assigned_community_manager = e.id)
               AND cc.status IN ('publicado', 'completed') THEN 1 END) as completed_tasks
-      FROM employees e
+      FROM team_members e
       LEFT JOIN content_calendar cc ON (cc.assigned_designer = e.id OR cc.assigned_community_manager = e.id)
         AND cc.scheduled_date >= CURRENT_DATE - INTERVAL '30 days'
       WHERE e.is_active = true
@@ -629,16 +629,16 @@ router.put("/tasks/:id/status", async (req, res) => {
 
       // If sent to review, notify managers/approvers
       if (status === 'review') {
-        // Get all employees who can approve (managers, leads, admins)…
+        // Get team members who can approve (managers, leads, admins)…
         const approversResult = await pool.query(`
-          SELECT id FROM employees
+          SELECT id FROM team_members
           WHERE is_active = true
             AND role IN ('manager', 'director', 'admin', 'lead', 'supervisor', 'jefe')
           LIMIT 5
         `);
 
-        // …then resolve those employees.id to login users.id for the bell.
-        const approverUserMap = await userIdsForEmployees(pool, approversResult.rows.map((r) => r.id));
+        // …then resolve those team_members.id to login users.id for the bell.
+        const approverUserMap = await userIdsForTeamMembers(pool, approversResult.rows.map((r) => r.id));
         for (const approver of approversResult.rows) {
           const approverUserId = approverUserMap.get(approver.id);
           if (approverUserId && approver.id !== assignedTo) {
