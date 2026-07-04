@@ -199,6 +199,9 @@ const Sidebar = () => {
               <PixelMark size={10} />
               Dashboard
             </Link>
+            <Link to="/my-work" className={`zxs-link${isActive("/my-work") ? " active" : ""}`}>
+              Mi trabajo
+            </Link>
             <Link to="/messages" className={`zxs-link${isActive("/messages") ? " active" : ""}`}>
               Mensajes
               {unreadMsgCount > 0 && <span className="badge hot">{unreadMsgCount > 9 ? "9+" : unreadMsgCount}</span>}

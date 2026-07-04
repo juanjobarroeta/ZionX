@@ -18,8 +18,9 @@ const Auth = () => {
         const payload = JSON.parse(atob(token.split(".")[1]));
         // Check if token is valid and not expired
         if (payload && payload.id && payload.exp && payload.exp > Date.now() / 1000) {
-          console.log("User already logged in with valid token, redirecting to dashboard");
-          window.location.href = "/dashboard";
+          const role = localStorage.getItem("userRole");
+          const creatorHome = ["designer", "community_manager", "copywriter"].includes(role);
+          window.location.href = creatorHome ? "/my-work" : "/dashboard";
         } else {
           console.log("Token expired or invalid, clearing and staying on auth page");
           localStorage.removeItem("token");
@@ -53,7 +54,11 @@ const Auth = () => {
       console.log("Token received:", res.data.token);
       console.log("User role:", res.data.user?.role);
       setMessage(res.data.message);
-      window.location.href = "/dashboard";
+      // Content creators land on their personal "Mi trabajo" home; everyone
+      // else on the dashboard.
+      const role = res.data.user?.role;
+      const creatorHome = ["designer", "community_manager", "copywriter"].includes(role);
+      window.location.href = creatorHome ? "/my-work" : "/dashboard";
     } catch (error) {
       if (error.response) {
         setMessage("Error: " + error.response.data.message);

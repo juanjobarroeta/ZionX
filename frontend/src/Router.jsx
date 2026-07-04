@@ -31,6 +31,7 @@ const EmployeeDashboardClean = lazy(() => import("./pages/EmployeeDashboardClean
 const SocialHub = lazy(() => import("./pages/SocialHub"));
 const ContentPlanningCenter = lazy(() => import("./pages/ContentPlanningCenter"));
 const ApprovalsHub = lazy(() => import("./pages/ApprovalsHub"));
+const MyWork = lazy(() => import("./pages/MyWork"));
 const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
 const ProjectDetails = lazy(() => import("./pages/ProjectDetails"));
 const CreateProject = lazy(() => import("./pages/CreateProject"));
@@ -137,6 +138,7 @@ const AppRouter = () => (
         <Route path="/social-hub" element={<SocialMediaRoute><SocialHub /></SocialMediaRoute>} />
         <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
         <Route path="/approvals" element={<SocialMediaRoute><ApprovalsHub /></SocialMediaRoute>} />
+        <Route path="/my-work" element={<ProtectedRoute><MyWork /></ProtectedRoute>} />
         <Route path="/social/accounts" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
         <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
 

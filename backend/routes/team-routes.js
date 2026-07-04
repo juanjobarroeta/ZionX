@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { userIdsForTeamMembers, userIdsForEmployees } = require('../services/identity');
+const { userIdsForTeamMembers, userIdsForEmployees, employeeIdForUser } = require('../services/identity');
 
 // Multer setup for task file uploads
 const storage = multer.diskStorage({
@@ -19,6 +19,51 @@ const upload = multer({ storage });
 // =====================================================
 // TEAM CONTENT TASKS
 // =====================================================
+
+// GET /api/team/my-work
+// The logged-in person's own content: every content_calendar item where they
+// are the assigned designer, community manager, or approver. Resolves the login
+// user → their employees.id (content is assigned by employee id). Returns the
+// raw items + which role(s) the caller holds on each, so the UI can bucket them.
+router.get("/api/team/my-work", async (req, res) => {
+  try {
+    const pool = req.pool;
+    const employeeId = await employeeIdForUser(pool, req.user.id);
+    if (!employeeId) {
+      // No employee record (e.g. an admin who isn't an assignee) → nothing assigned.
+      return res.json({ employeeId: null, items: [] });
+    }
+    const { rows } = await pool.query(
+      `SELECT
+         cc.id, cc.customer_id, cc.campaign, cc.platform, cc.content_type,
+         cc.scheduled_date, cc.status, cc.approval_status, cc.idea_tema,
+         cc.copy_out, cc.arte, cc.rejection_reason, cc.current_revision,
+         cc.assigned_designer, cc.assigned_community_manager, cc.assigned_approver,
+         c.business_name AS customer_name,
+         sp.status AS publish_status, sp.error_message AS publish_error
+       FROM content_calendar cc
+       LEFT JOIN customers c ON cc.customer_id = c.id
+       LEFT JOIN scheduled_posts sp ON sp.id = cc.scheduled_post_id
+       WHERE cc.assigned_designer = $1
+          OR cc.assigned_community_manager = $1
+          OR cc.assigned_approver = $1
+       ORDER BY cc.scheduled_date ASC NULLS LAST, cc.id DESC`,
+      [employeeId]
+    );
+    const items = rows.map((r) => ({
+      ...r,
+      roles: [
+        r.assigned_designer === employeeId && "designer",
+        r.assigned_community_manager === employeeId && "cm",
+        r.assigned_approver === employeeId && "approver",
+      ].filter(Boolean),
+    }));
+    res.json({ employeeId, items });
+  } catch (error) {
+    console.error("Error fetching my-work:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
 
 router.get("/api/team/content-tasks", async (req, res) => {
   try {

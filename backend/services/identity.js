@@ -31,6 +31,23 @@ async function userIdsForEmployees(pool, employeeIds) {
 }
 
 /**
+ * Reverse of userIdsForEmployees: given a login users.id, find their employees.id
+ * (by email). Returns null if the user has no matching employee record.
+ */
+async function employeeIdForUser(pool, userId) {
+  if (userId == null) return null;
+  const { rows } = await pool.query(
+    `SELECT e.id
+       FROM employees e
+       JOIN users u ON LOWER(u.email) = LOWER(e.email)
+      WHERE u.id = $1 AND e.is_active = true
+      LIMIT 1`,
+    [userId]
+  );
+  return rows.length ? rows[0].id : null;
+}
+
+/**
  * Map team_members ids to users.id. team_members already carries a user_id FK,
  * so prefer that; fall back to an email match for rows created before it was set.
  */
@@ -67,4 +84,4 @@ async function resolveNotifyUserIds(pool, { employeeIds = [], userIds = [] } = {
   return [...out];
 }
 
-module.exports = { userIdsForEmployees, userIdsForTeamMembers, resolveNotifyUserIds };
+module.exports = { userIdsForEmployees, employeeIdForUser, userIdsForTeamMembers, resolveNotifyUserIds };
