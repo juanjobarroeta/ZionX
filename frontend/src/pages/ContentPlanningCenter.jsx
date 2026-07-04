@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
@@ -96,9 +97,12 @@ const publishMeta = (s) => {
 };
 
 const ContentPlanningCenter = () => {
+  const [searchParams] = useSearchParams();
   const [view, setView] = useState("week");
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
-  const [customerFilter, setCustomerFilter] = useState("all");
+  // Deep-link support: /content-calendar?customer=<id> preselects the client
+  // (used by the per-client planning grid to hand off to the unified calendar).
+  const [customerFilter, setCustomerFilter] = useState(() => searchParams.get("customer") || "all");
   const [posts, setPosts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +113,9 @@ const ContentPlanningCenter = () => {
     content_type: "post", campaign: "", idea_tema: "", status: "planificado",
   });
   const [saving, setSaving] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 
@@ -118,6 +125,22 @@ const ContentPlanningCenter = () => {
       .then((r) => setCustomers(Array.isArray(r.data) ? r.data : []))
       .catch(() => setCustomers([]));
   }, [headers]);
+
+  // Fetch employees once (designer / CM assignment in the post editor).
+  // Assignment resolves against the employees table (assigned_designer =
+  // employees.id), which is what the range endpoint joins for the names.
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/hr/employees`, { headers })
+      .then((r) => setEmployees(Array.isArray(r.data) ? r.data : (r.data?.employees || [])))
+      .catch(() => setEmployees([]));
+  }, [headers]);
+
+  const designers = useMemo(() => employees.filter((e) => (e.role || "").toLowerCase() === "designer"), [employees]);
+  const cms = useMemo(() => employees.filter((e) => ["community_manager", "cm"].includes((e.role || "").toLowerCase())), [employees]);
+  const employeeName = useCallback((id) => {
+    const e = employees.find((x) => String(x.id) === String(id));
+    return e ? (e.name || e.full_name || `#${id}`) : null;
+  }, [employees]);
 
   const [from, to] = useMemo(() => {
     const cells = view === "month" ? monthGrid(anchor) : weekDays(anchor);
@@ -252,6 +275,46 @@ const ContentPlanningCenter = () => {
       await fetchPosts();
     } catch {
       setShowCreate(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------- full post editor (drawer) ----------
+  // The rich content fields the legacy Excel grid owned now live here, so a post
+  // can be authored end-to-end in the calendar. Writes via PUT /content-calendar/:id
+  // (dynamic update from body keys).
+  const EDIT_FIELDS = ["platform", "content_type", "campaign", "pilar", "idea_tema", "referencia", "copy_in", "copy_out", "assigned_designer", "assigned_community_manager"];
+
+  const openEdit = () => {
+    if (!selected) return;
+    const f = {};
+    for (const k of EDIT_FIELDS) f[k] = selected[k] ?? "";
+    setEditForm(f);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!selected || !editForm) return;
+    setSaving(true);
+    try {
+      // Send only changed keys; empty strings become null so a cleared field clears.
+      const body = {};
+      for (const k of EDIT_FIELDS) {
+        const v = editForm[k];
+        body[k] = v === "" ? null : v;
+      }
+      await axios.put(`${API_BASE_URL}/content-calendar/${selected.id}`, body, { headers });
+      // Reflect edits immediately, incl. resolved designer/CM names for the drawer.
+      applyPatch(selected.id, {
+        ...body,
+        designer_name: employeeName(body.assigned_designer),
+        cm_name: employeeName(body.assigned_community_manager),
+      });
+      setEditing(false);
+      fetchPosts();
+    } catch {
+      /* keep the editor open so the user can retry */
     } finally {
       setSaving(false);
     }
@@ -395,11 +458,14 @@ const ContentPlanningCenter = () => {
       {/* Detail drawer */}
       {selected && (
         <>
-          <button className="zxc-scrim" onClick={() => setSelected(null)} aria-label="Cerrar" />
+          <button className="zxc-scrim" onClick={() => { setSelected(null); setEditing(false); }} aria-label="Cerrar" />
           <aside className="zxc-drawer">
             <div className="zxc-drawer-head">
               <span className="plat">{capitalize(selected.platform) || "Contenido"} · {capitalize(selected.content_type) || "Post"}</span>
-              <button className="zxc-x" onClick={() => setSelected(null)} aria-label="Cerrar">×</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {!editing && <button className="zxc-btn-ghost" onClick={openEdit}>Editar</button>}
+                <button className="zxc-x" onClick={() => { setSelected(null); setEditing(false); }} aria-label="Cerrar">×</button>
+              </div>
             </div>
             <div className="zxc-drawer-body">
               <div className={`zxc-pill v-${statusInfo(selected.status).variant}`} style={{ alignSelf: "flex-start" }}>
@@ -422,8 +488,76 @@ const ContentPlanningCenter = () => {
                   })()}
                 </span>
               </div>
+              {editing ? (
+                <>
+                  <div className="zxc-row2">
+                    <div className="zxc-field">
+                      <span className="k">Plataforma</span>
+                      <select className="zxc-select" value={editForm.platform || ""} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })}>
+                        {PLATFORMS.map((p) => <option key={p} value={p}>{capitalize(p)}</option>)}
+                      </select>
+                    </div>
+                    <div className="zxc-field">
+                      <span className="k">Formato</span>
+                      <select className="zxc-select" value={editForm.content_type || ""} onChange={(e) => setEditForm({ ...editForm, content_type: e.target.value })}>
+                        {CONTENT_TYPES.map((t) => <option key={t} value={t}>{capitalize(t)}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="zxc-row2">
+                    <div className="zxc-field">
+                      <span className="k">Campaña</span>
+                      <input className="zxc-input" type="text" value={editForm.campaign || ""} onChange={(e) => setEditForm({ ...editForm, campaign: e.target.value })} />
+                    </div>
+                    <div className="zxc-field">
+                      <span className="k">Pilar</span>
+                      <input className="zxc-input" type="text" value={editForm.pilar || ""} onChange={(e) => setEditForm({ ...editForm, pilar: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="zxc-field">
+                    <span className="k">Idea / tema</span>
+                    <input className="zxc-input" type="text" value={editForm.idea_tema || ""} onChange={(e) => setEditForm({ ...editForm, idea_tema: e.target.value })} />
+                  </div>
+                  <div className="zxc-field">
+                    <span className="k">Referencia</span>
+                    <input className="zxc-input" type="text" value={editForm.referencia || ""} onChange={(e) => setEditForm({ ...editForm, referencia: e.target.value })} />
+                  </div>
+                  <div className="zxc-field">
+                    <span className="k">Copy in (brief)</span>
+                    <textarea className="zxc-input" rows={2} value={editForm.copy_in || ""} onChange={(e) => setEditForm({ ...editForm, copy_in: e.target.value })} />
+                  </div>
+                  <div className="zxc-field">
+                    <span className="k">Copy out (publicación)</span>
+                    <textarea className="zxc-input" rows={3} value={editForm.copy_out || ""} onChange={(e) => setEditForm({ ...editForm, copy_out: e.target.value })} />
+                  </div>
+                  <div className="zxc-row2">
+                    <div className="zxc-field">
+                      <span className="k">Diseñador</span>
+                      <select className="zxc-select" value={editForm.assigned_designer || ""} onChange={(e) => setEditForm({ ...editForm, assigned_designer: e.target.value })}>
+                        <option value="">Sin asignar</option>
+                        {designers.map((e) => <option key={e.id} value={e.id}>{e.name || e.full_name}</option>)}
+                      </select>
+                    </div>
+                    <div className="zxc-field">
+                      <span className="k">Community manager</span>
+                      <select className="zxc-select" value={editForm.assigned_community_manager || ""} onChange={(e) => setEditForm({ ...editForm, assigned_community_manager: e.target.value })}>
+                        <option value="">Sin asignar</option>
+                        {cms.map((e) => <option key={e.id} value={e.id}>{e.name || e.full_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="zxc-pub" style={{ marginTop: 4 }}>
+                    <button className="zxc-btn-solid" disabled={saving} onClick={saveEdit}>{saving ? "Guardando…" : "Guardar cambios"}</button>
+                    <button className="zxc-btn-ghost" disabled={saving} onClick={() => setEditing(false)}>Cancelar</button>
+                  </div>
+                </>
+              ) : (
+              <>
               {selected.campaign && (
                 <div className="zxc-field"><span className="k">Campaña</span><span className="val">{selected.campaign}</span></div>
+              )}
+              {selected.pilar && (
+                <div className="zxc-field"><span className="k">Pilar</span><span className="val">{selected.pilar}</span></div>
               )}
               {(selected.designer_name || selected.cm_name) && (
                 <div className="zxc-field">
@@ -485,6 +619,8 @@ const ContentPlanningCenter = () => {
                   );
                 })()}
               </div>
+              </>
+              )}
             </div>
           </aside>
         </>

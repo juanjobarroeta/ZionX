@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { CONTENT_STATUS_OPTIONS, contentStatusBadge } from '../config/contentStatus';
@@ -770,8 +771,17 @@ const ContentCalendar = ({ customerId, customerData }) => {
       {/* Header Controls */}
       <div className="bg-zionx-tertiary rounded-xl p-6 border border-zionx-secondary">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-zionx-primary">📅 Calendario de Contenido</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-zionx-primary">🗓️ Planeación mensual</h2>
+            <p className="text-sm text-gray-500">Planeación en bloque de este cliente. El calendario unificado es la vista principal de contenido.</p>
+          </div>
           <div className="flex items-center space-x-4">
+            <Link
+              to={`/content-calendar?customer=${customerId}`}
+              className="bg-zionx-primary text-white px-4 py-2 rounded-lg hover:bg-zionx-accent transition-all"
+            >
+              Ver en el calendario →
+            </Link>
             <div className="flex items-center space-x-2">
               <label className="text-zionx-primary font-medium">Mes:</label>
               <input
