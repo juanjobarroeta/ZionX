@@ -68,7 +68,6 @@ const NAV_GROUPS = [
   {
     label: "Configuración",
     links: [
-      { href: "/admin/user-management", label: "Usuarios", section: "settings" },
       { href: "/admin/create-user", label: "Crear Usuario", section: "settings" },
     ],
   },

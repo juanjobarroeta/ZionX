@@ -9,7 +9,6 @@ import RoleProtectedRoute from "./components/RoleProtectedRoute";
 
 // Everything else is code-split — each route loads its own chunk on demand.
 const MarketingDashboard = lazy(() => import("./pages/MarketingDashboard"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
 const CustomerProfile = lazy(() => import("./pages/CustomerProfile"));
 const CreateCustomer = lazy(() => import("./pages/CreateCustomer"));
 const CustomerDirectoryClean = lazy(() => import("./pages/CustomerDirectoryClean"));
@@ -22,11 +21,9 @@ const PublicCreativeBrief = lazy(() => import("./pages/PublicCreativeBrief"));
 const PublicBriefStart = lazy(() => import("./pages/PublicBriefStart"));
 const PublicClientApproval = lazy(() => import("./pages/PublicClientApproval"));
 const InventoryRequest = lazy(() => import("./pages/InventoryRequest"));
-const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
 const AdminInventoryViewer = lazy(() => import("./pages/AdminInventoryViewer"));
 const ProductProfile = lazy(() => import("./pages/ProductProfile"));
 const CreateUser = lazy(() => import("./pages/CreateUser"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
 const BudgetManagement = lazy(() => import("./pages/BudgetManagement"));
 const TeamManagement = lazy(() => import("./pages/TeamManagement"));
 const TeamDashboardClean = lazy(() => import("./pages/TeamDashboardClean"));
@@ -128,7 +125,6 @@ const AppRouter = () => (
         <Route path="/client-approval/:token" element={<PublicClientApproval />} />
 
         {/* Core */}
-        <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><MarketingDashboard /></ProtectedRoute>} />
 
         {/* CRM */}
@@ -197,9 +193,7 @@ const AppRouter = () => (
         <Route path="/admin/promotions" element={<AdminRoute><AdminPromotions /></AdminRoute>} />
         <Route path="/admin/expenses" element={<AdminRoute><AdminExpenses /></AdminRoute>} />
         <Route path="/admin/budgets" element={<AdminRoute><BudgetManagement /></AdminRoute>} />
-        <Route path="/admin/aprobaciones" element={<AdminRoute><AdminApprovals /></AdminRoute>} />
         <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
-        <Route path="/admin/user-management" element={<AdminRoute><UserManagement /></AdminRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/auth" replace />} />

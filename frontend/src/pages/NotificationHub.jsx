@@ -109,8 +109,6 @@ const NotificationHub = () => {
       navigate(`/messages?conversation=${notification.link_id}`);
     } else if (notification.link_url) {
       navigate(notification.link_url);
-    } else if (notification.link_type === 'loan') {
-      navigate(`/loan/${notification.link_id}`);
     } else if (notification.link_type === 'customer') {
       navigate(`/customer-profile/${notification.link_id}`);
     } else if (notification.link_type === 'task') {
