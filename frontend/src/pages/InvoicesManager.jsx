@@ -35,6 +35,34 @@ const InvoicesManager = () => {
     }
   };
 
+  const handleCancelInvoice = async (invoice) => {
+    if (!window.confirm(`¿Cancelar la factura ${invoice.invoice_number || invoice.id}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    try {
+      setCancelling(invoice.id);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.patch(
+        `${API_BASE_URL}/api/income/invoices/${invoice.id}/cancel`,
+        {},
+        { headers }
+      );
+      const updated = res.data?.invoice;
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoice.id
+            ? { ...inv, ...(updated || {}), status: "cancelled", current_status: "cancelled" }
+            : inv
+        )
+      );
+    } catch (error) {
+      alert(error.response?.data?.error || "No se pudo cancelar la factura");
+    } finally {
+      setCancelling(null);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',

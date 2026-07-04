@@ -323,7 +323,7 @@ const PaymentManagement = () => {
                     {stats.overdue} pago{stats.overdue > 1 ? 's' : ''} vencido{stats.overdue > 1 ? 's' : ''}
                   </p>
                   <p className="text-red-600 text-sm">
-                    Total vencido: {formatCurrency(stats.overdueAmount * 1.16)}
+                    Total vencido: {formatCurrency(stats.overdueAmount)}
                   </p>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { format } from "date-fns";
+import { API_BASE_URL } from "../utils/constants";
 
 const ProductProfile = () => {
   const { id } = useParams();
@@ -13,7 +14,7 @@ const ProductProfile = () => {
     const fetchProduct = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5001/inventory-items/${id}/details`,
+          `${API_BASE_URL}/inventory-items/${id}/details`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

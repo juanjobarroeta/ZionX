@@ -76,6 +76,42 @@ router.post('/invoices/:id/stamp', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/income/invoices/:id/cancel
+ * Cancel an invoice. Guards against fiscal desync: an invoice that already
+ * carries a CFDI (cfdi_uuid) must be cancelled through contabilidad-os so the
+ * PAC/SAT record is cancelled too — we refuse a local-only cancel here.
+ */
+router.patch('/invoices/:id/cancel', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const invRes = await req.pool.query('SELECT * FROM invoices WHERE id = $1', [id]);
+    if (!invRes.rows.length) return res.status(404).json({ error: 'Factura no encontrada' });
+    const invoice = invRes.rows[0];
+
+    if (invoice.status === 'cancelled') {
+      return res.json({ success: true, already: true, invoice });
+    }
+    if (invoice.status === 'paid') {
+      return res.status(409).json({ error: 'No se puede cancelar una factura pagada' });
+    }
+    if (invoice.cfdi_uuid) {
+      return res.status(409).json({
+        error: 'Esta factura ya está timbrada (CFDI). Debe cancelarse desde contabilidad-os para cancelar también ante el SAT.',
+      });
+    }
+
+    const upd = await req.pool.query(
+      `UPDATE invoices SET status = 'cancelled', updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    res.json({ success: true, invoice: upd.rows[0] });
+  } catch (error) {
+    console.error('Error cancelling invoice:', error.message);
+    res.status(500).json({ error: 'No se pudo cancelar la factura' });
+  }
+});
+
 // =====================================================
 // HELPER FUNCTIONS
 // =====================================================
