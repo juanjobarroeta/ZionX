@@ -32,21 +32,33 @@ router.get('/client/:token', async (req, res) => {
       return res.status(410).json({ error: 'Este enlace ha expirado. Solicita uno nuevo a tu equipo.' });
     }
 
-    // Fetch posts ready for client review
-    const posts = await req.pool.query(`
-      SELECT
-        cc.id, cc.post_number, cc.campaign, cc.platform, cc.content_type,
-        cc.scheduled_date, cc.status, cc.copy_in, cc.copy_out,
-        cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
-        cc.client_status, cc.client_feedback_text, cc.client_reviewed_at,
-        cc.revision_count
-      FROM content_calendar cc
-      WHERE cc.customer_id = $1
-        AND cc.month_year = $2
-        AND cc.status IN ('revision', 'aprobado', 'programado', 'publicado')
-        AND (cc.arte IS NOT NULL OR cc.arte_files IS NOT NULL)
-      ORDER BY cc.post_number ASC
-    `, [tokenData.customer_id, tokenData.month_year]);
+    // Fetch posts ready for client review. A post-scoped token (content_calendar_id
+    // set) shows just that one post; a month token shows the month's posts.
+    const posts = tokenData.content_calendar_id
+      ? await req.pool.query(`
+          SELECT
+            cc.id, cc.post_number, cc.campaign, cc.platform, cc.content_type,
+            cc.scheduled_date, cc.status, cc.copy_in, cc.copy_out,
+            cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
+            cc.client_status, cc.client_feedback_text, cc.client_reviewed_at,
+            cc.revision_count
+          FROM content_calendar cc
+          WHERE cc.id = $1
+        `, [tokenData.content_calendar_id])
+      : await req.pool.query(`
+          SELECT
+            cc.id, cc.post_number, cc.campaign, cc.platform, cc.content_type,
+            cc.scheduled_date, cc.status, cc.copy_in, cc.copy_out,
+            cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
+            cc.client_status, cc.client_feedback_text, cc.client_reviewed_at,
+            cc.revision_count
+          FROM content_calendar cc
+          WHERE cc.customer_id = $1
+            AND cc.month_year = $2
+            AND cc.status IN ('revision', 'aprobado', 'programado', 'publicado')
+            AND (cc.arte IS NOT NULL OR cc.arte_files IS NOT NULL)
+          ORDER BY cc.post_number ASC
+        `, [tokenData.customer_id, tokenData.month_year]);
 
     res.json({
       customer: tokenData.business_name || tokenData.commercial_name,
@@ -167,10 +179,17 @@ async function validateTokenAndPost(pool, token, postId) {
     return { error: 'Enlace expirado', status: 410 };
   }
 
-  const postResult = await pool.query(
-    `SELECT * FROM content_calendar WHERE id = $1 AND customer_id = $2 AND month_year = $3`,
-    [postId, tokenData.customer_id, tokenData.month_year]
-  );
+  // A post-scoped token only authorizes its own post; a month token authorizes
+  // any post of that customer+month.
+  const postResult = tokenData.content_calendar_id
+    ? await pool.query(
+        `SELECT * FROM content_calendar WHERE id = $1 AND id = $2`,
+        [postId, tokenData.content_calendar_id]
+      )
+    : await pool.query(
+        `SELECT * FROM content_calendar WHERE id = $1 AND customer_id = $2 AND month_year = $3`,
+        [postId, tokenData.customer_id, tokenData.month_year]
+      );
   if (!postResult.rows.length) return { error: 'Post no encontrado', status: 404 };
 
   return { post: postResult.rows[0] };
@@ -247,7 +266,7 @@ router.post('/generate-client-link', async (req, res) => {
     await req.pool.query(`
       INSERT INTO client_approval_tokens (customer_id, month_year, token, client_name, client_email, created_by, expires_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (customer_id, month_year) DO UPDATE SET
+      ON CONFLICT (customer_id, month_year) WHERE content_calendar_id IS NULL DO UPDATE SET
         token = $3, client_name = $4, client_email = $5, created_by = $6, expires_at = $7, created_at = NOW()
       RETURNING *
     `, [customer_id, month_year, token, client_name || null, client_email || null, req.user.id, expiresAt]);
@@ -260,6 +279,57 @@ router.post('/generate-client-link', async (req, res) => {
   } catch (error) {
     console.error('Error generating client link:', error);
     res.status(500).json({ error: 'Failed to generate client link' });
+  }
+});
+
+// Generate a client approval link for a SINGLE post (per-post sign-off).
+// Body: { content_calendar_id, client_name?, client_email? }
+router.post('/generate-post-link', async (req, res) => {
+  try {
+    const { content_calendar_id, client_name, client_email } = req.body;
+    if (!content_calendar_id) {
+      return res.status(400).json({ error: 'content_calendar_id is required' });
+    }
+
+    const postRes = await req.pool.query(
+      'SELECT id, customer_id, month_year FROM content_calendar WHERE id = $1',
+      [content_calendar_id]
+    );
+    if (!postRes.rows.length) return res.status(404).json({ error: 'Post no encontrado' });
+    const post = postRes.rows[0];
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    // Manual upsert on content_calendar_id (one live token per post).
+    const existing = await req.pool.query(
+      'SELECT id FROM client_approval_tokens WHERE content_calendar_id = $1',
+      [content_calendar_id]
+    );
+    if (existing.rows.length) {
+      await req.pool.query(
+        `UPDATE client_approval_tokens SET token = $1, client_name = $2, client_email = $3,
+           created_by = $4, expires_at = $5, created_at = NOW(), month_year = $6, customer_id = $7
+         WHERE id = $8`,
+        [token, client_name || null, client_email || null, req.user.id, expiresAt, post.month_year, post.customer_id, existing.rows[0].id]
+      );
+    } else {
+      await req.pool.query(
+        `INSERT INTO client_approval_tokens
+           (customer_id, month_year, token, client_name, client_email, created_by, expires_at, content_calendar_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [post.customer_id, post.month_year, token, client_name || null, client_email || null, req.user.id, expiresAt, content_calendar_id]
+      );
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+    const approvalUrl = `${baseUrl}/client-approval/${token}`;
+    console.log(`🔗 Per-post client link generated for post ${content_calendar_id}`);
+    res.json({ success: true, url: approvalUrl, token, expires_at: expiresAt });
+  } catch (error) {
+    console.error('Error generating per-post client link:', error);
+    res.status(500).json({ error: 'No se pudo generar el enlace del cliente' });
   }
 });
 

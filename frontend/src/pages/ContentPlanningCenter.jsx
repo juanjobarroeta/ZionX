@@ -240,6 +240,24 @@ const ContentPlanningCenter = () => {
     }
   };
 
+  // Per-post client sign-off: generate a link scoped to just this post and copy it.
+  const [clientLinkFor, setClientLinkFor] = useState(null);
+  const sendToClient = async (post) => {
+    setBusy(true);
+    try {
+      const r = await axios.post(`${API_BASE_URL}/api/approvals/generate-post-link`, { content_calendar_id: post.id }, { headers });
+      const url = r.data?.url;
+      if (url) {
+        try { await navigator.clipboard.writeText(url); } catch { /* clipboard may be blocked */ }
+        setClientLinkFor({ id: post.id, url });
+      }
+    } catch {
+      /* surface nothing intrusive; button stays available to retry */
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openCreate = (date) => {
     const f = { customer_id: "", scheduled_date: "", platform: "instagram", content_type: "post", campaign: "", idea_tema: "", status: "planificado" };
     if (date) {
@@ -579,6 +597,23 @@ const ContentPlanningCenter = () => {
                   <option value="" disabled>Selecciona…</option>
                   {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
+              </div>
+
+              {/* Client sign-off (per-post approval link) */}
+              <div className="zxc-field">
+                <span className="k">Cliente</span>
+                <div className="zxc-pub">
+                  {selected.client_status === "approved" && <span className="zxc-pill v-published">Aprobado por cliente</span>}
+                  {["changes_requested", "rejected", "rechazado"].includes((selected.client_status || "").toLowerCase()) && (
+                    <span className="zxc-pill v-failed">Cambios solicitados</span>
+                  )}
+                  <button className="zxc-btn-ghost" disabled={busy} onClick={() => sendToClient(selected)}>
+                    {clientLinkFor?.id === selected.id ? "Enlace copiado ✓" : "Enviar a cliente"}
+                  </button>
+                  {clientLinkFor?.id === selected.id && (
+                    <input className="zxc-input" readOnly value={clientLinkFor.url} onFocus={(e) => e.target.select()} />
+                  )}
+                </div>
               </div>
 
               {/* Publish (plan → queue) */}
