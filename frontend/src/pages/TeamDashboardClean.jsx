@@ -239,6 +239,17 @@ const TeamDashboardClean = () => {
           {/* APPROVALS TAB CONTENT */}
           {activeTab === 'approvals' && (
             <>
+              {/* Approvals now have a dedicated first-class section */}
+              <div className="flex items-center justify-between gap-4 mb-6 bg-black text-white rounded-lg px-5 py-4">
+                <div>
+                  <p className="font-semibold">Las aprobaciones ahora tienen su propia sección</p>
+                  <p className="text-sm text-gray-300">Míralas junto al calendario, con estadísticas y cola dedicada.</p>
+                </div>
+                <Link to="/approvals" className="whitespace-nowrap bg-white text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-100">
+                  Ir a Aprobaciones →
+                </Link>
+              </div>
+
               {/* Approval Stats */}
               <div className="grid grid-cols-4 gap-6 mb-8">
                 <div className="bg-white border border-gray-200 rounded-lg p-6">

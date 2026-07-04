@@ -25,6 +25,7 @@ const NAV_GROUPS = [
     links: [
       { href: "/social-hub", label: "Hub de Publicaciones", section: "social_media" },
       { href: "/content-calendar", label: "Calendario", section: "social_media" },
+      { href: "/approvals", label: "Aprobaciones", section: "social_media" },
       { href: "/team-dashboard", label: "Tareas", section: "social_media" },
       { href: "/projects", label: "Proyectos", section: "social_media" },
       { href: "/social/accounts", label: "Cuentas Meta", section: "social_media" },
