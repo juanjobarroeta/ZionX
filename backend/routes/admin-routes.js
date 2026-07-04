@@ -56,7 +56,34 @@ router.post("/create-user", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, role, is_active
     `, [name, email, hashedPassword, role, store_id || null, permissions || {}]);
 
-    res.json({ user: result.rows[0], message: "Usuario creado correctamente" });
+    const user = result.rows[0];
+
+    // One person = one account: seed the linked team_members row so the new
+    // user is immediately assignable to content and shows up on "Mi trabajo".
+    // team_members.user_id is the clean login link. Best-effort — a failure here
+    // must not fail user creation. If a team_member already exists for this
+    // email (imported earlier), link it instead of duplicating.
+    try {
+      const existing = await pool.query(
+        'SELECT id FROM team_members WHERE LOWER(email) = LOWER($1) LIMIT 1',
+        [email]
+      );
+      if (existing.rows.length) {
+        await pool.query(
+          'UPDATE team_members SET user_id = $1, role = COALESCE($2, role), is_active = true WHERE id = $3',
+          [user.id, role || null, existing.rows[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO team_members (user_id, name, email, role, is_active) VALUES ($1, $2, $3, $4, true)',
+          [user.id, name, email, role || null]
+        );
+      }
+    } catch (seedErr) {
+      console.error('Could not seed team_member for new user:', seedErr.message);
+    }
+
+    res.json({ user, message: "Usuario creado correctamente" });
   } catch (err) {
     console.error("Error creating user:", err);
     res.status(500).json({ message: "Error al crear usuario", error: err.message });

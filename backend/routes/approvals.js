@@ -86,10 +86,10 @@ router.post('/client/:token/approve/:postId', async (req, res) => {
       autoScheduled = await tryAutoSchedule(req.pool, post);
     }
 
-    // Notify internal team. assigned_* are employees.id (resolve to users.id
-    // via email); submitted_by is already a users.id.
+    // Notify internal team. assigned_* are team_members.id (resolve to users.id
+    // via user_id FK); submitted_by is already a users.id.
     const notifyUserIds = await resolveNotifyUserIds(req.pool, {
-      employeeIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
+      memberIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
       userIds: [post.submitted_by],
     });
     for (const userId of notifyUserIds) {
@@ -135,10 +135,10 @@ router.post('/client/:token/request-changes/:postId', async (req, res) => {
       WHERE id = $1
     `, [postId, feedback]);
 
-    // Notify internal team (assigned_* are employees.id → users.id; submitted_by is users.id)
+    // Notify internal team (assigned_* are team_members.id → users.id; submitted_by is users.id)
     const post = validation.post;
     const notifyUserIds = await resolveNotifyUserIds(req.pool, {
-      employeeIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
+      memberIds: [post.assigned_designer, post.assigned_community_manager, post.assigned_approver],
       userIds: [post.submitted_by],
     });
     for (const userId of notifyUserIds) {
@@ -301,10 +301,10 @@ router.get('/queue', async (req, res) => {
         cm.name as cm_name
       FROM content_calendar cc
       LEFT JOIN customers c ON cc.customer_id = c.id
-      LEFT JOIN employees approver ON cc.assigned_approver = approver.id
-      LEFT JOIN employees submitter ON cc.submitted_by = submitter.id
-      LEFT JOIN employees designer ON cc.assigned_designer = designer.id
-      LEFT JOIN employees cm ON cc.assigned_community_manager = cm.id
+      LEFT JOIN team_members approver ON cc.assigned_approver = approver.id
+      LEFT JOIN users submitter ON cc.submitted_by = submitter.id
+      LEFT JOIN team_members designer ON cc.assigned_designer = designer.id
+      LEFT JOIN team_members cm ON cc.assigned_community_manager = cm.id
       WHERE (cc.status = 'revision' OR cc.approval_status IN ('pending_review', 'in_review'))
     `;
 
@@ -366,8 +366,8 @@ router.post('/submit/:contentId', async (req, res) => {
 
     if (assigned_approver) {
       const content = result.rows[0];
-      // assigned_approver is an employees.id → resolve to the approver's login.
-      const [approverUserId] = await resolveNotifyUserIds(req.pool, { employeeIds: [assigned_approver] });
+      // assigned_approver is a team_members.id → resolve to the approver's login.
+      const [approverUserId] = await resolveNotifyUserIds(req.pool, { memberIds: [assigned_approver] });
       if (approverUserId) {
         await req.pool.query(`
           INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
@@ -415,11 +415,11 @@ router.post('/approve/:contentId', async (req, res) => {
       VALUES ($1, 'calendar_post', $2, CURRENT_TIMESTAMP, 'approved', $3, $4, $5)
     `, [contentId, approvedBy, feedback, internal_notes, result.rows[0].current_revision || 1]);
 
-    // Notify team. assigned_* are employees.id → users.id; submitted_by and
+    // Notify team. assigned_* are team_members.id → users.id; submitted_by and
     // approvedBy are already users.id, so the self-skip is now a like-for-like compare.
     const content = result.rows[0];
     const notifyUserIds = await resolveNotifyUserIds(req.pool, {
-      employeeIds: [content.assigned_designer, content.assigned_community_manager],
+      memberIds: [content.assigned_designer, content.assigned_community_manager],
       userIds: [content.submitted_by],
     });
     for (const userId of notifyUserIds) {
@@ -488,12 +488,12 @@ router.post('/reject/:contentId', async (req, res) => {
       VALUES ($1, 'calendar_post', $2, CURRENT_TIMESTAMP, 'rejected', $3, $4, $5)
     `, [contentId, rejectedBy, reason, feedback, result.rows[0].current_revision || 1]);
 
-    // send_back_to + assigned_* are employees.id → users.id; submitted_by and
+    // send_back_to + assigned_* are team_members.id → users.id; submitted_by and
     // rejectedBy are users.id. Link points at the real route (/content-calendar),
     // not the dead /employee-dashboard.
     const content = result.rows[0];
     const notifyUserIds = await resolveNotifyUserIds(req.pool, {
-      employeeIds: [send_back_to, content.assigned_designer, content.assigned_community_manager],
+      memberIds: [send_back_to, content.assigned_designer, content.assigned_community_manager],
       userIds: [content.submitted_by],
     });
     for (const userId of notifyUserIds) {
@@ -558,9 +558,9 @@ router.get('/history/:contentId', async (req, res) => {
         decider.name as decision_by_name,
         approver.name as approver_name
       FROM content_approvals ca
-      LEFT JOIN employees submitter ON ca.submitted_by = submitter.id
-      LEFT JOIN employees decider ON ca.decision_by = decider.id
-      LEFT JOIN employees approver ON ca.assigned_approver = approver.id
+      LEFT JOIN users submitter ON ca.submitted_by = submitter.id
+      LEFT JOIN users decider ON ca.decision_by = decider.id
+      LEFT JOIN team_members approver ON ca.assigned_approver = approver.id
       WHERE ca.content_id = $1 AND ca.content_type = 'calendar_post'
       ORDER BY ca.created_at DESC
     `, [contentId]);
@@ -579,7 +579,7 @@ router.get('/approvers', async (req, res) => {
       SELECT
         e.id, e.name, e.role, e.department, e.email,
         ap.approval_role, ap.approval_level
-      FROM employees e
+      FROM team_members e
       LEFT JOIN approval_permissions ap ON e.id = ap.user_id AND ap.is_active = true
       WHERE e.is_active = true
         AND (
@@ -594,7 +594,7 @@ router.get('/approvers', async (req, res) => {
     console.error('Error fetching approvers:', error);
     try {
       const fallback = await req.pool.query(
-        'SELECT id, name, role, department, email FROM employees WHERE is_active = true ORDER BY name ASC'
+        'SELECT id, name, role, department, email FROM team_members WHERE is_active = true ORDER BY name ASC'
       );
       res.json(fallback.rows);
     } catch (e) {
