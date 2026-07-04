@@ -1028,6 +1028,31 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Invoices table created");
 
+    // CFDI linkage — mirrors a ZionX invoice to a stamped CFDI in contabilidad-os.
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_uuid') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_uuid VARCHAR(64);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_status') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_status VARCHAR(20);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_hub_id') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_hub_id VARCHAR(64);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_pdf_url') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_pdf_url TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_stamped_at') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_stamped_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='invoices' AND column_name='cfdi_error') THEN
+          ALTER TABLE invoices ADD COLUMN cfdi_error TEXT;
+        END IF;
+      END $$;
+    `);
+
     // Invoice items table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS invoice_items (

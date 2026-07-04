@@ -1,10 +1,68 @@
 const express = require('express');
 const router = express.Router();
+const contaHub = require('../services/contaHub');
 
 // Import helper functions from income.js
 // These will be shared utilities
 
 const IVA_RATE = 0.16; // Mexican VAT 16%
+
+// =====================================================
+// CFDI / contabilidad-os bridge
+// =====================================================
+
+// Is the fiscal integration configured on this deployment?
+router.get('/cfdi/health', (req, res) => {
+  res.json({ configured: contaHub.isConfigured() });
+});
+
+/**
+ * POST /api/income/invoices/:id/stamp
+ * Mirror a ZionX invoice into contabilidad-os as a stamped CFDI. Idempotent:
+ * if it already has a UUID, returns it. No-op with a clear error if the
+ * integration isn't configured — ZionX invoicing works with or without it.
+ */
+router.post('/invoices/:id/stamp', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!contaHub.isConfigured()) {
+      return res.status(503).json({ error: 'La integración con contabilidad-os no está configurada' });
+    }
+
+    const invRes = await req.pool.query('SELECT * FROM invoices WHERE id = $1', [id]);
+    if (!invRes.rows.length) return res.status(404).json({ error: 'Factura no encontrada' });
+    const invoice = invRes.rows[0];
+
+    if (invoice.cfdi_uuid) {
+      return res.json({ success: true, already: true, cfdi_uuid: invoice.cfdi_uuid, cfdi_pdf_url: invoice.cfdi_pdf_url });
+    }
+
+    const custRes = await req.pool.query('SELECT * FROM customers WHERE id = $1', [invoice.customer_id]);
+    if (!custRes.rows.length) return res.status(400).json({ error: 'La factura no tiene cliente' });
+    const customer = custRes.rows[0];
+
+    const itemsRes = await req.pool.query(
+      'SELECT * FROM invoice_items WHERE invoice_id = $1 ORDER BY display_order, id',
+      [id]
+    );
+
+    const result = await contaHub.stampInvoice({ invoice, customer, items: itemsRes.rows });
+
+    await req.pool.query(
+      `UPDATE invoices SET cfdi_uuid = $1, cfdi_status = $2, cfdi_hub_id = $3,
+         cfdi_pdf_url = $4, cfdi_stamped_at = NOW(), cfdi_error = NULL, updated_at = NOW()
+       WHERE id = $5`,
+      [result.uuid, result.status, result.hubId, result.pdfUrl, id]
+    );
+
+    res.json({ success: true, cfdi_uuid: result.uuid, cfdi_pdf_url: result.pdfUrl, cfdi_status: result.status });
+  } catch (error) {
+    console.error('Error stamping CFDI:', error.message);
+    // Record the failure on the invoice so the UI can surface it.
+    await req.pool.query('UPDATE invoices SET cfdi_error = $1, updated_at = NOW() WHERE id = $2', [error.message, id]).catch(() => {});
+    res.status(502).json({ error: error.message || 'No se pudo timbrar el CFDI' });
+  }
+});
 
 // =====================================================
 // HELPER FUNCTIONS
