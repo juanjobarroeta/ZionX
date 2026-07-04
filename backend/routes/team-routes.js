@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { userIdsForTeamMembers, userIdsForEmployees } = require('../services/identity');
 
 // Multer setup for task file uploads
 const storage = multer.diskStorage({
@@ -570,17 +571,20 @@ router.put("/tasks/:id/status", async (req, res) => {
       };
 
       if (notificationMessages[status] && assignedTo) {
-        // Notify the assigned user
-        await pool.query(`
-          INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-          VALUES ($1, $2, $3, $4, $5, 'task')
-        `, [assignedTo, notificationMessages[status].type, notificationMessages[status].message, '/employee-dashboard', id]);
-        console.log(`🔔 Notification sent to user ${assignedTo}: ${notificationMessages[status].message}`);
+        // assignedTo is a team_members.id → resolve to the person's login user.
+        const assignedUserId = (await userIdsForTeamMembers(pool, [assignedTo])).get(assignedTo);
+        if (assignedUserId) {
+          await pool.query(`
+            INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
+            VALUES ($1, $2, $3, $4, $5, 'task')
+          `, [assignedUserId, notificationMessages[status].type, notificationMessages[status].message, `/employee/${assignedTo}`, id]);
+          console.log(`🔔 Notification sent to user ${assignedUserId}: ${notificationMessages[status].message}`);
+        }
       }
 
       // If sent to review, notify managers/approvers
       if (status === 'review') {
-        // Get all users who can approve (managers, leads, admins)
+        // Get all employees who can approve (managers, leads, admins)…
         const approversResult = await pool.query(`
           SELECT id FROM employees
           WHERE is_active = true
@@ -588,15 +592,18 @@ router.put("/tasks/:id/status", async (req, res) => {
           LIMIT 5
         `);
 
+        // …then resolve those employees.id to login users.id for the bell.
+        const approverUserMap = await userIdsForEmployees(pool, approversResult.rows.map((r) => r.id));
         for (const approver of approversResult.rows) {
-          if (approver.id !== assignedTo) {
+          const approverUserId = approverUserMap.get(approver.id);
+          if (approverUserId && approver.id !== assignedTo) {
             await pool.query(`
               INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
               VALUES ($1, 'approval_needed', $2, '/team-dashboard', $3, 'task')
-            `, [approver.id, `📋 Nueva tarea para revisar: "${taskTitle}"`, id]);
+            `, [approverUserId, `📋 Nueva tarea para revisar: "${taskTitle}"`, id]);
           }
         }
-        console.log(`🔔 Notified ${approversResult.rows.length} approvers about new review`);
+        console.log(`🔔 Notified ${approverUserMap.size} approvers about new review`);
       }
 
     } catch (notifError) {
