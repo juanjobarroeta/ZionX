@@ -14,6 +14,10 @@
  */
 
 const metaService = require('./metaService');
+const { refreshExpiringTokens } = require('./tokenRefresh');
+
+// How often to refresh Meta tokens expiring within the next week.
+const TOKEN_REFRESH_MS = 24 * 60 * 60 * 1000; // daily
 
 // How long after its scheduled time a post may still auto-publish. Beyond this
 // it's marked failed ("missed window") rather than posting stale content.
@@ -28,10 +32,12 @@ class PostScheduler {
     this.pool = pool;
     this.isRunning = false;
     this.intervalId = null;
+    this.tokenIntervalId = null;
   }
 
   /**
-   * Start the scheduler — checks every 60 seconds for due posts
+   * Start the scheduler — checks every 60 seconds for due posts, and refreshes
+   * expiring Meta tokens once a day (and once on start).
    */
   start() {
     if (this.intervalId) return;
@@ -40,13 +46,32 @@ class PostScheduler {
     // Run immediately on start, then every 60 seconds
     this.processDuePosts();
     this.intervalId = setInterval(() => this.processDuePosts(), 60000);
+
+    // Keep Meta connections alive: refresh tokens expiring within a week.
+    this.refreshTokensSafe();
+    this.tokenIntervalId = setInterval(() => this.refreshTokensSafe(), TOKEN_REFRESH_MS);
   }
 
   stop() {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log('📅 Post scheduler stopped');
+    }
+    if (this.tokenIntervalId) {
+      clearInterval(this.tokenIntervalId);
+      this.tokenIntervalId = null;
+    }
+    console.log('📅 Post scheduler stopped');
+  }
+
+  /** Daily Meta token refresh; never throws (a failure must not kill the loop). */
+  async refreshTokensSafe() {
+    try {
+      const r = await refreshExpiringTokens(this.pool);
+      if (r.skipped) return;
+      if (r.total > 0) console.log(`🔄 Token refresh: ${r.refreshed} refreshed, ${r.failed} failed of ${r.total} expiring`);
+    } catch (e) {
+      console.error('Token refresh pass failed:', e.message);
     }
   }
 

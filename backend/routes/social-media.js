@@ -7,6 +7,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const metaService = require('../services/metaService');
+const { refreshExpiringTokens } = require('../services/tokenRefresh');
 
 // Meta App credentials - read at request time to ensure dotenv is loaded
 const getMetaConfig = () => ({
@@ -331,52 +332,16 @@ router.delete('/accounts/:id', async (req, res) => {
  */
 router.post('/accounts/refresh-tokens', async (req, res) => {
   try {
-    const { appId, appSecret } = getMetaConfig();
-
-    if (!appId || !appSecret) {
-      return res.status(400).json({ error: 'Meta App credentials not configured' });
+    // Shared with the daily scheduler pass (services/tokenRefresh).
+    const result = await refreshExpiringTokens(req.pool);
+    if (result.skipped) {
+      return res.status(400).json({ error: result.reason || 'Meta App credentials not configured' });
     }
-
-    // Find accounts expiring within 7 days
-    const expiring = await req.pool.query(`
-      SELECT * FROM social_accounts
-      WHERE is_active = true
-        AND access_token IS NOT NULL
-        AND token_expires_at IS NOT NULL
-        AND token_expires_at < NOW() + INTERVAL '7 days'
-        AND token_expires_at > NOW()
-    `);
-
-    let refreshed = 0;
-    let failed = 0;
-
-    for (const account of expiring.rows) {
-      const result = await metaService.refreshLongLivedToken(
-        account.access_token, appId, appSecret
-      );
-
-      if (result.success) {
-        const expiresIn = result.expiresIn || 5184000;
-        await req.pool.query(`
-          UPDATE social_accounts SET
-            access_token = $1,
-            token_expires_at = NOW() + INTERVAL '${Math.floor(expiresIn)} seconds',
-            updated_at = NOW()
-          WHERE id = $2
-        `, [result.accessToken, account.id]);
-        refreshed++;
-      } else {
-        console.error(`Failed to refresh token for account ${account.id}:`, result.error);
-        failed++;
-      }
-    }
-
-    console.log(`🔄 Token refresh: ${refreshed} refreshed, ${failed} failed out of ${expiring.rows.length} expiring`);
     res.json({
-      message: `Refreshed ${refreshed} tokens`,
-      refreshed,
-      failed,
-      total_expiring: expiring.rows.length
+      message: `Refreshed ${result.refreshed} tokens`,
+      refreshed: result.refreshed,
+      failed: result.failed,
+      total_expiring: result.total,
     });
   } catch (error) {
     console.error('Error refreshing tokens:', error);

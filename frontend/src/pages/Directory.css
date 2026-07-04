@@ -1,0 +1,62 @@
+/* ===== ZIONX — Client directory (CRM) ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxcr {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05);
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 48px 72px;
+}
+.zxcr *, .zxcr { box-sizing: border-box; }
+.zxcr-inner { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+.zxcr-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+.zxcr-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxcr-eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
+.zxcr-h1 { margin: 6px 0 0; font-size: clamp(28px, 4.2vw, 44px); font-weight: 700; letter-spacing: -0.02em; }
+.zxcr-new {
+  font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: none;
+  background: var(--ink); color: var(--paper); padding: 11px 20px; border-radius: 3px; white-space: nowrap;
+}
+.zxcr-new:hover { opacity: 0.9; }
+
+.zxcr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxcr-stat { background: var(--paper); padding: 18px 24px; display: flex; flex-direction: column; gap: 6px; }
+.zxcr-stat .v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.zxcr-stat .k { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+
+.zxcr-search {
+  font-family: inherit; font-size: 15px; padding: 13px 16px; border: 1px solid var(--line);
+  border-radius: 3px; background: var(--surface); color: var(--ink); width: 100%; outline: none;
+}
+.zxcr-search:focus { border-color: var(--ink); }
+.zxcr-search::placeholder { color: var(--muted); }
+
+.zxcr-list { display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; overflow: hidden; }
+.zxcr-row {
+  display: flex; align-items: center; gap: 16px; padding: 18px 22px; text-decoration: none; color: inherit;
+  border-top: 1px solid var(--line-soft); transition: background 0.14s;
+}
+.zxcr-row:first-child { border-top: none; }
+.zxcr-row:hover { background: var(--chip); }
+.zxcr-avatar {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px;
+}
+.zxcr-who { flex: 1; min-width: 0; }
+.zxcr-who .name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.zxcr-who .sub { margin-top: 3px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.zxcr-tag { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--chip); color: var(--ink); padding: 2px 8px; border-radius: 2px; }
+.zxcr-arrow { color: var(--muted); font-size: 20px; flex: 0 0 auto; }
+
+.zxcr-empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+.zxcr-empty .lead { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 10px; }
+.zxcr-empty a { color: var(--ink); font-weight: 600; }
+.zxcr-loading { padding: 60px 20px; text-align: center; opacity: 0.5; }
+
+@media (max-width: 820px) {
+  .zxcr { padding: 72px 16px 56px; }
+  .zxcr-stats { grid-template-columns: 1fr; }
+}
