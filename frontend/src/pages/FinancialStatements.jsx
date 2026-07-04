@@ -276,7 +276,7 @@ const FinancialStatements = () => {
             <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
               <div className="px-6 py-4 border-b flex justify-between items-center">
                 <h2 className="font-semibold text-zionx-primary">🏢 Gastos Operativos</h2>
-                <Link to="/hr/expenses" className="text-sm text-blue-600 hover:text-blue-800">
+                <Link to="/admin/expenses" className="text-sm text-blue-600 hover:text-blue-800">
                   Ver todos →
                 </Link>
               </div>

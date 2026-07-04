@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
@@ -15,10 +15,21 @@ const SubscriptionsManager = () => {
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Open the create modal when arrived via "Nueva Suscripción" (?new=1),
+  // then strip the param so a refresh doesn't re-open it.
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowModal(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchData = async () => {
     try {

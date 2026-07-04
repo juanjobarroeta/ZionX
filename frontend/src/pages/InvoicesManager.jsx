@@ -39,13 +39,14 @@ const InvoicesManager = () => {
     if (!window.confirm(`¿Cancelar la factura ${invoice.invoice_number || invoice.id}? Esta acción no se puede deshacer.`)) {
       return;
     }
+    const reason = window.prompt("Motivo de cancelación (opcional):", "") ?? "";
     try {
       setCancelling(invoice.id);
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.patch(
+      const res = await axios.post(
         `${API_BASE_URL}/api/income/invoices/${invoice.id}/cancel`,
-        {},
+        { reason },
         { headers }
       );
       const updated = res.data?.invoice;

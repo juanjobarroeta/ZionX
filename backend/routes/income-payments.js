@@ -354,13 +354,31 @@ router.post('/invoices/:id/cancel', async (req, res) => {
       });
     }
     
-    // Get invoice details for reversal entry
-    const invoiceData = await client.query('SELECT invoice_number FROM invoices WHERE id = $1', [id]);
+    // Get invoice details for reversal entry + fiscal/state guards
+    const invoiceData = await client.query(
+      'SELECT invoice_number, status, cfdi_uuid FROM invoices WHERE id = $1',
+      [id]
+    );
     if (!invoiceData.rows.length) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Invoice not found' });
     }
-    const invoiceNumber = invoiceData.rows[0].invoice_number;
+    const invoiceRow = invoiceData.rows[0];
+    const invoiceNumber = invoiceRow.invoice_number;
+
+    if (invoiceRow.status === 'cancelled') {
+      await client.query('ROLLBACK');
+      return res.json({ message: 'Invoice already cancelled', invoice: invoiceRow });
+    }
+    // An invoice with a CFDI must be cancelled through contabilidad-os so the
+    // CFDI is cancelled at the SAT too — a local-only cancel would desync the
+    // fiscal record.
+    if (invoiceRow.cfdi_uuid) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'Esta factura ya está timbrada (CFDI). Debe cancelarse desde contabilidad-os para cancelar también ante el SAT.',
+      });
+    }
     
     // Cancel invoice
     const result = await client.query(`
