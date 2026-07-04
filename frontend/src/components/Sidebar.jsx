@@ -47,6 +47,7 @@ const NAV_GROUPS = [
       { href: "/income/subscriptions", label: "Suscripciones", section: "ingresos" },
       { href: "/income/payments", label: "Pagos", section: "ingresos" },
       { href: "/income/invoices", label: "Facturas", section: "ingresos" },
+      { href: "/income/cfdi", label: "CFDIs (fiscal)", section: "ingresos" },
       { href: "/income/addons", label: "Add-ons", section: "ingresos" },
       { href: "/income/reports", label: "Reportes", section: "ingresos" },
       { sub: "Contabilidad" },
