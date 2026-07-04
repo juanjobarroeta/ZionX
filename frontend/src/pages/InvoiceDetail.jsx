@@ -18,10 +18,31 @@ const InvoiceDetail = () => {
     notes: ''
   });
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [cfdiConfigured, setCfdiConfigured] = useState(false);
+  const [stamping, setStamping] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
+    const token = localStorage.getItem("token");
+    axios.get(`${API_BASE_URL}/api/income/cfdi/health`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setCfdiConfigured(!!r.data?.configured))
+      .catch(() => setCfdiConfigured(false));
   }, [id]);
+
+  const stampCfdi = async () => {
+    setStamping(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`${API_BASE_URL}/api/income/invoices/${id}/stamp`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data?.cfdi_uuid) alert(`✅ CFDI timbrado: ${res.data.cfdi_uuid}`);
+      fetchInvoice();
+    } catch (error) {
+      alert("No se pudo timbrar: " + (error.response?.data?.error || error.message));
+      fetchInvoice();
+    } finally {
+      setStamping(false);
+    }
+  };
 
   const fetchInvoice = async () => {
     try {
@@ -307,6 +328,41 @@ const InvoiceDetail = () => {
               <div className="mt-8 pt-8 border-t">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">NOTAS</h3>
                 <p className="text-sm text-gray-700">{invoice.notes}</p>
+              </div>
+            )}
+
+            {/* CFDI (contabilidad-os) */}
+            {(cfdiConfigured || invoice.cfdi_uuid) && (
+              <div className="mt-8 pt-8 border-t">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">CFDI Fiscal</h3>
+                {invoice.cfdi_uuid ? (
+                  <div className="flex items-center gap-4 flex-wrap bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div>
+                      <div className="text-xs text-gray-500 uppercase">Folio fiscal (UUID)</div>
+                      <div className="font-mono text-sm text-gray-800">{invoice.cfdi_uuid}</div>
+                    </div>
+                    {invoice.cfdi_pdf_url && (
+                      <a href={invoice.cfdi_pdf_url} target="_blank" rel="noreferrer"
+                        className="ml-auto bg-black text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
+                        Ver CFDI (PDF) →
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <button
+                      onClick={stampCfdi}
+                      disabled={stamping || invoice.status === 'cancelled'}
+                      className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {stamping ? 'Timbrando…' : '🧾 Timbrar CFDI'}
+                    </button>
+                    <span className="text-sm text-gray-500">Genera la factura fiscal (CFDI) en contabilidad-os.</span>
+                    {invoice.cfdi_error && (
+                      <div className="w-full text-sm text-red-600 mt-1">⚠ Último intento: {invoice.cfdi_error}</div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
