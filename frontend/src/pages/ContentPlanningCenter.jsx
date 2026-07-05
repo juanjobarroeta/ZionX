@@ -11,6 +11,13 @@ import {
   APPROVED_INTERNAL,
   CLIENT_BLOCKED,
 } from "../config/contentStatus";
+import {
+  STAGE_LABELS,
+  STATUS_LABELS,
+  STATUS_ORDER,
+  STATUS_VARIANT,
+  OPTIONAL_STAGES,
+} from "../config/pipeline";
 import "./Calendar.css";
 
 // ---------- status + platform mapping ----------
@@ -99,26 +106,7 @@ const publishMeta = (s) => {
 
 // ---------- production pipeline ----------
 // Live, stateful stages for a post (replaces the stateless "Falta para publicar"
-// checklist). Labels/statuses are Spanish, no emoji.
-const STAGE_LABELS = {
-  design: "Diseño",
-  copy: "Copy",
-  music: "Música",
-  internal_approval: "Aprobación interna",
-  client_approval: "Aprobación del cliente",
-  paid_promo: "Promoción pagada",
-  schedule: "Programación",
-};
-const STATUS_LABELS = {
-  pendiente: "Pendiente",
-  en_progreso: "En progreso",
-  listo: "Listo",
-  cambios: "Cambios pedidos",
-};
-const STATUS_ORDER = ["pendiente", "en_progreso", "listo", "cambios"];
-// Pill color -> brand tokens (muted / warn / ok / bad).
-const STATUS_VARIANT = { pendiente: "muted", en_progreso: "warn", listo: "ok", cambios: "bad" };
-const OPTIONAL_STAGES = new Set(["music", "paid_promo"]);
+// checklist). Vocabulary lives in config/pipeline (shared with MyWork).
 const stageOwnerLabel = (s) => {
   if (s.stage_key === "client_approval") return "Cliente";
   if (s.owner_id == null) return "Sin asignar";

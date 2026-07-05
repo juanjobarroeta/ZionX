@@ -9,7 +9,7 @@ const {
   nextRequiredStage,
   seedStagesForPost,
 } = require('../services/pipeline');
-const { userIdsForTeamMembers } = require('../services/identity');
+const { userIdsForTeamMembers, teamMemberIdForUser } = require('../services/identity');
 const { generateCaptionDraft } = require('../services/ai-caption');
 
 // =====================================================
@@ -210,6 +210,91 @@ router.post('/content-calendar/:id/pipeline/copy/ai-draft', async (req, res) => 
     res.json({ draft: result.draft });
   } catch (error) {
     console.error('Error generating AI caption:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// -----------------------------------------------------
+// GET /pipeline/my-queue
+// The logged-in person's personal production queue: every pipeline stage they
+// own that isn't done yet, with the post + client context. A `ready` flag marks
+// stages whose required predecessors are all complete (so it's actually their
+// turn) vs. stages still blocked upstream.
+// -----------------------------------------------------
+router.get('/pipeline/my-queue', async (req, res) => {
+  try {
+    const pool = req.pool;
+    const memberId = await teamMemberIdForUser(pool, req.user.id);
+    if (!memberId) return res.json({ memberId: null, items: [] });
+
+    const { rows } = await pool.query(
+      `SELECT s.id, s.content_calendar_id AS post_id, s.stage_key, s.status,
+              s.optional, s.position,
+              cc.customer_id, cc.campaign, cc.idea_tema, cc.title, cc.platform,
+              cc.content_type, cc.scheduled_date, cc.status AS post_status,
+              c.business_name AS customer_name,
+              NOT EXISTS (
+                SELECT 1 FROM post_pipeline_stages p
+                 WHERE p.content_calendar_id = s.content_calendar_id
+                   AND p.optional = false
+                   AND p.position < s.position
+                   AND p.status <> 'listo'
+              ) AS ready
+         FROM post_pipeline_stages s
+         JOIN content_calendar cc ON cc.id = s.content_calendar_id
+         LEFT JOIN customers c ON c.id = cc.customer_id
+        WHERE s.owner_id = $1
+          AND s.status <> 'listo'
+        ORDER BY cc.scheduled_date ASC NULLS LAST, s.position ASC`,
+      [memberId]
+    );
+    res.json({ memberId, items: rows });
+  } catch (error) {
+    console.error('Error fetching my-queue:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// -----------------------------------------------------
+// GET /pipeline/supervision
+// The senior's team overview: for every client where the caller is the assigned
+// senior, the in-flight posts with their current active stage (lowest-position
+// stage not yet 'listo'), its owner and status. Powers the supervision view —
+// where each post stands and what is stuck (status 'cambios').
+// -----------------------------------------------------
+router.get('/pipeline/supervision', async (req, res) => {
+  try {
+    const pool = req.pool;
+    const memberId = await teamMemberIdForUser(pool, req.user.id);
+    if (!memberId) return res.json({ memberId: null, items: [] });
+
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (cc.id)
+              cc.id AS post_id, cc.customer_id, cc.campaign, cc.idea_tema,
+              cc.title, cc.platform, cc.content_type, cc.scheduled_date,
+              cc.status AS post_status,
+              c.business_name AS customer_name,
+              s.stage_key AS current_stage, s.status AS current_status,
+              s.owner_id AS current_owner_id, tm.name AS current_owner_name
+         FROM customers c
+         JOIN content_calendar cc ON cc.customer_id = c.id
+         JOIN post_pipeline_stages s
+           ON s.content_calendar_id = cc.id AND s.status <> 'listo'
+         LEFT JOIN team_members tm ON tm.id = s.owner_id
+        WHERE c.assigned_senior = $1
+        ORDER BY cc.id, s.position ASC`,
+      [memberId]
+    );
+
+    // Re-sort by schedule for display (DISTINCT ON forced the cc.id order).
+    rows.sort((a, b) => {
+      const da = a.scheduled_date ? new Date(a.scheduled_date).getTime() : Infinity;
+      const db = b.scheduled_date ? new Date(b.scheduled_date).getTime() : Infinity;
+      return da - db;
+    });
+    res.json({ memberId, items: rows });
+  } catch (error) {
+    console.error('Error fetching supervision:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
