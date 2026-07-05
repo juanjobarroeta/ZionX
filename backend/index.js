@@ -184,6 +184,7 @@ async function start() {
     // --- New extracted route files ---
     const customersRoutes = require('./routes/customers-routes');
     const contentCalendarRoutes = require('./routes/content-calendar-routes');
+    const pipelineRoutes = require('./routes/pipeline-routes');
     const teamRoutes = require('./routes/team-routes');
     const dashboardRoutes = require('./routes/dashboard-routes');
     const inventoryRoutes = require('./routes/inventory-routes');
@@ -237,6 +238,9 @@ async function start() {
 
     // Content Calendar
     app.use('/', withPool, authenticateToken, contentCalendarRoutes);
+
+    // Post production pipeline (owned, stateful stages)
+    app.use('/', withPool, authenticateToken, pipelineRoutes);
 
     // Team, tasks, projects
     app.use('/', withPool, authenticateToken, teamRoutes);

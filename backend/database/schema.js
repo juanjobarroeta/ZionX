@@ -1202,6 +1202,63 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Content tasks table created");
 
+    // =====================================================
+    // POST PRODUCTION PIPELINE (owned, stateful stages)
+    // =====================================================
+
+    // 1. Client roster on customers — the three people who own pipeline stages
+    //    for this client's posts. Each is conceptually a team_members.id; kept as
+    //    plain INTEGER (no FK) to stay lenient with legacy/imported rows.
+    await pool.query(`
+      ALTER TABLE customers
+        ADD COLUMN IF NOT EXISTS assigned_designer INTEGER,   -- team_members.id: owns design + music stages
+        ADD COLUMN IF NOT EXISTS assigned_community INTEGER,  -- team_members.id: owns copy + schedule stages
+        ADD COLUMN IF NOT EXISTS assigned_senior INTEGER;     -- team_members.id: owns internal_approval + paid_promo stages
+    `);
+    console.log("✅ Customer roster columns added/verified");
+
+    // 1b. Backfill the new roster from the legacy default_* columns (if present),
+    //     so existing clients aren't blank and their posts auto-inherit owners.
+    //     COALESCE keeps any roster already set; only fills nulls.
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='default_designer')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='default_community_manager') THEN
+          UPDATE customers
+             SET assigned_designer  = COALESCE(assigned_designer, default_designer),
+                 assigned_community = COALESCE(assigned_community, default_community_manager)
+           WHERE assigned_designer IS NULL OR assigned_community IS NULL;
+        END IF;
+      END $$;
+    `);
+    console.log("✅ Customer roster backfilled from legacy defaults");
+
+    // 2. Role on team_members (intended: designer | community | senior_community |
+    //    admin | other). Idempotent; a wider role column may already exist.
+    await pool.query(`
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS role VARCHAR(40);
+    `);
+    console.log("✅ team_members.role verified");
+
+    // 3. Pipeline stages table.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS post_pipeline_stages (
+        id SERIAL PRIMARY KEY,
+        content_calendar_id INTEGER REFERENCES content_calendar(id) ON DELETE CASCADE,
+        stage_key VARCHAR(30) NOT NULL,          -- design, copy, music, internal_approval, client_approval, paid_promo, schedule
+        owner_id INTEGER,                        -- team_members.id, nullable
+        status VARCHAR(20) DEFAULT 'pendiente',  -- pendiente | en_progreso | listo | cambios
+        optional BOOLEAN DEFAULT false,
+        position INTEGER,
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (content_calendar_id, stage_key)
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pipeline_post ON post_pipeline_stages(content_calendar_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pipeline_owner ON post_pipeline_stages(owner_id, status);`);
+    console.log("✅ Post pipeline stages table created");
+
     console.log("✅ All tables ready");
 
   } catch (err) {

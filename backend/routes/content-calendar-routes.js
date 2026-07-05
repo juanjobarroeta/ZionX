@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const publishSync = require('../services/publishSync');
+const { seedStagesForPost } = require('../services/pipeline');
 
 // Public base for building absolute media URLs Meta can fetch.
 const publicBase = (req) =>
@@ -56,6 +57,14 @@ router.post("/content-calendar", async (req, res) => {
       scheduled_date, status, idea_tema, referencia, copy_in, copy_out,
       arte, fotos_video, elementos_utilizar, assigned_designer, assigned_community_manager
     ]);
+
+    // Auto-inherit the production pipeline: seed the 7 owned stages from the
+    // client's roster. Best-effort — must never break post creation.
+    try {
+      await seedStagesForPost(pool, result.rows[0].id);
+    } catch (seedErr) {
+      console.error("⚠️ Pipeline seed after create failed:", seedErr.message);
+    }
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
