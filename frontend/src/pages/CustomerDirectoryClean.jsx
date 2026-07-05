@@ -3,7 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
-import { customerName } from "../utils/customerName";
+import { customerName, customerContact } from "../utils/customerName";
 import "./Directory.css";
 
 const CustomerDirectoryClean = () => {
@@ -89,10 +89,8 @@ const CustomerDirectoryClean = () => {
                   <div className="zxcr-who">
                     <div className="name">{nameOf(c)}</div>
                     <div className="sub">
+                      {customerContact(c) && customerContact(c) !== nameOf(c) && <span>{customerContact(c)}</span>}
                       {emailOf(c) && <span>{emailOf(c)}</span>}
-                      {c.commercial_name && c.business_name && c.commercial_name !== c.business_name && (
-                        <span>Comercial: {c.commercial_name}</span>
-                      )}
                       {c.industry && <span className="zxcr-tag">{c.industry}</span>}
                     </div>
                   </div>
