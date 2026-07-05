@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import "./ProjectDetails.css";
 
 const ProjectDetails = () => {
   const { id } = useParams();
@@ -162,20 +163,6 @@ const ProjectDetails = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'bg-zionx-highlight text-white';
-      case 'active': 
-      case 'in_progress': return 'bg-zionx-accent text-white';
-      case 'review': return 'bg-zionx-secondary text-zionx-primary';
-      case 'blocked': return 'bg-zionx-primary text-white';
-      case 'planning': return 'bg-zionx-tertiary text-zionx-primary';
-      case 'on_hold': return 'bg-zionx-secondary text-zionx-primary';
-      case 'cancelled': return 'bg-zionx-accent text-white';
-      default: return 'bg-zionx-tertiary text-zionx-primary';
-    }
-  };
-
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case 'critical': return '🔴';
@@ -253,10 +240,9 @@ const ProjectDetails = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-accent mx-auto mb-4"></div>
-            <p className="text-zionx-accent">Cargando proyecto...</p>
+        <div className="zxpdt">
+          <div className="zxpdt-inner">
+            <div className="zxpdt-loading">Cargando proyecto…</div>
           </div>
         </div>
       </Layout>
@@ -266,16 +252,17 @@ const ProjectDetails = () => {
   if (!project) {
     return (
       <Layout>
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">❌</div>
-          <h2 className="text-2xl font-bold text-zionx-primary mb-2">Proyecto No Encontrado</h2>
-          <p className="text-zionx-accent mb-6">El proyecto que buscas no existe.</p>
-          <Link
-            to="/projects"
-            className="bg-gradient-to-r from-zionx-accent to-zionx-primary hover:from-zionx-primary hover:to-zionx-accent text-white font-bold px-6 py-3 rounded-lg transition-all duration-200"
-          >
-            ← Volver a Proyectos
-          </Link>
+        <div className="zxpdt">
+          <div className="zxpdt-inner">
+            <div className="zxpdt-notfound">
+              <div className="big">❌</div>
+              <h2>Proyecto No Encontrado</h2>
+              <p>El proyecto que buscas no existe.</p>
+              <Link to="/projects" className="zxpdt-btn solid">
+                ← Volver a Proyectos
+              </Link>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -283,129 +270,131 @@ const ProjectDetails = () => {
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto">
-        {/* Project Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => navigate('/projects')}
-              className="p-2 bg-zionx-tertiary hover:bg-zionx-secondary text-zionx-primary rounded-lg transition-colors border border-zionx-accent"
-            >
-              ← Volver
-            </button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-zionx-primary font-display">{project.name}</h1>
-              <p className="text-zionx-accent">{project.description}</p>
+      <div className="zxpdt">
+        <div className="zxpdt-inner">
+          {/* Project Header */}
+          <div className="zxpdt-head">
+            <div className="zxpdt-head-top">
+              <div>
+                <div className="zxpdt-eyebrow">Proyecto</div>
+                <h1 className="zxpdt-h1">
+                  <span className="zxpdt-serif">{project.name}</span>
+                </h1>
+                {project.description && <p className="zxpdt-desc">{project.description}</p>}
+              </div>
+              <div className="zxpdt-head-right">
+                <span className={`zxpdt-status ${project.status}`}>
+                  {getStatusText(project.status)}
+                </span>
+                <span className="zxpdt-prio">{getPriorityIcon(project.priority)}</span>
+                <button
+                  onClick={() => navigate('/projects')}
+                  className="zxpdt-btn"
+                >
+                  ← Volver
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r ${getStatusColor(project.status)} text-white`}>
-                {project.status}
-              </span>
-              <span className="text-2xl">{getPriorityIcon(project.priority)}</span>
-            </div>
-          </div>
 
-          {/* Project Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gradient-to-r from-zionx-tertiary to-zionx-secondary p-4 rounded-lg border border-zionx-accent">
-              <div className="text-sm text-zionx-accent">Cliente</div>
-              <div className="font-bold text-zionx-primary">{project.customer_name}</div>
-            </div>
-            <div className="bg-gradient-to-r from-zionx-tertiary to-zionx-secondary p-4 rounded-lg border border-zionx-accent">
-              <div className="text-sm text-zionx-accent">Gerente</div>
-              <div className="font-bold text-zionx-primary">{project.project_manager_name}</div>
-            </div>
-            <div className="bg-gradient-to-r from-zionx-tertiary to-zionx-secondary p-4 rounded-lg border border-zionx-accent">
-              <div className="text-sm text-zionx-accent">Progreso</div>
-              <div className="font-bold text-zionx-primary">{project.progress_percentage || 0}%</div>
-            </div>
-            <div className="bg-gradient-to-r from-zionx-tertiary to-zionx-secondary p-4 rounded-lg border border-zionx-accent">
-              <div className="text-sm text-zionx-accent">Fecha Límite</div>
-              <div className="font-bold text-zionx-primary">
-                {project.due_date ? new Date(project.due_date).toLocaleDateString() : 'No establecida'}
+            {/* Project Info Tiles */}
+            <div className="zxpdt-tiles">
+              <div className="zxpdt-tile">
+                <div className="k">Cliente</div>
+                <div className="v">{project.customer_name}</div>
+              </div>
+              <div className="zxpdt-tile">
+                <div className="k">Gerente</div>
+                <div className="v">{project.project_manager_name}</div>
+              </div>
+              <div className="zxpdt-tile">
+                <div className="k">Progreso</div>
+                <div className="v num">{project.progress_percentage || 0}%</div>
+                <div className="zxpdt-track">
+                  <div className="zxpdt-fill" style={{ width: `${project.progress_percentage || 0}%` }}></div>
+                </div>
+              </div>
+              <div className="zxpdt-tile">
+                <div className="k">Fecha Límite</div>
+                <div className="v">
+                  {project.due_date ? new Date(project.due_date).toLocaleDateString() : 'No establecida'}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex space-x-1 mb-8 bg-zionx-tertiary p-1 rounded-lg border border-zionx-secondary">
-          {[
-            { id: 'kanban', label: '📋 Tablero Kanban', icon: '📋' },
-            { id: 'timeline', label: '📅 Cronograma', icon: '📅' },
-            { id: 'team', label: '👥 Equipo', icon: '👥' },
-            { id: 'activity', label: '📝 Actividad', icon: '📝' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-zionx-accent text-white shadow-lg'
-                  : 'text-zionx-accent hover:text-zionx-primary hover:bg-zionx-secondary'
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+          {/* Navigation Tabs */}
+          <div className="zxpdt-tabs">
+            {[
+              { id: 'kanban', label: 'Tablero Kanban', icon: '📋' },
+              { id: 'timeline', label: 'Cronograma', icon: '📅' },
+              { id: 'team', label: 'Equipo', icon: '👥' },
+              { id: 'activity', label: 'Actividad', icon: '📝' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`zxpdt-tab${activeTab === tab.id ? ' active' : ''}`}
+              >
+                <span>{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
         {/* Kanban Board */}
         {activeTab === 'kanban' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-zionx-primary">Tablero de Tareas</h2>
+          <div className="zxpdt-inner" style={{ gap: 18, padding: 0 }}>
+            <div className="zxpdt-sec-head">
+              <h2>Tablero de Tareas</h2>
               <button
                 onClick={() => setShowNewTaskModal(true)}
-                className="bg-gradient-to-r from-zionx-accent to-zionx-primary hover:from-zionx-primary hover:to-zionx-accent text-white font-medium px-4 py-2 rounded-lg transition-all duration-200"
+                className="zxpdt-btn solid"
               >
                 ➕ Agregar Tarea
               </button>
             </div>
 
             {/* Kanban Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="zxpdt-kanban">
               {['todo', 'in_progress', 'review', 'completed'].map((status) => (
-                <div key={status} className="bg-gradient-to-b from-zionx-tertiary to-zionx-secondary rounded-lg p-4 border border-zionx-accent">
-                  <h3 className="font-bold text-zionx-primary mb-4 capitalize">
-                    {status.replace('_', ' ')} ({tasks.filter(t => t.status === status).length})
+                <div key={status} className="zxpdt-col">
+                  <h3 className="zxpdt-col-head">
+                    {getStatusText(status)}
+                    <span className="zxpdt-col-count">{tasks.filter(t => t.status === status).length}</span>
                   </h3>
-                  
-                  <div className="space-y-3">
+
+                  <div className="zxpdt-cards">
                     {tasks
                       .filter(task => task.status === status)
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="bg-white rounded-lg p-4 border border-zionx-secondary shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                          className="zxpdt-task"
                           onClick={() => {/* Open task details modal */}}
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-zionx-primary text-sm">{task.title}</h4>
-                            <span className="text-lg">{getPriorityIcon(task.priority)}</span>
+                          <div className="zxpdt-task-top">
+                            <h4>{task.title}</h4>
+                            <span>{getPriorityIcon(task.priority)}</span>
                           </div>
-                          
+
                           {task.description && (
-                            <p className="text-xs text-zionx-accent mb-3 line-clamp-2">{task.description}</p>
+                            <p className="zxpdt-task-desc">{task.description}</p>
                           )}
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="zxpdt-task-foot">
+                            <div className="zxpdt-who">
                               {task.assignee_name && (
-                                <div className="w-6 h-6 bg-gradient-to-br from-zionx-accent to-zionx-primary rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs font-bold">
-                                    {task.assignee_name.charAt(0).toUpperCase()}
-                                  </span>
+                                <div className="zxpdt-avatar">
+                                  {task.assignee_name.charAt(0).toUpperCase()}
                                 </div>
                               )}
-                              <span className="text-xs text-zionx-accent">{task.assignee_name}</span>
+                              <span>{task.assignee_name}</span>
                             </div>
-                            
+
                             <select
                               value={task.status}
                               onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                              className="text-xs bg-zionx-tertiary text-zionx-primary border border-zionx-secondary rounded px-2 py-1 focus:outline-none focus:border-zionx-highlight"
+                              className="zxpdt-select"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <option value="todo">Por Hacer</option>
@@ -416,7 +405,7 @@ const ProjectDetails = () => {
                           </div>
 
                           {task.due_date && (
-                            <div className="mt-2 text-xs text-zionx-accent">
+                            <div className="zxpdt-due">
                               Vence: {new Date(task.due_date).toLocaleDateString()}
                             </div>
                           )}
@@ -431,156 +420,134 @@ const ProjectDetails = () => {
 
         {/* Activity Timeline */}
         {activeTab === 'activity' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-zionx-primary">📝 Actividad del Proyecto</h2>
-            
-            <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-xl p-6 border border-zionx-accent">
-              <div className="space-y-4">
+          <div className="zxpdt-inner" style={{ gap: 18, padding: 0 }}>
+            <div className="zxpdt-sec-head">
+              <h2>📝 Actividad del Proyecto</h2>
+            </div>
+
+            <div className="zxpdt-panel">
+              <div className="zxpdt-activity">
                 {activity.map((item, index) => (
-                  <div key={item.id} className="flex items-start gap-4 p-4 bg-white rounded-lg border border-zionx-secondary">
-                    <div className="w-8 h-8 bg-gradient-to-br from-zionx-accent to-zionx-primary rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">
-                        {item.user_name?.charAt(0).toUpperCase() || '?'}
-                      </span>
+                  <div key={item.id} className="zxpdt-act-row">
+                    <div className="zxpdt-avatar">
+                      {item.user_name?.charAt(0).toUpperCase() || '?'}
                     </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-zionx-primary">{item.user_name}</span>
-                        <span className="text-xs text-zionx-accent">
+
+                    <div className="zxpdt-act-body">
+                      <div className="zxpdt-act-meta">
+                        <span className="name">{item.user_name}</span>
+                        <span className="time">
                           {new Date(item.created_at).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-zionx-accent">{item.description}</p>
+                      <p className="zxpdt-act-desc">{item.description}</p>
                     </div>
                   </div>
                 ))}
 
                 {activity.length === 0 && (
-                  <div className="text-center py-8">
-                    <div className="text-4xl mb-2">📝</div>
-                    <p className="text-zionx-accent">No hay actividad aún</p>
+                  <div className="zxpdt-empty">
+                    <div className="big">📝</div>
+                    <p>No hay actividad aún</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* New Task Modal */}
       {showNewTaskModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-zionx-primary">Nueva Tarea</h3>
+        <div className="zxpdt-overlay">
+          <div className="zxpdt-modal">
+            <div className="zxpdt-modal-head">
+              <h3>Nueva Tarea</h3>
               <button
                 onClick={() => setShowNewTaskModal(false)}
-                className="text-zionx-accent hover:text-zionx-primary"
+                className="zxpdt-x"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateTask}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">
-                    Título *
-                  </label>
-                  <input
-                    type="text"
-                    name="title"
-                    required
-                    className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                    placeholder="Título de la tarea"
-                  />
-                </div>
+            <form onSubmit={handleCreateTask} className="zxpdt-form">
+              <div className="zxpdt-fld">
+                <label>Título *</label>
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  className="zxpdt-input"
+                  placeholder="Título de la tarea"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">
-                    Descripción
-                  </label>
-                  <textarea
-                    name="description"
-                    rows="3"
-                    className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                    placeholder="Descripción de la tarea"
-                  />
-                </div>
+              <div className="zxpdt-fld">
+                <label>Descripción</label>
+                <textarea
+                  name="description"
+                  rows="3"
+                  className="zxpdt-textarea"
+                  placeholder="Descripción de la tarea"
+                />
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zionx-primary mb-1">
-                      Estado
-                    </label>
-                    <select
-                      name="status"
-                      className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                    >
-                      <option value="todo">Por Hacer</option>
-                      <option value="in_progress">En Progreso</option>
-                      <option value="review">En Revisión</option>
-                      <option value="completed">Completado</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zionx-primary mb-1">
-                      Prioridad
-                    </label>
-                    <select
-                      name="priority"
-                      className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                    >
-                      <option value="low">Baja</option>
-                      <option value="medium">Media</option>
-                      <option value="high">Alta</option>
-                      <option value="critical">Crítica</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">
-                    Asignar a
-                  </label>
-                  <select
-                    name="assignee_id"
-                    className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                  >
-                    <option value="">Sin asignar</option>
-                    {teamMembers.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
+              <div className="zxpdt-form-row">
+                <div className="zxpdt-fld">
+                  <label>Estado</label>
+                  <select name="status">
+                    <option value="todo">Por Hacer</option>
+                    <option value="in_progress">En Progreso</option>
+                    <option value="review">En Revisión</option>
+                    <option value="completed">Completado</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">
-                    Fecha de Vencimiento
-                  </label>
-                  <input
-                    type="date"
-                    name="due_date"
-                    className="w-full px-3 py-2 border border-zionx-secondary rounded-lg focus:border-zionx-highlight focus:outline-none"
-                  />
+                <div className="zxpdt-fld">
+                  <label>Prioridad</label>
+                  <select name="priority">
+                    <option value="low">Baja</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                    <option value="critical">Crítica</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="zxpdt-fld">
+                <label>Asignar a</label>
+                <select name="assignee_id">
+                  <option value="">Sin asignar</option>
+                  {teamMembers.map(member => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="zxpdt-fld">
+                <label>Fecha de Vencimiento</label>
+                <input
+                  type="date"
+                  name="due_date"
+                  className="zxpdt-input"
+                />
+              </div>
+
+              <div className="zxpdt-modal-actions">
                 <button
                   type="button"
                   onClick={() => setShowNewTaskModal(false)}
-                  className="flex-1 px-4 py-2 bg-zionx-tertiary text-zionx-primary rounded-lg hover:bg-zionx-secondary transition-colors"
+                  className="zxpdt-btn"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-zionx-accent to-zionx-primary text-white rounded-lg hover:from-zionx-primary hover:to-zionx-accent transition-all"
+                  className="zxpdt-btn solid"
                 >
                   Crear Tarea
                 </button>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import "./PaymentManagement.css";
 
 const PaymentManagement = () => {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -279,8 +280,10 @@ const PaymentManagement = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxpay">
+          <div className="zxpay-loading">
+            <div className="zxpay-spinner"></div>
+          </div>
         </div>
       </Layout>
     );
@@ -288,48 +291,37 @@ const PaymentManagement = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">💳 Gestión de Pagos</h1>
-                <p className="text-gray-500 text-sm mt-1">
-                  Control de cobros, recordatorios y pagos vencidos
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <Link
-                  to="/income"
-                  className="bg-white border border-zionx-secondary px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  ← Volver
-                </Link>
-              </div>
+      <div className="zxpay">
+        <div className="zxpay-inner">
+          {/* Header */}
+          <div className="zxpay-head">
+            <div>
+              <div className="zxpay-eyebrow">Finanzas</div>
+              <h1 className="zxpay-h1">Gestión de <span className="zxpay-serif">pagos</span></h1>
+              <p className="zxpay-sub">Control de cobros, recordatorios y pagos vencidos</p>
+            </div>
+            <div className="zxpay-actions">
+              <Link to="/income" className="zxpay-btn">← Volver</Link>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Alert Banner for Overdue */}
           {stats.overdue > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">⚠️</span>
+            <div className="zxpay-alert">
+              <div className="zxpay-alert-l">
+                <span className="zxpay-alert-ico">⚠️</span>
                 <div>
-                  <p className="font-semibold text-red-800">
+                  <p className="t">
                     {stats.overdue} pago{stats.overdue > 1 ? 's' : ''} vencido{stats.overdue > 1 ? 's' : ''}
                   </p>
-                  <p className="text-red-600 text-sm">
+                  <p className="s">
                     Total vencido: {formatCurrency(stats.overdueAmount)}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setFilter('overdue')}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                className="zxpay-btn solid"
               >
                 Ver vencidos
               </button>
@@ -337,119 +329,91 @@ const PaymentManagement = () => {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div 
+          <div className="zxpay-tiles">
+            <button
               onClick={() => setFilter('all')}
-              className={`bg-white rounded-xl p-6 border-2 cursor-pointer transition-all ${filter === 'all' ? 'border-black' : 'border-zionx-secondary hover:border-gray-300'}`}
+              className={`zxpay-tile ${filter === 'all' ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">📋</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total Activos</p>
-                  <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
-                </div>
-              </div>
-            </div>
+              <span className="k">📋 Total Activos</span>
+              <span className="v">{stats.total}</span>
+            </button>
 
-            <div 
+            <button
               onClick={() => setFilter('overdue')}
-              className={`bg-white rounded-xl p-6 border-2 cursor-pointer transition-all ${filter === 'overdue' ? 'border-red-500' : 'border-zionx-secondary hover:border-red-200'}`}
+              className={`zxpay-tile ${filter === 'overdue' ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">⚠️</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Vencidos</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
-                  <p className="text-xs text-red-500">{formatCurrency(stats.overdueAmount)}</p>
-                </div>
-              </div>
-            </div>
+              <span className="k">⚠️ Vencidos</span>
+              <span className="v bad">{stats.overdue}</span>
+              <span className="sub">{formatCurrency(stats.overdueAmount)}</span>
+            </button>
 
-            <div 
+            <button
               onClick={() => setFilter('upcoming')}
-              className={`bg-white rounded-xl p-6 border-2 cursor-pointer transition-all ${filter === 'upcoming' ? 'border-yellow-500' : 'border-zionx-secondary hover:border-yellow-200'}`}
+              className={`zxpay-tile ${filter === 'upcoming' ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">⏰</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Próximos 7 días</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.upcoming}</p>
-                  <p className="text-xs text-yellow-600">{formatCurrency(stats.upcomingAmount)}</p>
-                </div>
-              </div>
-            </div>
+              <span className="k">⏰ Próximos 7 días</span>
+              <span className="v warn">{stats.upcoming}</span>
+              <span className="sub">{formatCurrency(stats.upcomingAmount)}</span>
+            </button>
 
-            <div 
+            <button
               onClick={() => setFilter('paid')}
-              className={`bg-white rounded-xl p-6 border-2 cursor-pointer transition-all ${filter === 'paid' ? 'border-green-500' : 'border-zionx-secondary hover:border-green-200'}`}
+              className={`zxpay-tile ${filter === 'paid' ? 'active' : ''}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">✅</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Pagados</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.paid}</p>
-                </div>
-              </div>
-            </div>
+              <span className="k">✅ Pagados</span>
+              <span className="v ok">{stats.paid}</span>
+            </button>
           </div>
 
           {/* Subscriptions List */}
-          <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zionx-primary">
+          <div className="zxpay-panel">
+            <div className="zxpay-panel-head">
+              <h2>
                 {filter === 'all' && 'Todos los Pagos Pendientes'}
                 {filter === 'overdue' && '⚠️ Pagos Vencidos'}
                 {filter === 'upcoming' && '⏰ Próximos a Vencer (7 días)'}
                 {filter === 'paid' && '✅ Pagos al Corriente'}
               </h2>
-              <span className="text-sm text-gray-500">{filteredPaymentItems.length} registros</span>
+              <span className="zxpay-count">{filteredPaymentItems.length} registros</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="zxpay-tablewrap">
+              <table className="zxpay-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Vencimiento</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    <th>Cliente</th>
+                    <th>Monto</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {filteredPaymentItems.length > 0 ? (
                     filteredPaymentItems.map((item) => (
-                      <tr key={item.id} className={`hover:bg-gray-50 ${item.paymentStatus.status === 'overdue' ? 'bg-red-50' : ''}`}>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="font-medium text-gray-900">{item.customer_name}</div>
-                            <div className="text-xs text-gray-500">
+                      <tr key={item.id} className={item.paymentStatus.status === 'overdue' ? 'over' : ''}>
+                        <td>
+                          <div className="zxpay-cust">
+                            <div className="name">{item.customer_name}</div>
+                            <div className="meta">
                               {item.type === 'invoice' ? `📄 Factura ${item.invoice_number}` : '📱 Suscripción'}
                             </div>
-                            <div className="text-xs text-gray-500">{item.customer_email || '-'}</div>
+                            <div className="meta">{item.customer_email || '-'}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-zionx-primary">
+                        <td>
+                          <div className="zxpay-amt">
                             {formatCurrency(item.amount_due || item.amount)}
                           </div>
                           {item.type === 'subscription' && (
-                            <div className="text-xs text-gray-500">
+                            <div className="zxpay-amt-note">
                               (Sin facturar)
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {item.due_date 
+                        <td>
+                          <div className="zxpay-date">
+                            {item.due_date
                               ? new Date(item.due_date).toLocaleDateString('es-MX', {
                                   day: 'numeric',
                                   month: 'short',
@@ -459,31 +423,25 @@ const PaymentManagement = () => {
                             }
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium
-                            ${item.paymentStatus.color === 'red' ? 'bg-red-100 text-red-800' : ''}
-                            ${item.paymentStatus.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
-                            ${item.paymentStatus.color === 'green' ? 'bg-green-100 text-green-800' : ''}
-                            ${item.paymentStatus.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
-                            ${item.paymentStatus.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
-                          `}>
+                        <td>
+                          <span className={`zxpay-pill ${item.paymentStatus.color}`}>
                             {item.paymentStatus.label}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex space-x-2 flex-wrap gap-1">
+                        <td>
+                          <div className="zxpay-rowacts">
                             {item.type === 'invoice' ? (
                               <>
                                 <Link
                                   to={`/income/invoices/${item.invoice_id}`}
-                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                                  className="zxpay-act"
                                 >
                                   👁️ Ver Factura
                                 </Link>
                                 {item.paymentStatus.status !== 'paid' && (
                                   <Link
                                     to={`/income/invoices/${item.invoice_id}`}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                    className="zxpay-act solid"
                                   >
                                     💰 Pagar
                                   </Link>
@@ -493,13 +451,13 @@ const PaymentManagement = () => {
                               <>
                                 <Link
                                   to={`/income/invoice-generator?subscription_id=${item.subscription_id}&customer_id=${item.customer_id}`}
-                                  className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"
+                                  className="zxpay-act solid"
                                 >
                                   📄 Facturar
                                 </Link>
                                 <button
                                   onClick={() => openReminderModal(item)}
-                                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                                  className="zxpay-act"
                                 >
                                   📱 Recordatorio
                                 </button>
@@ -511,9 +469,9 @@ const PaymentManagement = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                        <div className="flex flex-col items-center">
-                          <span className="text-4xl mb-2">📋</span>
+                      <td colSpan="5">
+                        <div className="zxpay-empty">
+                          <span className="ico">📋</span>
                           <p>No hay pagos pendientes en esta categoría</p>
                         </div>
                       </td>
@@ -527,42 +485,42 @@ const PaymentManagement = () => {
 
         {/* Record Payment Modal */}
         {showPaymentModal && selectedSubscription && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-              <h2 className="text-xl font-bold text-zionx-primary mb-4">💰 Registrar Pago</h2>
-              
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Cliente:</p>
-                <p className="font-semibold text-zionx-primary">{selectedSubscription.customer_name}</p>
-                <p className="text-sm text-gray-500 mt-1">
+          <div className="zxpay-modal-overlay">
+            <div className="zxpay-modal">
+              <h2>💰 Registrar Pago</h2>
+
+              <div className="zxpay-modal-info">
+                <p className="lbl">Cliente:</p>
+                <p className="val">{selectedSubscription.customer_name}</p>
+                <p className="mut">
                   Vencimiento: {new Date(selectedSubscription.next_billing_date).toLocaleDateString('es-MX')}
                 </p>
               </div>
-              
-              <form onSubmit={handleRecordPayment} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+              <form onSubmit={handleRecordPayment} className="zxpay-form">
+                <div className="zxpay-field">
+                  <label className="zxpay-label">
                     Monto Recibido (con IVA)
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">$</span>
+                  <div className="zxpay-input-wrap">
+                    <span className="zxpay-input-prefix">$</span>
                     <input
                       type="number"
                       step="0.01"
                       value={(parseFloat(paymentAmount) * 1.16).toFixed(2)}
                       onChange={(e) => setPaymentAmount((parseFloat(e.target.value) / 1.16).toFixed(2))}
                       required
-                      className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2"
+                      className="zxpay-input has-prefix"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
+                <div className="zxpay-field">
+                  <label className="zxpay-label">Método de Pago</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="zxpay-select"
                   >
                     <option value="transfer">🏦 Transferencia Bancaria</option>
                     <option value="cash">💵 Efectivo</option>
@@ -572,39 +530,39 @@ const PaymentManagement = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Referencia (opcional)</label>
+                <div className="zxpay-field">
+                  <label className="zxpay-label">Referencia (opcional)</label>
                   <input
                     type="text"
                     value={paymentReference}
                     onChange={(e) => setPaymentReference(e.target.value)}
                     placeholder="Número de transferencia, folio, etc."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="zxpay-input"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+                <div className="zxpay-field">
+                  <label className="zxpay-label">Notas (opcional)</label>
                   <textarea
                     value={paymentNotes}
                     onChange={(e) => setPaymentNotes(e.target.value)}
                     rows={2}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="zxpay-textarea"
                     placeholder="Observaciones..."
                   />
                 </div>
 
-                <div className="flex space-x-3 pt-4">
+                <div className="zxpay-modal-actions">
                   <button
                     type="button"
                     onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                    className="zxpay-btn"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    className="zxpay-btn solid"
                   >
                     ✓ Confirmar Pago
                   </button>
@@ -616,40 +574,40 @@ const PaymentManagement = () => {
 
         {/* Reminder Modal */}
         {showReminderModal && selectedSubscription && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4">
-              <h2 className="text-xl font-bold text-zionx-primary mb-4">📱 Enviar Recordatorio</h2>
-              
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="font-semibold">{selectedSubscription.customer_name}</p>
-                <p className="text-sm text-gray-500">
+          <div className="zxpay-modal-overlay">
+            <div className="zxpay-modal wide">
+              <h2>📱 Enviar Recordatorio</h2>
+
+              <div className="zxpay-modal-info">
+                <p className="val">{selectedSubscription.customer_name}</p>
+                <p className="mut">
                   Monto: {formatCurrency(parseFloat(selectedSubscription.effective_monthly_price) * 1.16)}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="mut">
                   Vence: {new Date(selectedSubscription.next_billing_date).toLocaleDateString('es-MX')}
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="zxpay-form">
+                <div className="zxpay-field">
+                  <label className="zxpay-label">
                     Mensaje de WhatsApp:
                   </label>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm whitespace-pre-wrap">
+                  <div className="zxpay-msgbox">
                     {generateWhatsAppReminder(
-                      selectedSubscription, 
+                      selectedSubscription,
                       getPaymentStatus(selectedSubscription).status === 'overdue'
                     )}
                   </div>
                 </div>
 
-                <div className="flex space-x-3">
+                <div className="zxpay-modal-actions">
                   <button
                     onClick={() => copyToClipboard(generateWhatsAppReminder(
                       selectedSubscription,
                       getPaymentStatus(selectedSubscription).status === 'overdue'
                     ))}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                    className="zxpay-btn"
                   >
                     📋 Copiar Mensaje
                   </button>
@@ -662,7 +620,7 @@ const PaymentManagement = () => {
                         getPaymentStatus(selectedSubscription).status === 'overdue'
                       ));
                     }}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    className="zxpay-btn solid"
                   >
                     📱 Abrir WhatsApp
                   </button>
@@ -670,7 +628,7 @@ const PaymentManagement = () => {
 
                 <button
                   onClick={() => setShowReminderModal(false)}
-                  className="w-full bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200"
+                  className="zxpay-btn zxpay-modal-full"
                 >
                   Cerrar
                 </button>

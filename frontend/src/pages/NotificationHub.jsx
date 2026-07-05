@@ -3,6 +3,7 @@ import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { useNavigate } from "react-router-dom";
+import "./NotificationHub.css";
 
 const NotificationHub = () => {
   const navigate = useNavigate();
@@ -161,149 +162,128 @@ const NotificationHub = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-4xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black flex items-center gap-3">
-                  🔔 Centro de Notificaciones
-                  {unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-sm px-3 py-1 rounded-full">
-                      {unreadCount} nuevas
-                    </span>
-                  )}
-                </h1>
-                <p className="text-gray-500 text-sm mt-1">
-                  Mantente al día con las actualizaciones del sistema
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={createTestNotifications}
-                  className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
-                >
-                  🧪 Crear Pruebas
-                </button>
-                <button
-                  onClick={() => navigate('/messages')}
-                  className="bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-                >
-                  💬 Mensajes
-                </button>
+      <div className="zxntf">
+        <div className="zxntf-inner">
+          {/* Header */}
+          <div className="zxntf-head">
+            <div>
+              <div className="zxntf-eyebrow">Actividad</div>
+              <h1 className="zxntf-h1">
+                Centro de <span className="zxntf-serif">notificaciones</span>
                 {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                  >
-                    ✓ Marcar todo como leído
-                  </button>
+                  <span className="zxntf-count">{unreadCount} nuevas</span>
                 )}
-              </div>
+              </h1>
+              <p className="zxntf-sub">
+                Mantente al día con las actualizaciones del sistema
+              </p>
             </div>
-
-            {/* Filters */}
-            <div className="flex gap-2 mt-4">
-              {[
-                { id: 'all', label: 'Todas', icon: '📋' },
-                { id: 'unread', label: 'No leídas', icon: '🔵' },
-                { id: 'read', label: 'Leídas', icon: '✓' }
-              ].map(f => (
+            <div className="zxntf-actions">
+              <button
+                onClick={createTestNotifications}
+                className="zxntf-btn"
+              >
+                🧪 Crear Pruebas
+              </button>
+              <button
+                onClick={() => navigate('/messages')}
+                className="zxntf-btn"
+              >
+                💬 Mensajes
+              </button>
+              {unreadCount > 0 && (
                 <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    filter === f.id 
-                      ? 'bg-black text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                  }`}
+                  onClick={markAllAsRead}
+                  className="zxntf-btn solid"
                 >
-                  {f.icon} {f.label}
-                </button>
-              ))}
-              
-              {notifications.length > 0 && (
-                <button
-                  onClick={clearAll}
-                  className="ml-auto text-red-600 hover:text-red-800 text-sm px-4 py-2"
-                >
-                  🗑️ Limpiar todo
+                  ✓ Marcar todo como leído
                 </button>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Notifications List */}
-        <div className="max-w-4xl mx-auto px-6 py-8">
+          {/* Filters */}
+          <div className="zxntf-filters">
+            {[
+              { id: 'all', label: 'Todas', icon: '📋' },
+              { id: 'unread', label: 'No leídas', icon: '🔵' },
+              { id: 'read', label: 'Leídas', icon: '✓' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`zxntf-chip ${filter === f.id ? 'active' : ''}`}
+              >
+                {f.icon} {f.label}
+              </button>
+            ))}
+
+            {notifications.length > 0 && (
+              <button
+                onClick={clearAll}
+                className="zxntf-clear"
+              >
+                🗑️ Limpiar todo
+              </button>
+            )}
+          </div>
+
+          {/* Notifications List */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-            </div>
+            <div className="zxntf-loading">Cargando…</div>
           ) : notifications.length > 0 ? (
-            <div className="space-y-3">
+            <div className="zxntf-list">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl border overflow-hidden transition-all hover:shadow-md ${
-                    notification.is_read 
-                      ? 'border-gray-200' 
-                      : 'border-l-4 border-l-blue-500 border-gray-200'
-                  }`}
+                  className={`zxntf-row ${notification.is_read ? '' : 'unread'}`}
+                  onClick={() => handleNotificationClick(notification)}
                 >
-                  <div 
-                    className="p-4 cursor-pointer"
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Icon */}
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${getTypeBgColor(notification.type)}`}>
-                        {notification.icon || getTypeIcon(notification.type)}
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <h3 className={`font-semibold ${notification.is_read ? 'text-gray-700' : 'text-gray-900'}`}>
-                              {notification.title}
-                            </h3>
-                            <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
-                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                              <span>{formatTimeAgo(notification.created_at)}</span>
-                              {notification.from_user_name && (
-                                <>
-                                  <span>•</span>
-                                  <span>de {notification.from_user_name}</span>
-                                </>
-                              )}
-                              {notification.link_type && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-blue-500">Ver {notification.link_type} →</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Actions */}
-                          <div className="flex items-center gap-2">
-                            {!notification.is_read && (
-                              <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteNotification(notification.id);
-                              }}
-                              className="text-gray-400 hover:text-red-500 p-1"
-                              title="Eliminar"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                  {/* Icon */}
+                  <div className="zxntf-ico">
+                    {notification.icon || getTypeIcon(notification.type)}
+                  </div>
+
+                  {/* Content */}
+                  <div className="zxntf-body">
+                    <div className="zxntf-top">
+                      <div>
+                        <div className={`zxntf-title ${notification.is_read ? 'read' : ''}`}>
+                          {notification.title}
                         </div>
+                        <p className="zxntf-msg">{notification.message}</p>
+                        <div className="zxntf-meta">
+                          <span>{formatTimeAgo(notification.created_at)}</span>
+                          {notification.from_user_name && (
+                            <>
+                              <span className="dot">•</span>
+                              <span>de {notification.from_user_name}</span>
+                            </>
+                          )}
+                          {notification.link_type && (
+                            <>
+                              <span className="dot">•</span>
+                              <span className="link">Ver {notification.link_type} →</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="zxntf-side">
+                        {!notification.is_read && (
+                          <span className="zxntf-unread-dot"></span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(notification.id);
+                          }}
+                          className="zxntf-del"
+                          title="Eliminar"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -311,14 +291,14 @@ const NotificationHub = () => {
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
-              <span className="text-6xl block mb-4">🔔</span>
-              <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            <div className="zxntf-empty">
+              <span className="big">🔔</span>
+              <div className="lead">
                 {filter === 'unread' ? 'No hay notificaciones sin leer' : 'No hay notificaciones'}
-              </h2>
-              <p className="text-gray-500">
-                {filter === 'unread' 
-                  ? '¡Estás al día con todo!' 
+              </div>
+              <p>
+                {filter === 'unread'
+                  ? '¡Estás al día con todo!'
                   : 'Las notificaciones aparecerán aquí cuando haya actividad'}
               </p>
             </div>

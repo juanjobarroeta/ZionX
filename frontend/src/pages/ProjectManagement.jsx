@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import "./ProjectManagement.css";
 
 const ProjectManagement = () => {
   const [projects, setProjects] = useState([]);
@@ -172,17 +173,6 @@ const ProjectManagement = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return 'from-zionx-highlight to-zionx-accent';
-      case 'active': return 'from-zionx-accent to-zionx-primary';
-      case 'on_hold': return 'from-zionx-secondary to-zionx-tertiary';
-      case 'cancelled': return 'from-zionx-accent to-zionx-secondary';
-      case 'planning': return 'from-zionx-tertiary to-zionx-secondary';
-      default: return 'from-zionx-tertiary to-zionx-secondary';
-    }
-  };
-
   const getStatusText = (status) => {
     switch (status) {
       case 'completed': return 'Completado';
@@ -220,10 +210,9 @@ const ProjectManagement = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-accent mx-auto mb-4"></div>
-            <p className="text-zionx-accent">Cargando proyectos...</p>
+        <div className="zxprj">
+          <div className="zxprj-inner">
+            <div className="zxprj-loading">Cargando proyectos...</div>
           </div>
         </div>
       </Layout>
@@ -232,72 +221,56 @@ const ProjectManagement = () => {
 
   return (
     <Layout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="zxprj">
+        <div className="zxprj-inner">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-zionx-primary mb-2 font-display">
-                🎯 Gestión de Proyectos
-              </h1>
-              <p className="text-zionx-accent">Gestiona proyectos, tareas y colaboración en equipo</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                to="/projects/new"
-                className="bg-gradient-to-r from-zionx-accent to-zionx-primary hover:from-zionx-primary hover:to-zionx-accent text-white font-bold px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-              >
-                ➕ Nuevo Proyecto
-              </Link>
-              <button
-                onClick={fetchProjectData}
-                className="bg-zionx-tertiary hover:bg-zionx-secondary text-zionx-primary font-medium px-4 py-3 rounded-lg transition-colors border border-zionx-accent"
-              >
-                🔄 Actualizar
-              </button>
-            </div>
+        <div className="zxprj-head">
+          <div>
+            <div className="zxprj-eyebrow">ZIONX / Operaciones</div>
+            <h1 className="zxprj-h1">
+              Gestión de <span className="zxprj-serif">proyectos</span>
+            </h1>
+            <p className="zxprj-sub">Gestiona proyectos, tareas y colaboración en equipo</p>
           </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {[
-              { label: 'Total de Proyectos', value: projectStats.total, icon: '📊', color: 'from-zionx-accent to-zionx-primary', textColor: 'text-white' },
-              { label: 'Proyectos Activos', value: projectStats.active, icon: '🚀', color: 'from-zionx-tertiary to-zionx-secondary', textColor: 'text-zionx-primary' },
-              { label: 'Completados', value: projectStats.completed, icon: '✅', color: 'from-zionx-highlight to-zionx-accent', textColor: 'text-white' },
-              { label: 'Vencidos', value: projectStats.overdue, icon: '⚠️', color: 'from-zionx-secondary to-zionx-tertiary', textColor: 'text-zionx-primary' }
-            ].map((stat, idx) => (
-              <div key={idx} className={`bg-gradient-to-r ${stat.color} p-6 rounded-xl ${stat.textColor} shadow-lg border border-zionx-accent/20`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm opacity-90 mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                  </div>
-                  <div className="text-3xl">{stat.icon}</div>
-                </div>
-              </div>
-            ))}
+          <div className="zxprj-actions">
+            <Link to="/projects/new" className="zxprj-btn solid">
+              Nuevo proyecto
+            </Link>
+            <button onClick={fetchProjectData} className="zxprj-btn">
+              Actualizar
+            </button>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex space-x-1 mb-8 bg-zionx-tertiary p-1 rounded-lg border border-zionx-secondary">
+        {/* Quick Stats */}
+        <div className="zxprj-stats">
           {[
-            { id: 'overview', label: '📊 Resumen', icon: '📋' },
-            { id: 'projects', label: '🎯 Proyectos', icon: '📁' },
-            { id: 'tasks', label: '✅ Tareas', icon: '📝' },
-            { id: 'team', label: '👥 Equipo', icon: '👨‍💼' },
-            { id: 'analytics', label: '📈 Analíticas', icon: '📊' }
+            { label: 'Total de Proyectos', value: projectStats.total, cls: 'lead' },
+            { label: 'Proyectos Activos', value: projectStats.active, cls: 'ok' },
+            { label: 'Completados', value: projectStats.completed, cls: '' },
+            { label: 'Vencidos', value: projectStats.overdue, cls: 'warn' }
+          ].map((stat, idx) => (
+            <div key={idx} className={`zxprj-stat ${stat.cls}`}>
+              <span className="k">{stat.label}</span>
+              <span className="v">{stat.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="zxprj-tabs">
+          {[
+            { id: 'overview', label: 'Resumen' },
+            { id: 'projects', label: 'Proyectos' },
+            { id: 'tasks', label: 'Tareas' },
+            { id: 'team', label: 'Equipo' },
+            { id: 'analytics', label: 'Analíticas' }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-3 px-4 rounded-md font-semibold transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-zionx-accent text-white shadow-lg'
-                  : 'text-zionx-accent hover:text-zionx-primary hover:bg-zionx-secondary'
-              }`}
+              className={`zxprj-tab ${activeTab === tab.id ? 'active' : ''}`}
             >
-              <span className="mr-2">{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -305,33 +278,29 @@ const ProjectManagement = () => {
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
+          <div className="zxprj-stack">
             {/* Recent Projects */}
-            <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-xl p-6 border border-zionx-accent">
-              <h3 className="text-xl font-bold text-zionx-primary mb-6">🔥 Proyectos Recientes</h3>
-              <div className="space-y-4">
+            <div className="zxprj-panel">
+              <h2>Proyectos recientes</h2>
+              <div className="zxprj-rows">
                 {projects.slice(0, 5).map((project) => (
-                  <div key={project.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-zionx-secondary hover:shadow-lg transition-all duration-200">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${getStatusColor(project.status)}`}></div>
+                  <div key={project.id} className="zxprj-prow">
+                    <div className="zxprj-prow-main">
+                      <div className={`zxprj-dot ${project.status}`}></div>
                       <div>
-                        <h4 className="font-semibold text-zionx-primary">{project.name}</h4>
-                        <p className="text-sm text-zionx-accent">{project.customer_name}</p>
+                        <h4>{project.name}</h4>
+                        <div className="who">{project.customer_name}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm">{getPriorityIcon(project.priority)}</span>
-                      <div className="w-32 bg-zionx-secondary rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-zionx-highlight to-zionx-accent h-2 rounded-full transition-all duration-300"
+                    <div className="zxprj-prow-side">
+                      <div className="zxprj-track">
+                        <div
+                          className="zxprj-fill"
                           style={{ width: `${project.completion_percentage || 0}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-zionx-primary">{project.completion_percentage || 0}%</span>
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="text-zionx-highlight hover:text-zionx-accent transition-colors"
-                      >
+                      <span className="zxprj-pct">{project.completion_percentage || 0}%</span>
+                      <Link to={`/projects/${project.id}`} className="zxprj-arrow">
                         →
                       </Link>
                     </div>
@@ -341,20 +310,20 @@ const ProjectManagement = () => {
             </div>
 
             {/* Urgent Follow-ups */}
-            <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-xl p-6 border border-zionx-accent">
-              <h3 className="text-xl font-bold text-zionx-primary mb-6">⚡ Seguimientos Urgentes</h3>
-              <div className="space-y-3">
+            <div className="zxprj-panel">
+              <h2>Seguimientos urgentes</h2>
+              <div className="zxprj-rows">
                 {followUps.slice(0, 5).map((followUp) => (
-                  <div key={followUp.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-zionx-secondary">
+                  <div key={followUp.id} className="zxprj-fu">
                     <div>
-                      <h4 className="font-medium text-zionx-primary">{followUp.title}</h4>
-                      <p className="text-sm text-zionx-accent">{followUp.project_name} - {followUp.task_title}</p>
+                      <h4>{followUp.title}</h4>
+                      <div className="meta">{followUp.project_name} - {followUp.task_title}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-zionx-accent">
+                    <div className="zxprj-fu-side">
+                      <span className="zxprj-fu-date">
                         {new Date(followUp.scheduled_for).toLocaleDateString()}
                       </span>
-                      <button className="text-zionx-highlight hover:text-zionx-accent transition-colors">
+                      <button className="zxprj-check">
                         ✓
                       </button>
                     </div>
@@ -367,92 +336,87 @@ const ProjectManagement = () => {
 
         {/* Projects Tab */}
         {activeTab === 'projects' && (
-          <div className="space-y-6">
+          <div className="zxprj-stack">
             {/* Filters */}
-            <div className="bg-zionx-tertiary p-4 rounded-lg border border-zionx-secondary">
-              <div className="flex items-center gap-4">
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="bg-white text-zionx-primary border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                >
-                  <option value="all">Todos los Estados</option>
-                  <option value="planning">Planificación</option>
-                  <option value="active">Activo</option>
-                  <option value="completed">Completado</option>
-                  <option value="on_hold">En Pausa</option>
-                </select>
+            <div className="zxprj-filters">
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                className="zxprj-select"
+              >
+                <option value="all">Todos los Estados</option>
+                <option value="planning">Planificación</option>
+                <option value="active">Activo</option>
+                <option value="completed">Completado</option>
+                <option value="on_hold">En Pausa</option>
+              </select>
 
-                <select
-                  value={filters.priority}
-                  onChange={(e) => setFilters({...filters, priority: e.target.value})}
-                  className="bg-white text-zionx-primary border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                >
-                  <option value="all">Todas las Prioridades</option>
-                  <option value="critical">Crítica</option>
-                  <option value="high">Alta</option>
-                  <option value="medium">Media</option>
-                  <option value="low">Baja</option>
-                </select>
-              </div>
+              <select
+                value={filters.priority}
+                onChange={(e) => setFilters({...filters, priority: e.target.value})}
+                className="zxprj-select"
+              >
+                <option value="all">Todas las Prioridades</option>
+                <option value="critical">Crítica</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baja</option>
+              </select>
             </div>
 
             {/* Projects Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="zxprj-grid">
               {filteredProjects.map((project) => (
-                <div key={project.id} className="bg-gradient-to-br from-white to-zionx-tertiary rounded-xl p-6 border border-zionx-secondary shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{getPriorityIcon(project.priority)}</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getStatusColor(project.status)} text-white`}>
+                <div key={project.id} className="zxprj-card">
+                  <div className="zxprj-card-top">
+                    <div className="pri">
+                      <span>{getPriorityIcon(project.priority)}</span>
+                      <span className={`zxprj-pill ${project.status}`}>
                         {getStatusText(project.status)}
                       </span>
                     </div>
-                    <Link
-                      to={`/projects/${project.id}`}
-                      className="text-zionx-highlight hover:text-zionx-accent transition-colors"
-                    >
-                      🔗
+                    <Link to={`/projects/${project.id}`} className="zxprj-arrow">
+                      →
                     </Link>
                   </div>
 
-                  <h3 className="text-lg font-bold text-zionx-primary mb-2 font-display">{project.name}</h3>
-                  <p className="text-sm text-zionx-accent mb-4 line-clamp-2">{project.description}</p>
+                  <h3>{project.name}</h3>
+                  <p className="desc">{project.description}</p>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zionx-accent">Cliente:</span>
-                      <span className="font-medium text-zionx-primary">{project.customer_name}</span>
+                  <div className="zxprj-meta">
+                    <div className="zxprj-meta-row">
+                      <span className="l">Cliente</span>
+                      <span className="r">{project.customer_name}</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zionx-accent">Gerente:</span>
-                      <span className="font-medium text-zionx-primary">{project.project_manager_name}</span>
+                    <div className="zxprj-meta-row">
+                      <span className="l">Gerente</span>
+                      <span className="r">{project.project_manager_name}</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zionx-accent">Fecha Límite:</span>
-                      <span className="font-medium text-zionx-primary">
+                    <div className="zxprj-meta-row">
+                      <span className="l">Fecha Límite</span>
+                      <span className="r num">
                         {project.due_date ? new Date(project.due_date).toLocaleDateString() : 'No establecida'}
                       </span>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zionx-accent">Progreso:</span>
-                        <span className="font-medium text-zionx-primary">{project.completion_percentage || 0}%</span>
+                    <div className="zxprj-prog">
+                      <div className="zxprj-meta-row">
+                        <span className="l">Progreso</span>
+                        <span className="r num">{project.completion_percentage || 0}%</span>
                       </div>
-                      <div className="w-full bg-zionx-secondary rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-zionx-highlight to-zionx-accent h-2 rounded-full transition-all duration-500"
+                      <div className="zxprj-track">
+                        <div
+                          className="zxprj-fill"
                           style={{ width: `${project.completion_percentage || 0}%` }}
                         ></div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm pt-2 border-t border-zionx-secondary">
-                      <span className="text-zionx-accent">Tareas:</span>
-                      <span className="font-medium text-zionx-primary">
+                    <div className="zxprj-meta-row tasks">
+                      <span className="l">Tareas</span>
+                      <span className="r num">
                         {project.completed_tasks || 0}/{project.total_tasks || 0}
                       </span>
                     </div>
@@ -462,15 +426,12 @@ const ProjectManagement = () => {
             </div>
 
             {filteredProjects.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📋</div>
-                <h3 className="text-xl font-bold text-zionx-primary mb-2">No se Encontraron Proyectos</h3>
-                <p className="text-zionx-accent mb-6">Crea tu primer proyecto para comenzar</p>
-                <Link
-                  to="/projects/new"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-zionx-accent to-zionx-primary hover:from-zionx-primary hover:to-zionx-accent text-white font-bold px-6 py-3 rounded-lg transition-all duration-200"
-                >
-                  ➕ Crear Proyecto
+              <div className="zxprj-empty">
+                <span className="big">📋</span>
+                <div className="lead">No se Encontraron Proyectos</div>
+                <p>Crea tu primer proyecto para comenzar</p>
+                <Link to="/projects/new" className="zxprj-btn solid">
+                  Crear proyecto
                 </Link>
               </div>
             )}
@@ -479,48 +440,46 @@ const ProjectManagement = () => {
 
         {/* Team Tab */}
         {activeTab === 'team' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="zxprj-stack">
+            <div className="zxprj-grid">
               {teamMembers.map((member) => (
-                <div key={member.id} className="bg-gradient-to-br from-white to-zionx-tertiary rounded-xl p-6 border border-zionx-secondary shadow-lg">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-zionx-accent to-zionx-primary rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">
-                        {member.name.charAt(0).toUpperCase()}
-                      </span>
+                <div key={member.id} className="zxprj-tcard">
+                  <div className="zxprj-tcard-head">
+                    <div className="zxprj-avatar">
+                      {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-bold text-zionx-primary">{member.name}</h3>
-                      <p className="text-sm text-zionx-accent">{member.role}</p>
+                      <h3>{member.name}</h3>
+                      <p>{member.role}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-zionx-accent">Departamento:</span>
-                      <span className="font-medium text-zionx-primary">{member.department}</span>
+                  <div className="zxprj-meta">
+                    <div className="zxprj-meta-row">
+                      <span className="l">Departamento</span>
+                      <span className="r">{member.department}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-zionx-accent">Tareas Activas:</span>
-                      <span className="font-medium text-zionx-primary">{member.active_assignments || 0}</span>
+                    <div className="zxprj-meta-row">
+                      <span className="l">Tareas Activas</span>
+                      <span className="r num">{member.active_assignments || 0}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-zionx-accent">Carga de Trabajo:</span>
-                      <span className="font-medium text-zionx-primary">{member.estimated_workload || 0}h</span>
+                    <div className="zxprj-meta-row">
+                      <span className="l">Carga de Trabajo</span>
+                      <span className="r num">{member.estimated_workload || 0}h</span>
                     </div>
                   </div>
 
                   {member.skills && (
-                    <div className="mt-4">
-                      <p className="text-xs text-zionx-accent mb-2">Habilidades:</p>
-                      <div className="flex flex-wrap gap-1">
+                    <div className="zxprj-skills">
+                      <div className="k">Habilidades</div>
+                      <div className="tags">
                         {member.skills.slice(0, 3).map((skill, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-zionx-secondary text-zionx-primary text-xs rounded-full">
+                          <span key={idx} className="zxprj-tag">
                             {skill}
                           </span>
                         ))}
                         {member.skills.length > 3 && (
-                          <span className="px-2 py-1 bg-zionx-accent text-white text-xs rounded-full">
+                          <span className="zxprj-tag more">
                             +{member.skills.length - 3}
                           </span>
                         )}
@@ -535,39 +494,40 @@ const ProjectManagement = () => {
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && (
-          <div className="space-y-8">
-            <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-xl p-6 border border-zionx-accent">
-              <h3 className="text-xl font-bold text-zionx-primary mb-6">📊 Analíticas de Rendimiento de Proyectos</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg p-4 border border-zionx-secondary">
-                  <h4 className="font-semibold text-zionx-primary mb-2">Tasa de Finalización</h4>
-                  <div className="text-3xl font-bold text-zionx-accent">
+          <div className="zxprj-stack">
+            <div className="zxprj-panel">
+              <h2>Analíticas de rendimiento de proyectos</h2>
+
+              <div className="zxprj-metrics">
+                <div className="zxprj-metric">
+                  <span className="k">Tasa de Finalización</span>
+                  <span className="v">
                     {projects.length > 0 ? Math.round((projectStats.completed / projects.length) * 100) : 0}%
-                  </div>
+                  </span>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 border border-zionx-secondary">
-                  <h4 className="font-semibold text-zionx-primary mb-2">Progreso Promedio</h4>
-                  <div className="text-3xl font-bold text-zionx-accent">
-                    {projects.length > 0 
+                <div className="zxprj-metric">
+                  <span className="k">Progreso Promedio</span>
+                  <span className="v">
+                    {projects.length > 0
                       ? Math.round(projects.reduce((sum, p) => sum + (p.completion_percentage || 0), 0) / projects.length)
                       : 0}%
-                  </div>
+                  </span>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 border border-zionx-secondary">
-                  <h4 className="font-semibold text-zionx-primary mb-2">Utilización del Equipo</h4>
-                  <div className="text-3xl font-bold text-zionx-accent">
-                    {teamMembers.length > 0 
+                <div className="zxprj-metric">
+                  <span className="k">Utilización del Equipo</span>
+                  <span className="v">
+                    {teamMembers.length > 0
                       ? Math.round(teamMembers.reduce((sum, m) => sum + (m.active_assignments || 0), 0) / teamMembers.length)
                       : 0}
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         )}
+        </div>
       </div>
     </Layout>
   );

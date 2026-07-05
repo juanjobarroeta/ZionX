@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import "./IncomeReports.css";
 
 const IncomeReports = () => {
   const [loading, setLoading] = useState(true);
@@ -56,8 +57,8 @@ const IncomeReports = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxrep-loading">
+          <div className="zxrep-spin"></div>
         </div>
       </Layout>
     );
@@ -65,82 +66,68 @@ const IncomeReports = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">📊 Reportes de Ingresos</h1>
-                <p className="text-gray-500 text-sm mt-1">Análisis y métricas de ingresos</p>
-              </div>
-              <div className="flex space-x-3">
-                <Link
-                  to="/income"
-                  className="bg-white border border-zionx-secondary px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  ← Volver
-                </Link>
-                <button
-                  onClick={fetchReports}
-                  className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  🔄 Actualizar
-                </button>
-              </div>
+      <div className="zxrep">
+        <div className="zxrep-inner">
+          {/* Header */}
+          <div className="zxrep-head">
+            <div>
+              <div className="zxrep-eyebrow">Finanzas</div>
+              <h1 className="zxrep-h1">Reportes de <span className="zxrep-serif">ingresos</span></h1>
+              <p className="zxrep-sub">Análisis y métricas de ingresos</p>
+            </div>
+            <div className="zxrep-actions">
+              <Link to="/income" className="zxrep-btn">← Volver</Link>
+              <button onClick={fetchReports} className="zxrep-btn solid">Actualizar</button>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
           {/* MRR Stats */}
           {mrrData && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
-                <p className="text-green-100 text-sm mb-1">MRR (Ingresos Mensuales Recurrentes)</p>
-                <p className="text-3xl font-bold">{formatCurrency(mrrData.mrr)}</p>
-                <p className="text-green-100 text-xs mt-2">ARR: {formatCurrency(mrrData.mrr * 12)}</p>
+            <div className="zxrep-tiles">
+              <div className="zxrep-tile lead">
+                <span className="k">MRR (Ingresos Mensuales Recurrentes)</span>
+                <span className="v">{formatCurrency(mrrData.mrr)}</span>
+                <span className="sub">ARR: {formatCurrency(mrrData.mrr * 12)}</span>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-                <p className="text-gray-500 text-sm mb-1">Suscripciones Activas</p>
-                <p className="text-3xl font-bold text-zionx-primary">{mrrData.active_subscriptions}</p>
+              <div className="zxrep-tile">
+                <span className="k">Suscripciones Activas</span>
+                <span className="v">{mrrData.active_subscriptions}</span>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-                <p className="text-gray-500 text-sm mb-1">ARPU (Promedio por Cliente)</p>
-                <p className="text-3xl font-bold text-blue-600">{formatCurrency(mrrData.arpu)}</p>
+              <div className="zxrep-tile">
+                <span className="k">ARPU (Promedio por Cliente)</span>
+                <span className="v">{formatCurrency(mrrData.arpu)}</span>
               </div>
             </div>
           )}
 
           {/* Monthly Revenue Table */}
-          <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-zionx-primary">📈 Ingresos por Mes</h2>
+          <div className="zxrep-panel">
+            <div className="zxrep-panel-head">
+              <h2>Ingresos por mes</h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="zxrep-tablewrap">
+              <table className="zxrep-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mes</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Facturas</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subtotal</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IVA (16%)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Facturado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cobrado</th>
+                    <th>Mes</th>
+                    <th>Facturas</th>
+                    <th>Subtotal</th>
+                    <th>IVA (16%)</th>
+                    <th>Total Facturado</th>
+                    <th>Cobrado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {monthlyRevenue.map((month) => (
-                    <tr key={month.month} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium capitalize">{formatMonth(month.month)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{month.invoice_count}</td>
-                      <td className="px-6 py-4 font-semibold">{formatCurrency(month.subtotal)}</td>
-                      <td className="px-6 py-4 text-sm text-blue-600">{formatCurrency(month.tax)}</td>
-                      <td className="px-6 py-4 font-semibold text-zionx-primary">{formatCurrency(month.total_billed)}</td>
-                      <td className="px-6 py-4 font-semibold text-green-600">{formatCurrency(month.total_paid)}</td>
+                    <tr key={month.month}>
+                      <td className="month">{formatMonth(month.month)}</td>
+                      <td className="dim">{month.invoice_count}</td>
+                      <td className="strong">{formatCurrency(month.subtotal)}</td>
+                      <td className="dim">{formatCurrency(month.tax)}</td>
+                      <td className="strong">{formatCurrency(month.total_billed)}</td>
+                      <td className="ok">{formatCurrency(month.total_paid)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -149,54 +136,58 @@ const IncomeReports = () => {
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="zxrep-cols">
             {/* Top Customers */}
-            <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-zionx-primary">👥 Top 10 Clientes</h2>
+            <div className="zxrep-panel">
+              <div className="zxrep-panel-head">
+                <h2>Top 10 Clientes</h2>
               </div>
-              <div className="p-6 space-y-3">
-                {topCustomers.map((customer, index) => (
-                  <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                      <div>
-                        <p className="font-medium text-zionx-primary">{customer.customer_name}</p>
-                        <p className="text-xs text-gray-500">{customer.invoice_count} facturas</p>
+              <div className="zxrep-panel-body">
+                <div className="zxrep-list">
+                  {topCustomers.map((customer, index) => (
+                    <div key={customer.id} className="zxrep-item">
+                      <div className="lead-col">
+                        <span className="zxrep-rank">#{index + 1}</span>
+                        <div>
+                          <p className="name">{customer.customer_name}</p>
+                          <p className="meta">{customer.invoice_count} facturas</p>
+                        </div>
+                      </div>
+                      <div className="amt">
+                        <p className="main ok">{formatCurrency(customer.total_paid)}</p>
+                        {parseFloat(customer.outstanding) > 0 && (
+                          <p className="aux warn">Pendiente: {formatCurrency(customer.outstanding)}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">{formatCurrency(customer.total_paid)}</p>
-                      {parseFloat(customer.outstanding) > 0 && (
-                        <p className="text-xs text-orange-600">Pendiente: {formatCurrency(customer.outstanding)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Add-on Performance */}
-            <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-zionx-primary">⭐ Add-ons Más Vendidos</h2>
+            <div className="zxrep-panel">
+              <div className="zxrep-panel-head">
+                <h2>Add-ons Más Vendidos</h2>
               </div>
-              <div className="p-6 space-y-3">
-                {addonPerformance.slice(0, 10).map((addon, index) => (
-                  <div key={addon.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                      <div>
-                        <p className="font-medium text-zionx-primary">{addon.addon_name}</p>
-                        <p className="text-xs text-gray-500 capitalize">{addon.category} • {addon.times_purchased} ventas</p>
+              <div className="zxrep-panel-body">
+                <div className="zxrep-list">
+                  {addonPerformance.slice(0, 10).map((addon, index) => (
+                    <div key={addon.id} className="zxrep-item">
+                      <div className="lead-col">
+                        <span className="zxrep-rank">#{index + 1}</span>
+                        <div>
+                          <p className="name">{addon.addon_name}</p>
+                          <p className="meta">{addon.category} • {addon.times_purchased} ventas</p>
+                        </div>
+                      </div>
+                      <div className="amt">
+                        <p className="main">{formatCurrency(addon.total_revenue)}</p>
+                        <p className="aux">Cant: {addon.total_quantity}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-blue-600">{formatCurrency(addon.total_revenue)}</p>
-                      <p className="text-xs text-gray-500">Cant: {addon.total_quantity}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import "./CreateProject.css";
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -93,320 +94,313 @@ const CreateProject = () => {
 
   return (
     <Layout>
-      <div className="p-6 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
+      <div className="zxcpr">
+        <div className="zxcpr-inner">
+          {/* Header */}
+          <div className="zxcpr-head">
             <button
               onClick={() => navigate('/projects')}
-              className="p-2 bg-zionx-tertiary hover:bg-zionx-secondary text-zionx-primary rounded-lg transition-colors border border-zionx-accent"
+              className="zxcpr-back"
             >
               ← Volver
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-zionx-primary font-display">Crear Nuevo Proyecto</h1>
-              <p className="text-zionx-accent">Configura un nuevo proyecto de marketing para tu cliente</p>
+              <p className="zxcpr-eyebrow">Nuevo proyecto</p>
+              <h1>Crear <span className="zxcpr-serif">nuevo</span> proyecto</h1>
+              <p className="sub">Configura un nuevo proyecto de marketing para tu cliente</p>
             </div>
           </div>
 
           {/* Progress Steps */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="zxcpr-steps">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-200 ${
+              <div key={step.id} className="zxcpr-step">
+                <div className={`zxcpr-dot ${
                   currentStep > step.id
-                    ? 'bg-zionx-highlight border-zionx-highlight text-white'
+                    ? 'done'
                     : currentStep === step.id
-                      ? 'bg-zionx-accent border-zionx-accent text-white'
-                      : 'bg-zionx-tertiary border-zionx-secondary text-zionx-accent'
+                      ? 'active'
+                      : ''
                 }`}>
-                  <span className="text-lg">{step.icon}</span>
+                  <span>{step.icon}</span>
                 </div>
-                <div className="ml-3 min-w-0">
-                  <div className={`font-medium text-sm ${
-                    currentStep >= step.id ? 'text-zionx-primary' : 'text-zionx-accent'
-                  }`}>
-                    {step.title}
-                  </div>
-                  <div className="text-zionx-accent text-xs">{step.description}</div>
+                <div className={`zxcpr-steplabel ${currentStep >= step.id ? 'on' : ''}`}>
+                  <div className="t">{step.title}</div>
+                  <div className="d">{step.description}</div>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-8 h-px mx-4 ${
-                    currentStep > step.id ? 'bg-zionx-highlight' : 'bg-zionx-secondary'
-                  }`} />
+                  <div className={`zxcpr-connector ${currentStep > step.id ? 'done' : ''}`} />
                 )}
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-gradient-to-br from-white to-zionx-tertiary rounded-xl p-8 border border-zionx-secondary shadow-lg">
-          {/* Step 1: Basic Info */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-zionx-primary mb-6">📝 Información del Proyecto</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Nombre del Proyecto *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="zxcpr-form">
+            {/* Step 1: Basic Info */}
+            {currentStep === 1 && (
+              <div className="zxcpr-fields">
+                <h2>📝 Información del Proyecto</h2>
+
+                <div className="zxcpr-row">
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Nombre del Proyecto *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                      className="zxcpr-input"
+                      placeholder="Ingresa el nombre del proyecto"
+                    />
+                  </div>
+
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Tipo de Proyecto</label>
+                    <select
+                      name="project_type"
+                      value={formData.project_type}
+                      onChange={handleInputChange}
+                      className="zxcpr-select"
+                    >
+                      <option value="marketing_campaign">Campaña de Marketing</option>
+                      <option value="website_design">Diseño Web</option>
+                      <option value="seo_audit">Auditoría SEO</option>
+                      <option value="social_media">Redes Sociales</option>
+                      <option value="content_creation">Creación de Contenido</option>
+                      <option value="brand_identity">Identidad de Marca</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="zxcpr-field">
+                  <label className="zxcpr-label">Descripción</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
                     onChange={handleInputChange}
-                    required
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                    placeholder="Ingresa el nombre del proyecto"
+                    rows={4}
+                    className="zxcpr-textarea"
+                    placeholder="Describe los objetivos y metas del proyecto"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Tipo de Proyecto</label>
-                  <select
-                    name="project_type"
-                    value={formData.project_type}
-                    onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  >
-                    <option value="marketing_campaign">Campaña de Marketing</option>
-                    <option value="website_design">Diseño Web</option>
-                    <option value="seo_audit">Auditoría SEO</option>
-                    <option value="social_media">Redes Sociales</option>
-                    <option value="content_creation">Creación de Contenido</option>
-                    <option value="brand_identity">Identidad de Marca</option>
-                  </select>
+                <div className="zxcpr-row">
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Prioridad</label>
+                    <select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleInputChange}
+                      className="zxcpr-select"
+                    >
+                      <option value="low">🟢 Baja</option>
+                      <option value="medium">🟡 Media</option>
+                      <option value="high">🟠 Alta</option>
+                      <option value="critical">🔴 Crítica</option>
+                    </select>
+                  </div>
+
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Presupuesto</label>
+                    <input
+                      type="number"
+                      name="budget"
+                      value={formData.budget}
+                      onChange={handleInputChange}
+                      className="zxcpr-input"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-zionx-primary font-medium mb-2">Descripción</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  placeholder="Describe los objetivos y metas del proyecto"
-                />
-              </div>
+            {/* Step 2: Assignment */}
+            {currentStep === 2 && (
+              <div className="zxcpr-fields">
+                <h2>👥 Equipo y Cronograma</h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Prioridad</label>
-                  <select
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  >
-                    <option value="low">🟢 Baja</option>
-                    <option value="medium">🟡 Media</option>
-                    <option value="high">🟠 Alta</option>
-                    <option value="critical">🔴 Crítica</option>
-                  </select>
-                </div>
+                <div className="zxcpr-row">
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Cliente *</label>
+                    <select
+                      name="customer_id"
+                      value={formData.customer_id}
+                      onChange={handleInputChange}
+                      required
+                      className="zxcpr-select"
+                    >
+                      <option value="">Seleccionar Cliente</option>
+                      {customers.map((customer) => {
+                        const displayName = customer.business_name
+                          ? customer.business_name
+                          : `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+                        return (
+                          <option key={customer.id} value={customer.id}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Presupuesto</label>
-                  <input
-                    type="number"
-                    name="budget"
-                    value={formData.budget}
-                    onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Assignment */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-zionx-primary mb-6">👥 Equipo y Cronograma</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Cliente *</label>
-                  <select
-                    name="customer_id"
-                    value={formData.customer_id}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  >
-                    <option value="">Seleccionar Cliente</option>
-                    {customers.map((customer) => {
-                      const displayName = customer.business_name 
-                        ? customer.business_name
-                        : `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-                      return (
-                        <option key={customer.id} value={customer.id}>
-                          {displayName}
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Gerente de Proyecto</label>
+                    <select
+                      name="project_manager_id"
+                      value={formData.project_manager_id}
+                      onChange={handleInputChange}
+                      className="zxcpr-select"
+                    >
+                      <option value="">Seleccionar Gerente</option>
+                      {teamMembers.filter(m => m.role?.toLowerCase().includes('manager')).map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} - {member.role}
                         </option>
-                      );
-                    })}
-                  </select>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Gerente de Proyecto</label>
+                <div className="zxcpr-row">
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Fecha de Inicio</label>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleInputChange}
+                      className="zxcpr-input"
+                    />
+                  </div>
+
+                  <div className="zxcpr-field">
+                    <label className="zxcpr-label">Fecha Límite</label>
+                    <input
+                      type="date"
+                      name="due_date"
+                      value={formData.due_date}
+                      onChange={handleInputChange}
+                      className="zxcpr-input"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Configuration */}
+            {currentStep === 3 && (
+              <div className="zxcpr-fields">
+                <h2>⚙️ Configuración del Proyecto</h2>
+
+                <div className="zxcpr-field">
+                  <label className="zxcpr-label">Plantilla de Proyecto</label>
                   <select
-                    name="project_manager_id"
-                    value={formData.project_manager_id}
+                    name="template_id"
+                    value={formData.template_id}
                     onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
+                    className="zxcpr-select"
                   >
-                    <option value="">Seleccionar Gerente</option>
-                    {teamMembers.filter(m => m.role?.toLowerCase().includes('manager')).map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name} - {member.role}
+                    <option value="">Empezar desde cero</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
                       </option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Fecha de Inicio</label>
-                  <input
-                    type="date"
-                    name="start_date"
-                    value={formData.start_date}
-                    onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  />
+                  <p className="zxcpr-hint">
+                    Las plantillas proporcionan etapas y tareas preconfiguradas para comenzar rápidamente
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-zionx-primary font-medium mb-2">Fecha Límite</label>
-                  <input
-                    type="date"
-                    name="due_date"
-                    value={formData.due_date}
-                    onChange={handleInputChange}
-                    className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Configuration */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-zionx-primary mb-6">⚙️ Configuración del Proyecto</h2>
-              
-              <div>
-                <label className="block text-zionx-primary font-medium mb-2">Plantilla de Proyecto</label>
-                <select
-                  name="template_id"
-                  value={formData.template_id}
-                  onChange={handleInputChange}
-                  className="w-full bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary px-4 py-3 focus:border-zionx-highlight focus:outline-none transition-colors"
-                >
-                  <option value="">Empezar desde cero</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-sm text-zionx-accent mt-2">
-                  Las plantillas proporcionan etapas y tareas preconfiguradas para comenzar rápidamente
-                </p>
-              </div>
-
-              {/* Project Summary */}
-              <div className="bg-zionx-secondary/30 rounded-lg p-6 border border-zionx-accent">
-                <h3 className="text-lg font-bold text-zionx-primary mb-4">📋 Resumen del Proyecto</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-zionx-accent">Nombre:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">{formData.name || 'No establecido'}</span>
-                  </div>
-                  <div>
-                    <span className="text-zionx-accent">Tipo:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">{formData.project_type}</span>
-                  </div>
-                  <div>
-                    <span className="text-zionx-accent">Cliente:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">
-                      {customers.find(c => c.id == formData.customer_id)?.first_name} {customers.find(c => c.id == formData.customer_id)?.last_name || 'No seleccionado'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zionx-accent">Gerente:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">
-                      {teamMembers.find(m => m.id == formData.project_manager_id)?.name || 'No asignado'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zionx-accent">Presupuesto:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">
-                      {formData.budget ? `$${parseFloat(formData.budget).toLocaleString()}` : 'No establecido'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-zionx-accent">Prioridad:</span>
-                    <span className="ml-2 font-medium text-zionx-primary">{formData.priority}</span>
+                {/* Project Summary */}
+                <div className="zxcpr-summary">
+                  <h3>📋 Resumen del Proyecto</h3>
+                  <div className="zxcpr-sumgrid">
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Nombre</span>
+                      <span className="v">{formData.name || 'No establecido'}</span>
+                    </div>
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Tipo</span>
+                      <span className="v">{formData.project_type}</span>
+                    </div>
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Cliente</span>
+                      <span className="v">
+                        {customers.find(c => c.id == formData.customer_id)?.first_name} {customers.find(c => c.id == formData.customer_id)?.last_name || 'No seleccionado'}
+                      </span>
+                    </div>
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Gerente</span>
+                      <span className="v">
+                        {teamMembers.find(m => m.id == formData.project_manager_id)?.name || 'No asignado'}
+                      </span>
+                    </div>
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Presupuesto</span>
+                      <span className="v">
+                        {formData.budget ? `$${parseFloat(formData.budget).toLocaleString()}` : 'No establecido'}
+                      </span>
+                    </div>
+                    <div className="zxcpr-sumitem">
+                      <span className="k">Prioridad</span>
+                      <span className="v">{formData.priority}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-zionx-secondary">
-            <button
-              type="button"
-              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-              disabled={currentStep === 1}
-              className="bg-zionx-tertiary hover:bg-zionx-secondary disabled:bg-zionx-secondary disabled:cursor-not-allowed text-zionx-primary font-medium px-6 py-3 rounded-lg transition-colors border border-zionx-accent"
-            >
-              ← Anterior
-            </button>
-
-            <div className="flex items-center gap-2">
-              {steps.map((step) => (
-                <div
-                  key={step.id}
-                  className={`w-3 h-3 rounded-full transition-colors ${
-                    currentStep >= step.id ? 'bg-zionx-accent' : 'bg-zionx-secondary'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {currentStep < 3 ? (
+            {/* Navigation Buttons */}
+            <div className="zxcpr-nav">
               <button
                 type="button"
-                onClick={() => setCurrentStep(currentStep + 1)}
-                className="bg-gradient-to-r from-zionx-accent to-zionx-primary hover:from-zionx-primary hover:to-zionx-accent text-white font-medium px-6 py-3 rounded-lg transition-all duration-200"
+                onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                disabled={currentStep === 1}
+                className="zxcpr-btn"
               >
-                Siguiente →
+                ← Anterior
               </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading || !formData.name || !formData.customer_id}
-                className="bg-gradient-to-r from-zionx-highlight to-zionx-accent hover:from-zionx-accent hover:to-zionx-highlight disabled:from-zionx-secondary disabled:to-zionx-tertiary disabled:cursor-not-allowed text-white font-bold px-8 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Creando...
-                  </span>
-                ) : (
-                  '🚀 Crear Proyecto'
-                )}
-              </button>
-            )}
-          </div>
-        </form>
+
+              <div className="zxcpr-pips">
+                {steps.map((step) => (
+                  <div
+                    key={step.id}
+                    className={`zxcpr-pip ${currentStep >= step.id ? 'on' : ''}`}
+                  />
+                ))}
+              </div>
+
+              {currentStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(currentStep + 1)}
+                  className="zxcpr-btn solid"
+                >
+                  Siguiente →
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || !formData.name || !formData.customer_id}
+                  className="zxcpr-btn solid"
+                >
+                  {loading ? (
+                    <span className="zxcpr-spinner">
+                      <i></i>
+                      Creando...
+                    </span>
+                  ) : (
+                    '🚀 Crear Proyecto'
+                  )}
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
     </Layout>
   );

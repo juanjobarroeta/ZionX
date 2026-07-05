@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import "./Subscriptions.css";
 
 const SubscriptionsManager = () => {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -179,13 +180,13 @@ const SubscriptionsManager = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      active: { color: 'bg-green-100 text-green-800', label: '✓ Activa' },
-      paused: { color: 'bg-yellow-100 text-yellow-800', label: '⏸ Pausada' },
-      cancelled: { color: 'bg-red-100 text-red-800', label: '✗ Cancelada' },
-      expired: { color: 'bg-gray-100 text-gray-800', label: 'Expirada' }
+      active: { color: 'active', label: '✓ Activa' },
+      paused: { color: 'paused', label: '⏸ Pausada' },
+      cancelled: { color: 'cancelled', label: '✗ Cancelada' },
+      expired: { color: 'expired', label: 'Expirada' }
     };
     const badge = badges[status] || badges.active;
-    return <span className={`px-2 py-1 rounded-full text-xs ${badge.color}`}>{badge.label}</span>;
+    return <span className={`zxsub-pill ${badge.color}`}>{badge.label}</span>;
   };
 
   // Get customer name for display
@@ -198,8 +199,8 @@ const SubscriptionsManager = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxsub">
+          <div className="zxsub-loading">Cargando suscripciones…</div>
         </div>
       </Layout>
     );
@@ -207,165 +208,128 @@ const SubscriptionsManager = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">📋 Gestión de Suscripciones</h1>
-                <p className="text-gray-500 text-sm mt-1">
-                  {subscriptions.filter(s => s.status === 'active').length} suscripciones activas
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <Link
-                  to="/income"
-                  className="bg-white border border-zionx-secondary px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  ← Volver
-                </Link>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  ➕ Nueva Suscripción
-                </button>
-              </div>
+      <div className="zxsub">
+        <div className="zxsub-inner">
+          {/* Header */}
+          <div className="zxsub-head">
+            <div>
+              <div className="zxsub-eyebrow">Finanzas</div>
+              <h1 className="zxsub-h1">Gestión de <span className="zxsub-serif">Suscripciones</span></h1>
+              <p className="zxsub-sub">
+                {subscriptions.filter(s => s.status === 'active').length} suscripciones activas
+              </p>
+            </div>
+            <div className="zxsub-actions">
+              <Link to="/income" className="zxsub-btn">← Volver</Link>
+              <button
+                onClick={() => setShowModal(true)}
+                className="zxsub-btn solid"
+              >
+                ➕ Nueva Suscripción
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">✓</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Activas</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {subscriptions.filter(s => s.status === 'active').length}
-                  </p>
-                </div>
-              </div>
+          <div className="zxsub-tiles">
+            <div className="zxsub-tile">
+              <span className="k">Activas</span>
+              <span className="v ok">
+                {subscriptions.filter(s => s.status === 'active').length}
+              </span>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">⏸</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Pausadas</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {subscriptions.filter(s => s.status === 'paused').length}
-                  </p>
-                </div>
-              </div>
+            <div className="zxsub-tile">
+              <span className="k">Pausadas</span>
+              <span className="v warn">
+                {subscriptions.filter(s => s.status === 'paused').length}
+              </span>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">✗</span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Canceladas</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {subscriptions.filter(s => s.status === 'cancelled').length}
-                  </p>
-                </div>
-              </div>
+            <div className="zxsub-tile">
+              <span className="k">Canceladas</span>
+              <span className="v bad">
+                {subscriptions.filter(s => s.status === 'cancelled').length}
+              </span>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">💰</span>
-                </div>
-                <div>
-                  <p className="text-sm text-purple-100">MRR Total</p>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(
-                      subscriptions
-                        .filter(s => s.status === 'active')
-                        .reduce((sum, s) => sum + parseFloat(s.effective_monthly_price || 0), 0)
-                    )}
-                  </p>
-                </div>
-              </div>
+            <div className="zxsub-tile lead">
+              <span className="k">MRR Total</span>
+              <span className="v">
+                {formatCurrency(
+                  subscriptions
+                    .filter(s => s.status === 'active')
+                    .reduce((sum, s) => sum + parseFloat(s.effective_monthly_price || 0), 0)
+                )}
+              </span>
             </div>
           </div>
 
           {/* Subscriptions List */}
-          <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-zionx-primary">Todas las Suscripciones</h2>
+          <div className="zxsub-card">
+            <div className="zxsub-card-head">
+              <h2>Todas las Suscripciones</h2>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="zxsub-tablewrap">
+              <table className="zxsub-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto Mensual</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Próx. Facturación</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    <th>Cliente</th>
+                    <th>Descripción</th>
+                    <th>Monto Mensual</th>
+                    <th>Estado</th>
+                    <th>Próx. Facturación</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {subscriptions.length > 0 ? (
                     subscriptions.map((sub) => (
-                      <tr key={sub.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
+                      <tr key={sub.id}>
+                        <td>
                           <div>
-                            <div className="font-medium text-gray-900">{sub.customer_name}</div>
-                            <div className="text-sm text-gray-500">{sub.customer_email}</div>
+                            <div className="zxsub-cust-name">{sub.customer_name}</div>
+                            <div className="zxsub-cust-mail">{sub.customer_email}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{sub.notes || sub.package_name || 'Suscripción mensual'}</div>
+                        <td>
+                          <div className="zxsub-desc">{sub.notes || sub.package_name || 'Suscripción mensual'}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-zionx-primary">
+                        <td>
+                          <div className="zxsub-amt">
                             {formatCurrency(sub.effective_monthly_price)}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="zxsub-amt-iva">
                             Con IVA: {formatCurrency(parseFloat(sub.effective_monthly_price) * 1.16)}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td>
                           {getStatusBadge(sub.status)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td className="zxsub-date">
                           {sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString('es-MX') : '-'}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex space-x-2 flex-wrap gap-1">
+                        <td>
+                          <div className="zxsub-rowacts">
                             {sub.status === 'active' && (
                               <>
                                 <button
                                   onClick={() => openEditModal(sub)}
-                                  className="text-purple-600 hover:text-purple-800 text-sm"
+                                  className="zxsub-act"
                                   title="Modificar suscripción"
                                 >
                                   ✏️ Modificar
                                 </button>
                                 <Link
                                   to={`/income/invoice-generator?subscription_id=${sub.id}&customer_id=${sub.customer_id}`}
-                                  className="text-blue-600 hover:text-blue-800 text-sm"
+                                  className="zxsub-act"
                                 >
                                   Facturar
                                 </Link>
                                 <button
                                   onClick={() => handleCancelSubscription(sub.id)}
-                                  className="text-yellow-600 hover:text-yellow-800 text-sm"
+                                  className="zxsub-act warn"
                                 >
                                   Cancelar
                                 </button>
@@ -373,7 +337,7 @@ const SubscriptionsManager = () => {
                             )}
                             <button
                               onClick={() => handleDeleteSubscription(sub.id, sub.customer_name)}
-                              className="text-red-600 hover:text-red-800 text-sm"
+                              className="zxsub-act bad"
                               title="Eliminar permanentemente"
                             >
                               🗑️ Eliminar
@@ -384,17 +348,15 @@ const SubscriptionsManager = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        <div className="flex flex-col items-center">
-                          <span className="text-4xl mb-2">📋</span>
-                          <p>No hay suscripciones aún</p>
-                          <button
-                            onClick={() => setShowModal(true)}
-                            className="mt-4 text-blue-600 hover:text-blue-800"
-                          >
-                            Crear primera suscripción →
-                          </button>
-                        </div>
+                      <td colSpan="6" className="zxsub-empty">
+                        <span className="ico">📋</span>
+                        <p>No hay suscripciones aún</p>
+                        <button
+                          onClick={() => setShowModal(true)}
+                          className="cta"
+                        >
+                          Crear primera suscripción →
+                        </button>
                       </td>
                     </tr>
                   )}
@@ -406,19 +368,19 @@ const SubscriptionsManager = () => {
 
         {/* Create Subscription Modal - SIMPLIFIED */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-              <h2 className="text-xl font-bold text-zionx-primary mb-4">➕ Nueva Suscripción</h2>
-              
-              <form onSubmit={handleCreateSubscription} className="space-y-4">
+          <div className="zxsub-scrim">
+            <div className="zxsub-modal">
+              <h2>➕ Nueva Suscripción</h2>
+
+              <form onSubmit={handleCreateSubscription} className="zxsub-form">
                 {/* Customer Select */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">Cliente *</label>
                   <select
                     value={selectedCustomer}
                     onChange={(e) => setSelectedCustomer(e.target.value)}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                    className="zxsub-select"
                   >
                     <option value="">Seleccionar cliente...</option>
                     {customers.map(customer => (
@@ -430,12 +392,12 @@ const SubscriptionsManager = () => {
                 </div>
 
                 {/* Monthly Amount - DIRECT INPUT */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">
                     💰 Monto Mensual (sin IVA) *
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">$</span>
+                  <div className="zxsub-inputwrap">
+                    <span className="prefix">$</span>
                     <input
                       type="number"
                       step="0.01"
@@ -444,53 +406,53 @@ const SubscriptionsManager = () => {
                       onChange={(e) => setMonthlyAmount(e.target.value)}
                       required
                       placeholder="0.00"
-                      className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                      className="zxsub-input"
                     />
                   </div>
                   {monthlyAmount && parseFloat(monthlyAmount) > 0 && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Subtotal:</span>
-                        <span className="font-medium">{formatCurrency(parseFloat(monthlyAmount))}</span>
+                    <div className="zxsub-breakdown">
+                      <div className="zxsub-brow">
+                        <span className="lbl">Subtotal:</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount))}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">IVA (16%):</span>
-                        <span className="font-medium">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
+                      <div className="zxsub-brow">
+                        <span className="lbl">IVA (16%):</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
                       </div>
-                      <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
+                      <div className="zxsub-brow total">
                         <span>Total Mensual:</span>
-                        <span className="text-green-600">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción (opcional)</label>
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">Descripción (opcional)</label>
                   <input
                     type="text"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Ej: Manejo de redes sociales"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                    className="zxsub-input"
                   />
                 </div>
 
                 {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">Notas (opcional)</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                    className="zxsub-textarea"
                     placeholder="Ej: Contrato de 12 meses"
                   />
                 </div>
 
                 {/* Buttons */}
-                <div className="flex space-x-3 pt-4">
+                <div className="zxsub-modal-btns">
                   <button
                     type="button"
                     onClick={() => {
@@ -500,14 +462,14 @@ const SubscriptionsManager = () => {
                       setDescription("");
                       setNotes("");
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="zxsub-mbtn"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={!selectedCustomer || !monthlyAmount}
-                    className="flex-1 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="zxsub-mbtn solid"
                   >
                     Crear Suscripción
                   </button>
@@ -519,23 +481,23 @@ const SubscriptionsManager = () => {
 
         {/* Edit Subscription Modal */}
         {showEditModal && editingSubscription && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-              <h2 className="text-xl font-bold text-zionx-primary mb-4">✏️ Modificar Suscripción</h2>
-              
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Cliente:</p>
-                <p className="font-semibold text-zionx-primary">{editingSubscription.customer_name}</p>
+          <div className="zxsub-scrim">
+            <div className="zxsub-modal">
+              <h2>✏️ Modificar Suscripción</h2>
+
+              <div className="zxsub-modal-cust">
+                <p className="k">Cliente:</p>
+                <p className="v">{editingSubscription.customer_name}</p>
               </div>
-              
-              <form onSubmit={handleUpdateSubscription} className="space-y-4">
+
+              <form onSubmit={handleUpdateSubscription} className="zxsub-form">
                 {/* Monthly Amount */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">
                     💰 Monto Mensual (sin IVA) *
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">$</span>
+                  <div className="zxsub-inputwrap">
+                    <span className="prefix">$</span>
                     <input
                       type="number"
                       step="0.01"
@@ -544,41 +506,41 @@ const SubscriptionsManager = () => {
                       onChange={(e) => setMonthlyAmount(e.target.value)}
                       required
                       placeholder="0.00"
-                      className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                      className="zxsub-input"
                     />
                   </div>
                   {monthlyAmount && parseFloat(monthlyAmount) > 0 && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Subtotal:</span>
-                        <span className="font-medium">{formatCurrency(parseFloat(monthlyAmount))}</span>
+                    <div className="zxsub-breakdown">
+                      <div className="zxsub-brow">
+                        <span className="lbl">Subtotal:</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount))}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">IVA (16%):</span>
-                        <span className="font-medium">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
+                      <div className="zxsub-brow">
+                        <span className="lbl">IVA (16%):</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
                       </div>
-                      <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
+                      <div className="zxsub-brow total">
                         <span>Total Mensual:</span>
-                        <span className="text-green-600">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                <div className="zxsub-fgroup">
+                  <label className="zxsub-label">Notas</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-zionx-highlight focus:border-transparent"
+                    className="zxsub-textarea"
                     placeholder="Notas sobre la suscripción..."
                   />
                 </div>
 
                 {/* Buttons */}
-                <div className="flex space-x-3 pt-4">
+                <div className="zxsub-modal-btns">
                   <button
                     type="button"
                     onClick={() => {
@@ -587,14 +549,14 @@ const SubscriptionsManager = () => {
                       setMonthlyAmount("");
                       setNotes("");
                     }}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="zxsub-mbtn"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={!monthlyAmount}
-                    className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="zxsub-mbtn solid"
                   >
                     Guardar Cambios
                   </button>

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import "./InvoiceDetail.css";
 
 const InvoiceDetail = () => {
   const { id } = useParams();
@@ -148,22 +149,24 @@ const InvoiceDetail = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      draft: { color: 'bg-gray-100 text-gray-800', label: '📝 Borrador' },
-      sent: { color: 'bg-blue-100 text-blue-800', label: '📤 Enviada' },
-      partial: { color: 'bg-yellow-100 text-yellow-800', label: '⏳ Parcial' },
-      paid: { color: 'bg-green-100 text-green-800', label: '✓ Pagada' },
-      overdue: { color: 'bg-red-100 text-red-800', label: '⚠️ Vencida' },
-      cancelled: { color: 'bg-gray-100 text-gray-500', label: '✗ Cancelada' }
+      draft: { color: 'draft', label: 'Borrador' },
+      sent: { color: 'sent', label: 'Enviada' },
+      partial: { color: 'partial', label: 'Parcial' },
+      paid: { color: 'paid', label: 'Pagada' },
+      overdue: { color: 'overdue', label: 'Vencida' },
+      cancelled: { color: 'cancelled', label: 'Cancelada' }
     };
     const badge = badges[status] || badges.draft;
-    return <span className={`px-3 py-1 rounded-full text-xs font-medium ${badge.color}`}>{badge.label}</span>;
+    return <span className={`zxidv-pill ${badge.color}`}>{badge.label}</span>;
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxidv">
+          <div className="zxidv-state">
+            <div className="zxidv-spinner"></div>
+          </div>
         </div>
       </Layout>
     );
@@ -172,12 +175,12 @@ const InvoiceDetail = () => {
   if (!invoice) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <p className="text-gray-500 mb-4">Factura no encontrada</p>
-            <Link to="/income/invoices" className="text-blue-600 hover:text-blue-800">
-              ← Volver a facturas
-            </Link>
+        <div className="zxidv">
+          <div className="zxidv-state">
+            <div className="zxidv-empty">
+              <p>Factura no encontrada</p>
+              <Link to="/income/invoices">← Volver a facturas</Link>
+            </div>
           </div>
         </div>
       </Layout>
@@ -186,87 +189,78 @@ const InvoiceDetail = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">📄 {invoice.invoice_number}</h1>
-                <p className="text-gray-500 text-sm mt-1">Detalle de factura</p>
-              </div>
-              <div className="flex gap-3">
-                <Link
-                  to="/income/invoices"
-                  className="bg-white border border-zionx-secondary px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+      <div className="zxidv">
+        <div className="zxidv-inner">
+          {/* Header */}
+          <div className="zxidv-head">
+            <div>
+              <div className="zxidv-eyebrow">Detalle de <span className="zxidv-serif">factura</span></div>
+              <h1 className="zxidv-h1">{invoice.invoice_number}</h1>
+            </div>
+            <div className="zxidv-actions">
+              <Link to="/income/invoices" className="zxidv-btn">← Volver</Link>
+              {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                <button
+                  onClick={() => alert('Función de envío en desarrollo')}
+                  className="zxidv-btn solid"
                 >
-                  ← Volver
-                </Link>
-                {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                  <button
-                    onClick={() => alert('Función de envío en desarrollo')}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    📤 Enviar
-                  </button>
-                )}
-              </div>
+                  Enviar
+                </button>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-5xl mx-auto px-6 py-8">
-          <div className="bg-white rounded-xl border border-zionx-secondary p-8">
+          {/* Document */}
+          <div className="zxidv-paper">
             {/* Invoice Header */}
-            <div className="flex justify-between items-start mb-8 pb-6 border-b">
+            <div className="zxidv-doc-head">
               <div>
-                <h2 className="text-3xl font-bold text-zionx-primary mb-2">{invoice.invoice_number}</h2>
+                <h2 className="folio">{invoice.invoice_number}</h2>
                 {getStatusBadge(invoice.status)}
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Fecha de emisión</p>
-                <p className="font-medium">{new Date(invoice.invoice_date).toLocaleDateString('es-MX')}</p>
+              <div className="zxidv-dates">
+                <div className="k">Fecha de emisión</div>
+                <p className="v">{new Date(invoice.invoice_date).toLocaleDateString('es-MX')}</p>
                 {invoice.due_date && (
                   <>
-                    <p className="text-sm text-gray-500 mt-2">Fecha de vencimiento</p>
-                    <p className="font-medium">{new Date(invoice.due_date).toLocaleDateString('es-MX')}</p>
+                    <div className="k">Fecha de vencimiento</div>
+                    <p className="v">{new Date(invoice.due_date).toLocaleDateString('es-MX')}</p>
                   </>
                 )}
               </div>
             </div>
 
             {/* Customer Info */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">CLIENTE</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="font-bold text-zionx-primary">{invoice.customer_name}</p>
-                {invoice.customer_rfc && <p className="text-sm text-gray-600">RFC: {invoice.customer_rfc}</p>}
-                {invoice.customer_email && <p className="text-sm text-gray-600">📧 {invoice.customer_email}</p>}
-                {invoice.customer_phone && <p className="text-sm text-gray-600">📱 {invoice.customer_phone}</p>}
-                {invoice.customer_address && <p className="text-sm text-gray-600 mt-2">📍 {invoice.customer_address}</p>}
+            <div>
+              <h3 className="zxidv-label">Cliente</h3>
+              <div className="zxidv-cust">
+                <p className="name">{invoice.customer_name}</p>
+                {invoice.customer_rfc && <p className="meta">RFC: {invoice.customer_rfc}</p>}
+                {invoice.customer_email && <p className="meta">{invoice.customer_email}</p>}
+                {invoice.customer_phone && <p className="meta">{invoice.customer_phone}</p>}
+                {invoice.customer_address && <p className="meta">{invoice.customer_address}</p>}
               </div>
             </div>
 
             {/* Line Items */}
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-500 mb-4">CONCEPTOS</h3>
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="zxidv-section">
+              <h3 className="zxidv-label">Conceptos</h3>
+              <table className="zxidv-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cantidad</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio Unit.</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th>Descripción</th>
+                    <th className="r">Cantidad</th>
+                    <th className="r">Precio Unit.</th>
+                    <th className="r">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {invoice.items && invoice.items.map((item, idx) => (
                     <tr key={idx}>
-                      <td className="px-4 py-3 text-sm">{item.description}</td>
-                      <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
-                      <td className="px-4 py-3 text-sm text-right">{formatCurrency(item.unit_price)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium">{formatCurrency(item.total)}</td>
+                      <td>{item.description}</td>
+                      <td className="r">{item.quantity}</td>
+                      <td className="r">{formatCurrency(item.unit_price)}</td>
+                      <td className="r strong">{formatCurrency(item.total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -274,29 +268,29 @@ const InvoiceDetail = () => {
             </div>
 
             {/* Totals */}
-            <div className="flex justify-end">
-              <div className="w-80">
-                <div className="flex justify-between py-2 text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-medium">{formatCurrency(invoice.subtotal)}</span>
+            <div className="zxidv-totals-wrap">
+              <div className="zxidv-totals">
+                <div className="zxidv-trow">
+                  <span className="lbl">Subtotal:</span>
+                  <span className="val">{formatCurrency(invoice.subtotal)}</span>
                 </div>
-                <div className="flex justify-between py-2 text-sm">
-                  <span className="text-gray-600">IVA ({invoice.tax_percentage}%):</span>
-                  <span className="font-medium">{formatCurrency(invoice.tax_amount)}</span>
+                <div className="zxidv-trow">
+                  <span className="lbl">IVA ({invoice.tax_percentage}%):</span>
+                  <span className="val">{formatCurrency(invoice.tax_amount)}</span>
                 </div>
-                <div className="flex justify-between py-3 border-t-2 border-gray-300 text-lg font-bold">
-                  <span>Total:</span>
-                  <span className="text-zionx-primary">{formatCurrency(invoice.total)}</span>
+                <div className="zxidv-trow grand">
+                  <span className="lbl">Total:</span>
+                  <span className="val">{formatCurrency(invoice.total)}</span>
                 </div>
                 {invoice.amount_paid > 0 && (
                   <>
-                    <div className="flex justify-between py-2 text-sm text-green-600">
-                      <span>Pagado:</span>
-                      <span className="font-medium">{formatCurrency(invoice.amount_paid)}</span>
+                    <div className="zxidv-trow ok">
+                      <span className="lbl">Pagado:</span>
+                      <span className="val">{formatCurrency(invoice.amount_paid)}</span>
                     </div>
-                    <div className="flex justify-between py-2 text-sm text-orange-600">
-                      <span>Por Cobrar:</span>
-                      <span className="font-bold">{formatCurrency(invoice.amount_due)}</span>
+                    <div className="zxidv-trow due">
+                      <span className="lbl">Por Cobrar:</span>
+                      <span className="val">{formatCurrency(invoice.amount_due)}</span>
                     </div>
                   </>
                 )}
@@ -305,17 +299,17 @@ const InvoiceDetail = () => {
 
             {/* Payments History */}
             {invoice.payments && invoice.payments.length > 0 && (
-              <div className="mt-8 pt-8 border-t">
-                <h3 className="text-sm font-medium text-gray-500 mb-4">HISTORIAL DE PAGOS</h3>
-                <div className="space-y-2">
+              <div className="zxidv-section">
+                <h3 className="zxidv-label">Historial de pagos</h3>
+                <div className="zxidv-pays">
                   {invoice.payments.map((payment, idx) => (
-                    <div key={idx} className="bg-green-50 rounded-lg p-3 flex justify-between items-center">
+                    <div key={idx} className="zxidv-pay">
                       <div>
-                        <p className="font-medium text-green-800">{formatCurrency(payment.amount)}</p>
-                        <p className="text-xs text-green-600">{payment.payment_method} - {new Date(payment.payment_date).toLocaleDateString('es-MX')}</p>
+                        <p className="amt">{formatCurrency(payment.amount)}</p>
+                        <p className="sub">{payment.payment_method} - {new Date(payment.payment_date).toLocaleDateString('es-MX')}</p>
                       </div>
                       {payment.reference_number && (
-                        <p className="text-xs text-gray-500">Ref: {payment.reference_number}</p>
+                        <p className="ref">Ref: {payment.reference_number}</p>
                       )}
                     </div>
                   ))}
@@ -325,41 +319,41 @@ const InvoiceDetail = () => {
 
             {/* Notes */}
             {invoice.notes && (
-              <div className="mt-8 pt-8 border-t">
-                <h3 className="text-sm font-medium text-gray-500 mb-2">NOTAS</h3>
-                <p className="text-sm text-gray-700">{invoice.notes}</p>
+              <div className="zxidv-section">
+                <h3 className="zxidv-label">Notas</h3>
+                <p className="zxidv-notes">{invoice.notes}</p>
               </div>
             )}
 
             {/* CFDI (contabilidad-os) */}
             {(cfdiConfigured || invoice.cfdi_uuid) && (
-              <div className="mt-8 pt-8 border-t">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">CFDI Fiscal</h3>
+              <div className="zxidv-section">
+                <h3 className="zxidv-label">CFDI Fiscal</h3>
                 {invoice.cfdi_uuid ? (
-                  <div className="flex items-center gap-4 flex-wrap bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="zxidv-cfdi stamped">
                     <div>
-                      <div className="text-xs text-gray-500 uppercase">Folio fiscal (UUID)</div>
-                      <div className="font-mono text-sm text-gray-800">{invoice.cfdi_uuid}</div>
+                      <div className="uuid-k">Folio fiscal (UUID)</div>
+                      <div className="uuid-v">{invoice.cfdi_uuid}</div>
                     </div>
                     {invoice.cfdi_pdf_url && (
                       <a href={invoice.cfdi_pdf_url} target="_blank" rel="noreferrer"
-                        className="ml-auto bg-black text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
+                        className="zxidv-btn solid push">
                         Ver CFDI (PDF) →
                       </a>
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4 flex-wrap">
+                  <div className="zxidv-cfdi">
                     <button
                       onClick={stampCfdi}
                       disabled={stamping || invoice.status === 'cancelled'}
-                      className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                      className="zxidv-btn solid wide"
                     >
-                      {stamping ? 'Timbrando…' : '🧾 Timbrar CFDI'}
+                      {stamping ? 'Timbrando…' : 'Timbrar CFDI'}
                     </button>
-                    <span className="text-sm text-gray-500">Genera la factura fiscal (CFDI) en contabilidad-os.</span>
+                    <span className="hint">Genera la factura fiscal (CFDI) en contabilidad-os.</span>
                     {invoice.cfdi_error && (
-                      <div className="w-full text-sm text-red-600 mt-1">⚠ Último intento: {invoice.cfdi_error}</div>
+                      <div className="zxidv-cfdi-err">⚠ Último intento: {invoice.cfdi_error}</div>
                     )}
                   </div>
                 )}
@@ -367,33 +361,33 @@ const InvoiceDetail = () => {
             )}
 
             {/* Actions */}
-            <div className="mt-8 pt-8 border-t flex gap-3 flex-wrap">
+            <div className="zxidv-foot">
               {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                 <button
                   onClick={handleOpenPaymentModal}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                  className="zxidv-btn solid wide"
                 >
-                  💰 Registrar Pago
+                  Registrar Pago
                 </button>
               )}
               <button
                 onClick={() => alert('Función de descarga PDF en desarrollo')}
-                className="bg-zionx-secondary text-zionx-primary px-6 py-3 rounded-lg hover:bg-zionx-accent hover:text-white transition-colors"
+                className="zxidv-btn wide"
               >
-                📥 Descargar PDF
+                Descargar PDF
               </button>
               {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                 <button
                   onClick={handleCancelInvoice}
                   disabled={cancelling}
-                  className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="zxidv-btn danger wide"
                 >
-                  {cancelling ? 'Cancelando...' : '✗ Cancelar Factura'}
+                  {cancelling ? 'Cancelando...' : 'Cancelar Factura'}
                 </button>
               )}
               {invoice.status === 'cancelled' && (
-                <div className="bg-gray-100 text-gray-600 px-6 py-3 rounded-lg">
-                  ✗ Esta factura está cancelada
+                <div className="zxidv-cancelled-note">
+                  Esta factura está cancelada
                 </div>
               )}
             </div>
@@ -402,108 +396,108 @@ const InvoiceDetail = () => {
 
         {/* Payment Modal */}
         {showPaymentModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-zionx-primary">💰 Registrar Pago</h3>
+          <div className="zxidv-overlay">
+            <div className="zxidv-modal">
+              <div className="zxidv-modal-head">
+                <h3>Registrar Pago</h3>
                 <button
                   onClick={() => setShowPaymentModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="zxidv-close"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="zxidv-modal-body">
                 {/* Invoice Info */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Factura</p>
-                  <p className="font-bold text-zionx-primary">{invoice.invoice_number}</p>
-                  <p className="text-sm text-gray-600 mt-2">Cliente</p>
-                  <p className="font-medium">{invoice.customer_name}</p>
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Total factura:</span>
-                      <span className="font-medium">{formatCurrency(invoice.total)}</span>
+                <div className="zxidv-inv-box">
+                  <p className="k">Factura</p>
+                  <p className="v">{invoice.invoice_number}</p>
+                  <p className="k" style={{ marginTop: '8px' }}>Cliente</p>
+                  <p className="v reg">{invoice.customer_name}</p>
+                  <div className="divider">
+                    <div className="trow">
+                      <span className="lbl">Total factura:</span>
+                      <span className="val">{formatCurrency(invoice.total)}</span>
                     </div>
                     {invoice.amount_paid > 0 && (
-                      <div className="flex justify-between text-sm text-green-600 mt-1">
+                      <div className="trow ok">
                         <span>Pagado:</span>
-                        <span className="font-medium">{formatCurrency(invoice.amount_paid)}</span>
+                        <span className="val">{formatCurrency(invoice.amount_paid)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm font-bold text-orange-600 mt-1">
+                    <div className="trow due">
                       <span>Por cobrar:</span>
-                      <span>{formatCurrency(invoice.amount_due || invoice.total)}</span>
+                      <span className="val">{formatCurrency(invoice.amount_due || invoice.total)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Form */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="zxidv-field">
+                  <label>
                     Monto del Pago *
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <div className="zxidv-amount">
+                    <span className="sign">$</span>
                     <input
                       type="number"
                       step="0.01"
                       value={paymentData.amount}
                       onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
-                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="zxidv-input"
                       placeholder="0.00"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="zxidv-field">
+                  <label>
                     Método de Pago *
                   </label>
                   <select
                     value={paymentData.payment_method}
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxidv-select"
                   >
-                    <option value="transferencia">🏦 Transferencia Bancaria</option>
-                    <option value="efectivo">💵 Efectivo</option>
-                    <option value="tarjeta">💳 Tarjeta</option>
-                    <option value="cheque">📝 Cheque</option>
+                    <option value="transferencia">Transferencia Bancaria</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="cheque">Cheque</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="zxidv-field">
+                  <label>
                     Referencia / No. de Transacción
                   </label>
                   <input
                     type="text"
                     value={paymentData.reference_number}
                     onChange={(e) => setPaymentData({...paymentData, reference_number: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxidv-input"
                     placeholder="Ej: SPEI-123456, No. Cheque, etc."
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="zxidv-field">
+                  <label>
                     Notas (Opcional)
                   </label>
                   <textarea
                     value={paymentData.notes}
                     onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxidv-textarea"
                     rows="2"
                     placeholder="Notas adicionales sobre el pago..."
                   />
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 mt-6">
+                <div className="zxidv-modal-actions">
                   <button
                     onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="zxidv-btn"
                     disabled={submittingPayment}
                   >
                     Cancelar
@@ -511,9 +505,9 @@ const InvoiceDetail = () => {
                   <button
                     onClick={handleRegisterPayment}
                     disabled={submittingPayment}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="zxidv-btn solid"
                   >
-                    {submittingPayment ? 'Registrando...' : '✓ Registrar Pago'}
+                    {submittingPayment ? 'Registrando...' : 'Registrar Pago'}
                   </button>
                 </div>
               </div>

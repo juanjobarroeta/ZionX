@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import "./FinancialStatements.css";
 
 const FinancialStatements = () => {
   const [summary, setSummary] = useState(null);
@@ -60,8 +61,10 @@ const FinancialStatements = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight"></div>
+        <div className="zxfst">
+          <div className="zxfst-inner">
+            <div className="zxfst-loading">Cargando estados financieros…</div>
+          </div>
         </div>
       </Layout>
     );
@@ -69,71 +72,62 @@ const FinancialStatements = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">📊 Estados Financieros</h1>
-                <p className="text-gray-500 text-sm mt-1">
-                  Profit & Loss, Balance General, Flujo de Efectivo
-                </p>
-              </div>
-              <div className="flex space-x-3 items-center">
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-4 py-2"
-                >
-                  {[2024, 2025, 2026, 2027].map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-                <Link to="/hr/employees" className="bg-white border border-zionx-secondary px-4 py-2 rounded-lg hover:bg-gray-50">
-                  👥 Empleados
-                </Link>
-                <Link to="/hr/payroll" className="bg-white border border-zionx-secondary px-4 py-2 rounded-lg hover:bg-gray-50">
-                  💰 Nómina
-                </Link>
-              </div>
+      <div className="zxfst">
+        <div className="zxfst-inner">
+          {/* Header */}
+          <div className="zxfst-head">
+            <div>
+              <div className="zxfst-eyebrow">Finanzas</div>
+              <h1 className="zxfst-h1">Estados <span className="zxfst-serif">financieros</span></h1>
+              <p className="zxfst-sub">Profit &amp; Loss, Balance General, Flujo de Efectivo</p>
+            </div>
+            <div className="zxfst-actions">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="zxfst-select"
+              >
+                {[2024, 2025, 2026, 2027].map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <Link to="/hr/employees" className="zxfst-btn">Empleados</Link>
+              <Link to="/hr/payroll" className="zxfst-btn solid">Nómina</Link>
             </div>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* KPI Cards */}
+          {/* KPI Statement Panels */}
           {summary && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* MTD Card */}
-              <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                  <h3 className="text-white font-semibold">📅 Mes Actual ({getMonthName(summary.current_month)})</h3>
+            <div className="zxfst-kpis">
+              {/* MTD */}
+              <div className="zxfst-panel">
+                <div className="zxfst-panel-head">
+                  <h3>Mes actual</h3>
+                  <span className="tag">{getMonthName(summary.current_month)}</span>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Ingresos</span>
-                      <span className="font-bold text-green-600">{formatCurrency(summary.mtd.revenue)}</span>
+                <div className="zxfst-panel-body">
+                  <div className="zxfst-rows">
+                    <div className="zxfst-row">
+                      <span className="label">Ingresos</span>
+                      <span className="amt pos">{formatCurrency(summary.mtd.revenue)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">(-) Costo Laboral</span>
-                      <span className="font-medium text-red-500">{formatCurrency(summary.mtd.labor_cost)}</span>
+                    <div className="zxfst-row">
+                      <span className="label">(-) Costo Laboral</span>
+                      <span className="amt neg">{formatCurrency(summary.mtd.labor_cost)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">(-) Gastos Operativos</span>
-                      <span className="font-medium text-red-500">{formatCurrency(summary.mtd.operating_expenses)}</span>
+                    <div className="zxfst-row">
+                      <span className="label">(-) Gastos Operativos</span>
+                      <span className="amt neg">{formatCurrency(summary.mtd.operating_expenses)}</span>
                     </div>
-                    <div className="border-t pt-4 flex justify-between items-center">
-                      <span className="font-semibold">Utilidad Neta</span>
-                      <span className={`text-xl font-bold ${summary.mtd.net_income >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="zxfst-row subtotal">
+                      <span className="label">Utilidad Neta</span>
+                      <span className={`amt ${summary.mtd.net_income >= 0 ? 'pos' : 'neg'}`}>
                         {formatCurrency(summary.mtd.net_income)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">Margen de Utilidad</span>
-                      <span className={`font-medium ${parseFloat(summary.mtd.profit_margin) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="zxfst-row minor">
+                      <span className="label">Margen de Utilidad</span>
+                      <span className={`amt ${parseFloat(summary.mtd.profit_margin) >= 0 ? 'pos' : 'neg'}`}>
                         {formatPercent(summary.mtd.profit_margin)}
                       </span>
                     </div>
@@ -141,34 +135,35 @@ const FinancialStatements = () => {
                 </div>
               </div>
 
-              {/* YTD Card */}
-              <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-                  <h3 className="text-white font-semibold">📆 Año {selectedYear} (YTD)</h3>
+              {/* YTD */}
+              <div className="zxfst-panel">
+                <div className="zxfst-panel-head">
+                  <h3>Año {selectedYear}</h3>
+                  <span className="tag">YTD</span>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Ingresos</span>
-                      <span className="font-bold text-green-600">{formatCurrency(summary.ytd.revenue)}</span>
+                <div className="zxfst-panel-body">
+                  <div className="zxfst-rows">
+                    <div className="zxfst-row">
+                      <span className="label">Ingresos</span>
+                      <span className="amt pos">{formatCurrency(summary.ytd.revenue)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">(-) Costo Laboral</span>
-                      <span className="font-medium text-red-500">{formatCurrency(summary.ytd.labor_cost)}</span>
+                    <div className="zxfst-row">
+                      <span className="label">(-) Costo Laboral</span>
+                      <span className="amt neg">{formatCurrency(summary.ytd.labor_cost)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">(-) Gastos Operativos</span>
-                      <span className="font-medium text-red-500">{formatCurrency(summary.ytd.operating_expenses)}</span>
+                    <div className="zxfst-row">
+                      <span className="label">(-) Gastos Operativos</span>
+                      <span className="amt neg">{formatCurrency(summary.ytd.operating_expenses)}</span>
                     </div>
-                    <div className="border-t pt-4 flex justify-between items-center">
-                      <span className="font-semibold">Utilidad Neta</span>
-                      <span className={`text-xl font-bold ${summary.ytd.net_income >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="zxfst-row subtotal">
+                      <span className="label">Utilidad Neta</span>
+                      <span className={`amt ${summary.ytd.net_income >= 0 ? 'pos' : 'neg'}`}>
                         {formatCurrency(summary.ytd.net_income)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">Margen de Utilidad</span>
-                      <span className={`font-medium ${parseFloat(summary.ytd.profit_margin) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="zxfst-row minor">
+                      <span className="label">Margen de Utilidad</span>
+                      <span className={`amt ${parseFloat(summary.ytd.profit_margin) >= 0 ? 'pos' : 'neg'}`}>
                         {formatPercent(summary.ytd.profit_margin)}
                       </span>
                     </div>
@@ -179,66 +174,65 @@ const FinancialStatements = () => {
           )}
 
           {/* Profit & Loss Table */}
-          <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden mb-8">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zionx-primary">📈 Estado de Resultados (P&L)</h2>
-              <span className="text-sm text-gray-500">Año {selectedYear}</span>
+          <div className="zxfst-panel">
+            <div className="zxfst-panel-head">
+              <h2>Estado de Resultados (P&amp;L)</h2>
+              <span className="tag">Año {selectedYear}</span>
             </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
+            <div className="zxfst-tablewrap">
+              <table className="zxfst-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mes</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ingresos</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Costo Laboral</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Gastos Op.</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Utilidad</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Margen</th>
+                    <th>Mes</th>
+                    <th>Ingresos</th>
+                    <th>Costo Laboral</th>
+                    <th>Gastos Op.</th>
+                    <th>Utilidad</th>
+                    <th>Margen</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {profitLoss?.summary?.length > 0 ? (
                     profitLoss.summary.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium">{getMonthName(row.month)}</td>
-                        <td className="px-6 py-4 text-right text-green-600">{formatCurrency(row.revenue_total)}</td>
-                        <td className="px-6 py-4 text-right text-red-500">{formatCurrency(row.labor_cost)}</td>
-                        <td className="px-6 py-4 text-right text-red-500">{formatCurrency(row.operating_expenses)}</td>
-                        <td className={`px-6 py-4 text-right font-semibold ${parseFloat(row.net_income) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <tr key={idx}>
+                        <td>{getMonthName(row.month)}</td>
+                        <td className="pos">{formatCurrency(row.revenue_total)}</td>
+                        <td className="neg">{formatCurrency(row.labor_cost)}</td>
+                        <td className="neg">{formatCurrency(row.operating_expenses)}</td>
+                        <td className={`strong ${parseFloat(row.net_income) >= 0 ? 'pos' : 'neg'}`}>
                           {formatCurrency(row.net_income)}
                         </td>
-                        <td className={`px-6 py-4 text-right ${parseFloat(row.profit_margin_pct) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className={parseFloat(row.profit_margin_pct) >= 0 ? 'pos' : 'neg'}>
                           {formatPercent(row.profit_margin_pct)}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        <span className="text-4xl block mb-2">📊</span>
+                      <td colSpan="6" className="zxfst-empty">
+                        <span className="big">📊</span>
                         No hay datos financieros para {selectedYear}
                       </td>
                     </tr>
                   )}
                 </tbody>
                 {profitLoss?.summary?.length > 0 && (
-                  <tfoot className="bg-gray-100">
-                    <tr className="font-bold">
-                      <td className="px-6 py-4">TOTAL {selectedYear}</td>
-                      <td className="px-6 py-4 text-right text-green-700">
+                  <tfoot>
+                    <tr>
+                      <td>TOTAL {selectedYear}</td>
+                      <td className="pos">
                         {formatCurrency(profitLoss.summary.reduce((sum, r) => sum + parseFloat(r.revenue_total || 0), 0))}
                       </td>
-                      <td className="px-6 py-4 text-right text-red-700">
+                      <td className="neg">
                         {formatCurrency(profitLoss.summary.reduce((sum, r) => sum + parseFloat(r.labor_cost || 0), 0))}
                       </td>
-                      <td className="px-6 py-4 text-right text-red-700">
+                      <td className="neg">
                         {formatCurrency(profitLoss.summary.reduce((sum, r) => sum + parseFloat(r.operating_expenses || 0), 0))}
                       </td>
-                      <td className="px-6 py-4 text-right text-green-700">
+                      <td className="pos">
                         {formatCurrency(profitLoss.summary.reduce((sum, r) => sum + parseFloat(r.net_income || 0), 0))}
                       </td>
-                      <td className="px-6 py-4 text-right">-</td>
+                      <td>-</td>
                     </tr>
                   </tfoot>
                 )}
@@ -247,51 +241,51 @@ const FinancialStatements = () => {
           </div>
 
           {/* Breakdown Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="zxfst-cols">
             {/* Labor Costs Breakdown */}
-            <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-              <div className="px-6 py-4 border-b">
-                <h2 className="font-semibold text-zionx-primary">💼 Desglose Costo Laboral</h2>
+            <div className="zxfst-panel">
+              <div className="zxfst-panel-head">
+                <h2>Desglose Costo Laboral</h2>
               </div>
-              <div className="p-6">
+              <div className="zxfst-panel-body">
                 {profitLoss?.labor_costs?.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="zxfst-brk">
                     {profitLoss.labor_costs.slice(0, 6).map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center">
-                        <span className="text-gray-600">{getMonthName(item.month)}</span>
-                        <div className="text-right">
-                          <span className="font-medium">{formatCurrency(item.total_net)}</span>
-                          <span className="text-xs text-gray-500 ml-2">({item.employee_count} emp)</span>
-                        </div>
+                      <div key={idx} className="zxfst-brk-row">
+                        <span className="label">{getMonthName(item.month)}</span>
+                        <span className="amt">
+                          {formatCurrency(item.total_net)}
+                          <span className="note">({item.employee_count} emp)</span>
+                        </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-4">Sin datos de nómina</p>
+                  <p className="zxfst-note">Sin datos de nómina</p>
                 )}
               </div>
             </div>
 
             {/* Operating Expenses Breakdown */}
-            <div className="bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-              <div className="px-6 py-4 border-b flex justify-between items-center">
-                <h2 className="font-semibold text-zionx-primary">🏢 Gastos Operativos</h2>
-                <Link to="/admin/expenses" className="text-sm text-blue-600 hover:text-blue-800">
+            <div className="zxfst-panel">
+              <div className="zxfst-panel-head">
+                <h2>Gastos Operativos</h2>
+                <Link to="/admin/expenses" className="zxfst-lnk">
                   Ver todos →
                 </Link>
               </div>
-              <div className="p-6">
+              <div className="zxfst-panel-body">
                 {profitLoss?.operating_expenses?.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="zxfst-brk">
                     {profitLoss.operating_expenses.slice(0, 6).map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center">
-                        <span className="text-gray-600">{item.category || 'Sin categoría'}</span>
-                        <span className="font-medium">{formatCurrency(item.total)}</span>
+                      <div key={idx} className="zxfst-brk-row">
+                        <span className="label">{item.category || 'Sin categoría'}</span>
+                        <span className="amt neg">{formatCurrency(item.total)}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-4">Sin gastos registrados</p>
+                  <p className="zxfst-note">Sin gastos registrados</p>
                 )}
               </div>
             </div>
@@ -299,28 +293,28 @@ const FinancialStatements = () => {
 
           {/* Quick Stats */}
           {summary && (
-            <div className="mt-8 bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-6 text-white">
-              <h3 className="text-lg font-semibold mb-4">📌 Resumen Rápido</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div>
-                  <p className="text-gray-400 text-sm">Empleados Activos</p>
-                  <p className="text-2xl font-bold">{summary.employee_count}</p>
+            <div className="zxfst-quick">
+              <h3>Resumen Rápido</h3>
+              <div className="zxfst-tiles">
+                <div className="zxfst-tile">
+                  <span className="k">Empleados Activos</span>
+                  <span className="v">{summary.employee_count}</span>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Ingresos YTD</p>
-                  <p className="text-2xl font-bold text-green-400">{formatCurrency(summary.ytd.revenue)}</p>
+                <div className="zxfst-tile">
+                  <span className="k">Ingresos YTD</span>
+                  <span className="v pos">{formatCurrency(summary.ytd.revenue)}</span>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Costos Totales YTD</p>
-                  <p className="text-2xl font-bold text-red-400">
+                <div className="zxfst-tile">
+                  <span className="k">Costos Totales YTD</span>
+                  <span className="v neg">
                     {formatCurrency(summary.ytd.labor_cost + summary.ytd.operating_expenses)}
-                  </p>
+                  </span>
                 </div>
-                <div>
-                  <p className="text-gray-400 text-sm">Utilidad YTD</p>
-                  <p className={`text-2xl font-bold ${summary.ytd.net_income >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className="zxfst-tile">
+                  <span className="k">Utilidad YTD</span>
+                  <span className={`v ${summary.ytd.net_income >= 0 ? 'pos' : 'neg'}`}>
                     {formatCurrency(summary.ytd.net_income)}
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
