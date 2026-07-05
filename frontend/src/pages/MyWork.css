@@ -25,15 +25,27 @@
 .zxw-tile.wait .v { color: var(--wait); }
 .zxw-tile.sched .v { color: var(--sched); }
 .zxw-tile.done .v { color: var(--done); }
+.zxw-tile.bad .v { color: var(--action); }
+.zxw-tile.warn .v { color: var(--wait); }
+.zxw-tile.ok .v { color: var(--done); }
+.zxw-tile.muted .v { color: var(--muted); }
+
+/* Sections stack the queue / supervision / content blocks. */
+.zxw-section { display: flex; flex-direction: column; gap: 18px; }
+.zxw-section-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.zxw-section-head h2 { margin: 0; font-size: clamp(20px, 2.6vw, 26px); font-weight: 700; letter-spacing: -0.015em; }
+.zxw-section-sub { font-size: 13px; color: var(--muted); }
 
 .zxw-group { display: flex; flex-direction: column; gap: 12px; }
 .zxw-group-head { display: flex; align-items: baseline; gap: 12px; }
-.zxw-group-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.zxw-group-head h2, .zxw-group-head h3 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
 .zxw-group-head .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .zxw-group-head .stripe { flex: 1; height: 1px; background: var(--line); }
-.zxw-group.action .dot, .zxw-group.wait .dot, .zxw-group.sched .dot, .zxw-group.done .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.zxw-group .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .zxw-group.action .dot { background: var(--action); } .zxw-group.wait .dot { background: var(--wait); }
 .zxw-group.sched .dot { background: var(--sched); } .zxw-group.done .dot { background: var(--done); }
+.zxw-group.bad .dot { background: var(--action); } .zxw-group.warn .dot { background: var(--wait); }
+.zxw-group.ok .dot { background: var(--done); } .zxw-group.muted .dot { background: var(--muted); }
 
 .zxw-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .zxw-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; transition: border-color 0.14s, transform 0.14s; }
@@ -51,8 +63,27 @@
 .zxw-pill.v-accent { background: var(--sched); color: #fff; }
 .zxw-pill.v-published { background: var(--done); color: #fff; }
 .zxw-pill.v-failed { background: var(--action); color: #fff; }
+/* Pipeline stage-status pills (muted / warn / ok / bad). */
+.zxw-pill.v-muted { border: 1px solid var(--line); color: var(--muted); }
+.zxw-pill.v-warn { background: var(--wait); color: #fff; }
+.zxw-pill.v-ok { background: var(--done); color: #fff; }
+.zxw-pill.v-bad { background: var(--action); color: #fff; }
 .zxw-roles { display: flex; gap: 6px; }
 .zxw-role { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 2px; background: var(--chip, rgba(4,17,26,0.05)); color: var(--ink); }
+.zxw-role.stage { background: rgba(4,17,26,0.08); }
+
+/* ---- Supervision list (senior team overview) ---- */
+.zxw-sup-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.zxw-sup-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; background: var(--surface); padding: 14px 18px; text-decoration: none; color: inherit; transition: background 0.14s; }
+.zxw-sup-row:hover { background: var(--paper); }
+.zxw-sup-row.stuck { box-shadow: inset 3px 0 0 var(--action); }
+.zxw-sup-row.mine { box-shadow: inset 3px 0 0 var(--wait); }
+.zxw-sup-main { min-width: 0; }
+.zxw-sup-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zxw-sup-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.zxw-sup-stage { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.zxw-sup-stagename { font-size: 13px; font-weight: 600; }
+.zxw-sup-owner { font-size: 12px; color: var(--muted); }
 
 .zxw-empty { padding: 60px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 5px; }
 .zxw-empty .big { font-size: 42px; display: block; margin-bottom: 12px; }
@@ -63,4 +94,6 @@
   .zxw { padding: 72px 16px 56px; }
   .zxw-tiles { grid-template-columns: repeat(2, 1fr); }
   .zxw-cards { grid-template-columns: 1fr; }
+  .zxw-sup-row { grid-template-columns: 1fr auto; }
+  .zxw-sup-stage { grid-column: 1 / -1; align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; }
 }
