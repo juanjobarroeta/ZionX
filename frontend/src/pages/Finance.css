@@ -94,6 +94,10 @@
 .zxin-pill.partial { background: rgba(154,107,30,0.15); color: var(--warn); }
 .zxin-pill.draft { border: 1px solid var(--line); color: var(--muted); }
 .zxin-pill.cancelled { border: 1px solid var(--line-soft); color: var(--muted); opacity: 0.7; }
+.zxin-pill.ok { background: var(--ok); color: #fff; }
+.zxin-cfdi { display: inline-flex; align-items: center; gap: 8px; }
+.zxin-uuid { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--muted); text-decoration: none; }
+a.zxin-uuid:hover { text-decoration: underline; }
 .zxin-cancel { font-family: inherit; font-size: 12px; font-weight: 600; color: var(--bad); background: none; border: none; cursor: pointer; padding: 4px 6px; }
 .zxin-cancel:hover { text-decoration: underline; }
 .zxin-cancel:disabled { opacity: 0.5; cursor: default; }

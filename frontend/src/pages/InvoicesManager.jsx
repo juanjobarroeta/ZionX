@@ -24,6 +24,7 @@ const FILTERS = [
   { id: "paid", label: "Pagadas" },
   { id: "overdue", label: "Vencidas" },
   { id: "cancelled", label: "Canceladas" },
+  { id: "stamped", label: "Timbradas" },
 ];
 
 const InvoicesManager = () => {
@@ -36,8 +37,8 @@ const InvoicesManager = () => {
 
   useEffect(() => {
     setLoading(true);
-    // 'overdue' isn't a stored status (it's derived), so fetch all and filter client-side.
-    const url = filter === "all" || filter === "overdue"
+    // 'overdue' and 'stamped' aren't stored statuses (derived/fiscal), so fetch all and filter client-side.
+    const url = filter === "all" || filter === "overdue" || filter === "stamped"
       ? `${API_BASE_URL}/api/income/invoices`
       : `${API_BASE_URL}/api/income/invoices?status=${filter}`;
     axios.get(url, { headers })
@@ -46,10 +47,11 @@ const InvoicesManager = () => {
       .finally(() => setLoading(false));
   }, [filter, headers]);
 
-  const rows = useMemo(
-    () => (filter === "overdue" ? invoices.filter((i) => (i.current_status || i.status) === "overdue") : invoices),
-    [invoices, filter]
-  );
+  const rows = useMemo(() => {
+    if (filter === "overdue") return invoices.filter((i) => (i.current_status || i.status) === "overdue");
+    if (filter === "stamped") return invoices.filter((i) => Boolean(i.cfdi_uuid));
+    return invoices;
+  }, [invoices, filter]);
 
   const totals = useMemo(() => rows.reduce(
     (a, i) => {
@@ -91,7 +93,6 @@ const InvoicesManager = () => {
             </div>
             <div className="zxin-actions">
               <Link to="/income" className="zxin-btn">← Ingresos</Link>
-              <Link to="/income/cfdi" className="zxin-btn">CFDIs</Link>
               <Link to="/income/invoice-generator" className="zxin-btn solid">+ Generar factura</Link>
             </div>
           </div>
@@ -120,7 +121,7 @@ const InvoicesManager = () => {
                 <thead>
                   <tr>
                     <th>Folio</th><th>Cliente</th><th>Fecha</th><th>Vence</th>
-                    <th className="r">Total</th><th className="r">Saldo</th><th>Estado</th><th></th>
+                    <th className="r">Total</th><th className="r">Saldo</th><th>Estado</th><th>CFDI</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -136,6 +137,24 @@ const InvoicesManager = () => {
                         <td className="r">{fmtMoney(inv.total)}</td>
                         <td className="r">{fmtMoney(inv.amount_due)}</td>
                         <td><span className={`zxin-pill ${st.cls}`}>{st.label}</span></td>
+                        <td>
+                          {inv.cfdi_uuid ? (
+                            <div className="zxin-cfdi">
+                              <span className="zxin-pill ok">Timbrada</span>
+                              {inv.cfdi_pdf_url ? (
+                                <a className="zxin-uuid" href={inv.cfdi_pdf_url} target="_blank" rel="noopener noreferrer">
+                                  {String(inv.cfdi_uuid).slice(-12)}
+                                </a>
+                              ) : (
+                                <span className="zxin-uuid">{String(inv.cfdi_uuid).slice(-12)}</span>
+                              )}
+                            </div>
+                          ) : (inv.current_status || inv.status) === "cancelled" || inv.cfdi_status === "CANCELLED" ? (
+                            <span className="zxin-pill cancelled">Cancelada</span>
+                          ) : (
+                            <span className="zxin-pill draft">Sin timbrar</span>
+                          )}
+                        </td>
                         <td className="r">
                           {canCancel && (
                             <button className="zxin-cancel" disabled={cancelling === inv.id} onClick={() => handleCancelInvoice(inv)}>
