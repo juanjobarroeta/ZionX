@@ -179,6 +179,7 @@ async function start() {
     const socialMediaRoutes = require('./routes/social-media');
     const approvalsRoutes = require('./routes/approvals');
     const expensesRoutes = require('./routes/expenses');
+    const bancosRoutes = require('./routes/bancos-routes');
     const creativeBriefsRoutes = require('./routes/creative-briefs');
 
     // --- New extracted route files ---
@@ -228,6 +229,9 @@ async function start() {
 
     // Expenses (finance — finanzas section)
     app.use('/api/expenses', withPool, authenticateToken, requireSection('finanzas'), expensesRoutes);
+
+    // Bancos — bank statement reconciliation (finance — finanzas section)
+    app.use('/api/bancos', withPool, authenticateToken, requireSection('finanzas'), bancosRoutes);
 
     // Creative Briefs (has its own public/auth split)
     app.use('/api/briefs', withPool, creativeBriefsRoutes);

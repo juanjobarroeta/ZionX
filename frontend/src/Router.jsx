@@ -44,6 +44,7 @@ const SubscriptionsManager = lazy(() => import("./pages/SubscriptionsManager"));
 const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
 const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
 const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
+const BancosManager = lazy(() => import("./pages/BancosManager"));
 const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
 const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
 const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
@@ -158,6 +159,7 @@ const AppRouter = () => (
         <Route path="/income/cfdi" element={<Navigate to="/income/invoices" replace />} />
         <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
         <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
+        <Route path="/bancos" element={<FinanceRoute><BancosManager /></FinanceRoute>} />
 
         {/* HR & Payroll */}
         <Route path="/people" element={<HRRoute><PeopleManagement /></HRRoute>} />
