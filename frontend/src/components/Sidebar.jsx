@@ -50,6 +50,7 @@ const NAV_GROUPS = [
       { href: "/income/reports", label: "Reportes", section: "ingresos" },
       { sub: "Contabilidad" },
       { href: "/admin/expenses", label: "Gastos", section: "finanzas" },
+      { href: "/bancos", label: "Bancos", section: "finanzas" },
       { href: "/admin/budgets", label: "Presupuestos", section: "finanzas" },
       { href: "/hr/financials", label: "Estados Financieros", section: "finanzas" },
     ],

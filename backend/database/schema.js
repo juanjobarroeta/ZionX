@@ -1259,6 +1259,56 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pipeline_owner ON post_pipeline_stages(owner_id, status);`);
     console.log("✅ Post pipeline stages table created");
 
+    // ---------------------------------------------------------------
+    // BANCOS — bank statement reconciliation (conciliación)
+    // Mirrors contabilidad-os: import bank statements, then match each
+    // movement to an internal record — an income invoice (credits) or an
+    // expense (debits) — or categorize/ignore it. Manual upload first;
+    // Belvo (open banking) columns are present but the feed is stubbed.
+    // ---------------------------------------------------------------
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id SERIAL PRIMARY KEY,
+        banco VARCHAR(100) NOT NULL,
+        nombre VARCHAR(150),
+        numero_cuenta VARCHAR(50),
+        clabe VARCHAR(30),
+        moneda VARCHAR(10) DEFAULT 'MXN',
+        tipo VARCHAR(30) DEFAULT 'cheques',      -- cheques | tarjeta | caja
+        titular VARCHAR(200),
+        belvo_link_id VARCHAR(100),
+        belvo_account_id VARCHAR(100),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (numero_cuenta)
+      );
+
+      CREATE TABLE IF NOT EXISTS bank_transactions (
+        id SERIAL PRIMARY KEY,
+        bank_account_id INTEGER REFERENCES bank_accounts(id) ON DELETE CASCADE,
+        fecha DATE NOT NULL,
+        descripcion TEXT,
+        referencia VARCHAR(255),
+        monto NUMERIC(14,2) NOT NULL,            -- positive = credit/deposit, negative = debit
+        saldo NUMERIC(14,2),                     -- running balance if the statement provides it
+        tipo VARCHAR(10),                        -- CREDITO | DEBITO
+        status VARCHAR(15) DEFAULT 'UNMATCHED',  -- UNMATCHED | MATCHED | IGNORED
+        matched_type VARCHAR(20),                -- invoice | expense (when MATCHED)
+        matched_id INTEGER,
+        category_tag VARCHAR(40),                -- for IGNORED: TAX_PAYMENT, COMISION, INTERNAL_TRANSFER, ...
+        notes TEXT,
+        source VARCHAR(20) DEFAULT 'UPLOAD',     -- UPLOAD | BELVO
+        belvo_id VARCHAR(100) UNIQUE,
+        belvo_category VARCHAR(100),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_tx_account_status ON bank_transactions(bank_account_id, status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_tx_fecha ON bank_transactions(fecha);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_tx_matched ON bank_transactions(matched_type, matched_id);`);
+    console.log("✅ Bancos (bank reconciliation) tables created");
+
     console.log("✅ All tables ready");
 
   } catch (err) {
