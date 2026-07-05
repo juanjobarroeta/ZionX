@@ -168,10 +168,15 @@
 .zxc-stage-controls { display: flex; gap: 8px; }
 .zxc-stage-controls .zxc-select { flex: 1; }
 .zxc-select.sm { padding: 8px 10px; font-size: 13px; }
-.zxc-stage-ai { display: flex; align-items: center; gap: 10px; }
+.zxc-stage-ai { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .zxc-linkbtn { background: none; border: none; padding: 0; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .zxc-linkbtn:hover { opacity: 0.65; }
+.zxc-linkbtn:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
+.zxc-linkbtn.muted { color: var(--muted); font-weight: 600; }
 .zxc-soon { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.zxc-ai-draft { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 12px; }
+.zxc-ai-draft-text { font-size: 13px; line-height: 1.55; color: var(--ink); white-space: pre-wrap; }
+.zxc-ai-draft-actions { display: flex; gap: 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 /* Pipeline status pills (brand tokens) */
 .zxc-pill.v-stage-muted { border: 1px solid rgba(4,17,26,0.2); color: var(--muted); }
 .zxc-pill.v-stage-warn { background: var(--warn); color: var(--paper); }
