@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import { customerName as resolveCustomerName } from "../utils/customerName";
 import {
   contentStatusInfo,
   CONTENT_STATUS_OPTIONS,
@@ -177,7 +178,7 @@ const ContentPlanningCenter = () => {
   }, [posts]);
 
   const customerName = useCallback(
-    (post) => post.customer_name || customers.find((c) => c.id === post.customer_id)?.business_name || "Cliente",
+    (post) => post.customer_name || resolveCustomerName(customers.find((c) => c.id === post.customer_id)),
     [customers]
   );
 
@@ -447,7 +448,7 @@ const ContentPlanningCenter = () => {
                 className={`zxc-chip${String(customerFilter) === String(c.id) ? " on" : ""}`}
                 onClick={() => setCustomerFilter(c.id)}
               >
-                {c.business_name || c.commercial_name || `Cliente ${c.id}`}
+                {resolveCustomerName(c)}
               </button>
             ))}
           </div>
@@ -675,7 +676,7 @@ const ContentPlanningCenter = () => {
                 <select className="zxc-select" value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })} required>
                   <option value="">Selecciona un cliente…</option>
                   {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.business_name || c.commercial_name || `Cliente ${c.id}`}</option>
+                    <option key={c.id} value={c.id}>{resolveCustomerName(c)}</option>
                   ))}
                 </select>
               </div>
