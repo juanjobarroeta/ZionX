@@ -10,6 +10,7 @@ const {
   seedStagesForPost,
 } = require('../services/pipeline');
 const { userIdsForTeamMembers } = require('../services/identity');
+const { generateCaptionDraft } = require('../services/ai-caption');
 
 // =====================================================
 // POST PRODUCTION PIPELINE ROUTES
@@ -193,11 +194,24 @@ router.post('/content-calendar/:id/pipeline/seed', async (req, res) => {
 });
 
 // -----------------------------------------------------
-// TODO(ai): AI caption draft for the copy stage. Stubbed so the frontend can
-// wire the button now; integrate Claude here later (no AI SDK yet).
+// POST /content-calendar/:id/pipeline/copy/ai-draft
+// Generate an on-brand Spanish caption for the copy stage using the client's
+// creative brief + the post's idea/pilar/platform. Accelerant for the
+// community manager, not an autopublish. Degrades gracefully if the AI key
+// is missing.
 // -----------------------------------------------------
 router.post('/content-calendar/:id/pipeline/copy/ai-draft', async (req, res) => {
-  res.json({ draft: null, todo: 'wire Claude' });
+  try {
+    const pool = req.pool;
+    const { id } = req.params;
+    const result = await generateCaptionDraft(pool, id);
+    if (result.notFound) return res.status(404).json({ message: 'Entrada no encontrada' });
+    if (result.draft == null) return res.status(503).json({ draft: null, error: result.error });
+    res.json({ draft: result.draft });
+  } catch (error) {
+    console.error('Error generating AI caption:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
 });
 
 // -----------------------------------------------------

@@ -209,16 +209,36 @@ const ContentPlanningCenter = () => {
     }
   };
 
-  // Copy AI-draft stub — returns { draft: null }; surface a neutral "Próximamente".
+  // Copy AI-draft — asks Claude for an on-brand caption using the client's
+  // brief + this post's idea/pilar/platform. The draft is a starting point the
+  // community manager reviews and inserts into the copy field.
   const generateDraft = async () => {
     const pid = pipeline.postId;
     if (!pid) return;
+    setCopyDraft({ loading: true });
     try {
       const r = await axios.post(`${API_BASE_URL}/content-calendar/${pid}/pipeline/copy/ai-draft`, {}, { headers });
-      setCopyDraft({ done: true, draft: r.data?.draft ?? null });
-    } catch {
-      setCopyDraft({ done: true, draft: null });
+      setCopyDraft({ done: true, draft: r.data?.draft ?? null, error: null });
+    } catch (err) {
+      setCopyDraft({ done: true, draft: null, error: err.response?.data?.error || "No se pudo generar el borrador" });
     }
+  };
+
+  // Drop the generated draft into the editable copy field, opening edit mode if
+  // needed. The user still reviews and saves.
+  const useDraft = () => {
+    const draft = copyDraft?.draft;
+    if (!draft) return;
+    if (editForm) {
+      setEditForm({ ...editForm, copy_out: draft });
+    } else if (selected) {
+      const f = {};
+      for (const k of EDIT_FIELDS) f[k] = selected[k] ?? "";
+      f.copy_out = draft;
+      setEditForm(f);
+    }
+    setEditing(true);
+    setCopyDraft(null);
   };
 
   const designers = useMemo(() => employees.filter((e) => (e.role || "").toLowerCase() === "designer"), [employees]);
@@ -731,8 +751,24 @@ const ContentPlanningCenter = () => {
                           </div>
                           {s.stage_key === "copy" && (
                             <div className="zxc-stage-ai">
-                              <button type="button" className="zxc-linkbtn" onClick={generateDraft}>Generar borrador</button>
-                              {copyDraft?.done && !copyDraft?.draft && <span className="zxc-soon">Próximamente</span>}
+                              <button
+                                type="button"
+                                className="zxc-linkbtn"
+                                onClick={generateDraft}
+                                disabled={copyDraft?.loading}
+                              >
+                                {copyDraft?.loading ? "Generando…" : "Generar borrador con IA"}
+                              </button>
+                              {copyDraft?.error && <span className="zxc-soon">{copyDraft.error}</span>}
+                              {copyDraft?.draft && (
+                                <div className="zxc-ai-draft">
+                                  <div className="zxc-ai-draft-text">{copyDraft.draft}</div>
+                                  <div className="zxc-ai-draft-actions">
+                                    <button type="button" className="zxc-linkbtn" onClick={useDraft}>Usar en copy</button>
+                                    <button type="button" className="zxc-linkbtn muted" onClick={() => setCopyDraft(null)}>Descartar</button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
