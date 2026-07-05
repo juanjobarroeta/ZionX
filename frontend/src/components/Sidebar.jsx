@@ -28,7 +28,6 @@ const NAV_GROUPS = [
       { href: "/approvals", label: "Aprobaciones", section: "social_media" },
       { href: "/team-dashboard", label: "Tareas", section: "social_media" },
       { href: "/projects", label: "Proyectos", section: "social_media" },
-      { href: "/social/accounts", label: "Cuentas Meta", section: "social_media" },
     ],
   },
   {
@@ -68,6 +67,7 @@ const NAV_GROUPS = [
   {
     label: "Configuración",
     links: [
+      { href: "/social/accounts", label: "Cuentas Meta", section: "social_media" },
       { href: "/admin/create-user", label: "Crear Usuario", section: "settings" },
     ],
   },

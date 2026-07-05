@@ -579,6 +579,29 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Client approval tables created");
 
+    // Align content_calendar with the columns the routes actually read/write.
+    // The route layer was rewritten to a newer field set (title/platform/pilar/…)
+    // but the base schema predates it, so add any missing columns idempotently.
+    await pool.query(`
+      ALTER TABLE content_calendar
+        ADD COLUMN IF NOT EXISTS title TEXT,
+        ADD COLUMN IF NOT EXISTS description TEXT,
+        ADD COLUMN IF NOT EXISTS platform VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS pilar VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS content_type VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS scheduled_date DATE,
+        ADD COLUMN IF NOT EXISTS scheduled_time VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS idea_tema TEXT,
+        ADD COLUMN IF NOT EXISTS referencia TEXT,
+        ADD COLUMN IF NOT EXISTS arte TEXT,
+        ADD COLUMN IF NOT EXISTS arte_files JSONB,
+        ADD COLUMN IF NOT EXISTS fotos_video TEXT,
+        ADD COLUMN IF NOT EXISTS elementos_utilizar TEXT,
+        ADD COLUMN IF NOT EXISTS hashtags TEXT,
+        ADD COLUMN IF NOT EXISTS location TEXT;
+    `);
+    console.log("✅ content_calendar columns aligned with routes");
+
     // Reverse link: which plan entry a scheduled post came from (for status backfill).
     await pool.query(`
       DO $$
