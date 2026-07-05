@@ -1,0 +1,103 @@
+/* ===== ZIONX — Finance / Income ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxin {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --ok: #235B44; --warn: #9A6B1E; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 48px 72px;
+}
+.zxin *, .zxin { box-sizing: border-box; }
+.zxin-inner { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.zxin-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+.zxin-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxin-eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
+.zxin-h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.zxin-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 3px; text-decoration: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.zxin-btn:hover { background: var(--chip); }
+.zxin-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* metric tiles */
+.zxin-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxin-tile { background: var(--paper); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.zxin-tile.lead { background: var(--ink); color: var(--paper); }
+.zxin-tile .k { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; font-weight: 600; }
+.zxin-tile .v { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.zxin-tile .sub { font-size: 12px; opacity: 0.7; }
+.zxin-tile .sub.up { color: var(--ok); } .zxin-tile .sub.down { color: var(--bad); }
+.zxin-tile.lead .sub { opacity: 0.75; }
+.zxin-tile .v.warn { color: var(--warn); } .zxin-tile .v.bad { color: var(--bad); }
+
+.zxin-subrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.zxin-mini { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+.zxin-mini .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.zxin-mini .v { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+
+/* two-column */
+.zxin-cols { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
+.zxin-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 24px; }
+.zxin-panel h2 { margin: 0 0 18px; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+
+/* revenue chart (monthly bars) */
+.zxin-chart { display: flex; flex-direction: column; gap: 14px; }
+.zxin-bar-row { display: flex; flex-direction: column; gap: 6px; }
+.zxin-bar-top { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; }
+.zxin-bar-top .m { color: var(--muted); }
+.zxin-bar-top .a { font-weight: 700; font-variant-numeric: tabular-nums; }
+.zxin-track { height: 8px; background: var(--chip); border-radius: 4px; overflow: hidden; }
+.zxin-fill { height: 100%; background: var(--ink); border-radius: 4px; transition: width 0.4s ease; }
+.zxin-bar-row:first-child .zxin-fill { background: var(--ok); }
+
+/* pending invoices */
+.zxin-inv { display: flex; flex-direction: column; }
+.zxin-inv-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line-soft); }
+.zxin-inv-row:first-child { border-top: none; }
+.zxin-inv-row .who { font-size: 14px; font-weight: 600; }
+.zxin-inv-row .meta { font-size: 12px; color: var(--muted); }
+.zxin-inv-row .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.zxin-inv-row .amt.over { color: var(--bad); }
+
+.zxin-empty { padding: 30px 10px; text-align: center; color: var(--muted); font-size: 14px; }
+.zxin-loading { padding: 60px 20px; text-align: center; opacity: 0.5; }
+.zxin-note { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 4px; padding: 20px 22px; }
+.zxin-note p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 900px) {
+  .zxin { padding: 72px 16px 56px; }
+  .zxin-tiles { grid-template-columns: repeat(2, 1fr); }
+  .zxin-subrow { grid-template-columns: 1fr; }
+  .zxin-cols { grid-template-columns: 1fr; }
+}
+
+/* ---- invoices list ---- */
+.zxin-filter { display: flex; gap: 4px; flex-wrap: wrap; }
+.zxin-fbtn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 3px; cursor: pointer; }
+.zxin-fbtn:hover { color: var(--ink); }
+.zxin-fbtn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxin-tablewrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; }
+.zxin-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.zxin-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.zxin-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+.zxin-table tr:last-child td { border-bottom: none; }
+.zxin-table tbody tr:hover { background: var(--chip); }
+.zxin-table .r { text-align: right; font-variant-numeric: tabular-nums; }
+.zxin-table a.lnk { color: var(--ink); font-weight: 600; text-decoration: none; }
+.zxin-table a.lnk:hover { text-decoration: underline; }
+.zxin-pill { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap; }
+.zxin-pill.paid { background: var(--ok); color: #fff; }
+.zxin-pill.overdue { background: var(--bad); color: #fff; }
+.zxin-pill.sent { background: rgba(31,78,107,0.14); color: #1F4E6B; }
+.zxin-pill.partial { background: rgba(154,107,30,0.15); color: var(--warn); }
+.zxin-pill.draft { border: 1px solid var(--line); color: var(--muted); }
+.zxin-pill.cancelled { border: 1px solid var(--line-soft); color: var(--muted); opacity: 0.7; }
+.zxin-pill.ok { background: var(--ok); color: #fff; }
+.zxin-cfdi { display: inline-flex; align-items: center; gap: 8px; }
+.zxin-uuid { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--muted); text-decoration: none; }
+a.zxin-uuid:hover { text-decoration: underline; }
+.zxin-cancel { font-family: inherit; font-size: 12px; font-weight: 600; color: var(--bad); background: none; border: none; cursor: pointer; padding: 4px 6px; }
+.zxin-cancel:hover { text-decoration: underline; }
+.zxin-cancel:disabled { opacity: 0.5; cursor: default; }

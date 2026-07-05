@@ -1,0 +1,152 @@
+/* ===== ZIONX — Payroll / Nómina ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxnom {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --ok: #235B44; --warn: #9A6B1E; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 48px 72px;
+}
+.zxnom *, .zxnom { box-sizing: border-box; }
+.zxnom-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.zxnom-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+/* header */
+.zxnom-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxnom-eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
+.zxnom-h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxnom-sub { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+.zxnom-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* buttons */
+.zxnom-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 3px; text-decoration: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.zxnom-btn:hover { background: var(--chip); }
+.zxnom-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxnom-btn.solid:hover { opacity: 0.9; background: var(--ink); }
+.zxnom-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* text/link actions inside tables */
+.zxnom-link { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: none; border: none; cursor: pointer; padding: 4px 6px; }
+.zxnom-link:hover { text-decoration: underline; }
+.zxnom-link.muted { color: var(--muted); }
+.zxnom-link.danger { color: var(--bad); }
+.zxnom-link.ok { color: var(--ok); }
+.zxnom-btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
+.zxnom-btn.ok:hover { opacity: 0.9; background: var(--ok); }
+
+/* stat tiles */
+.zxnom-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxnom-tile { background: var(--paper); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.zxnom-tile.lead { background: var(--ink); color: var(--paper); }
+.zxnom-tile .k { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; font-weight: 600; }
+.zxnom-tile .v { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.zxnom-tile.lead .k { opacity: 0.75; }
+
+/* panels */
+.zxnom-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.zxnom-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.zxnom-panel-head h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.zxnom-panel-body { padding: 22px; }
+
+/* tables */
+.zxnom-tablewrap { overflow-x: auto; }
+.zxnom-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+.zxnom-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 14px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.zxnom-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+.zxnom-table tbody tr:last-child td { border-bottom: none; }
+.zxnom-table tbody tr:hover { background: var(--chip); }
+.zxnom-table .r { text-align: right; font-variant-numeric: tabular-nums; }
+.zxnom-table .c { text-align: center; }
+.zxnom-table .name { font-weight: 600; }
+.zxnom-table .money { font-variant-numeric: tabular-nums; }
+.zxnom-table .pos { color: var(--ok); }
+.zxnom-table .neg { color: var(--bad); }
+.zxnom-table .net { font-weight: 700; color: var(--ok); }
+.zxnom-table tfoot td { padding: 14px 16px; border-top: 2px solid var(--line); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--paper); }
+.zxnom-table tfoot .pos { color: var(--ok); }
+.zxnom-table tfoot .neg { color: var(--bad); }
+.zxnom-table tfoot .net { color: var(--ok); }
+.zxnom-note-flag { margin-left: 6px; font-size: 11px; color: var(--muted); }
+.zxnom-rowactions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* status pill */
+.zxnom-pill { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap; }
+.zxnom-pill.open { background: rgba(31,78,107,0.14); color: #1F4E6B; }
+.zxnom-pill.processing { background: rgba(154,107,30,0.15); color: var(--warn); }
+.zxnom-pill.paid { background: var(--ok); color: #fff; }
+.zxnom-pill.closed { background: var(--chip); color: var(--muted); }
+
+/* empty / loading */
+.zxnom-empty { padding: 48px 20px; text-align: center; color: var(--muted); font-size: 14px; }
+.zxnom-empty .big { font-size: 34px; display: block; margin-bottom: 8px; }
+.zxnom-loading { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+
+/* modal */
+.zxnom-scrim { position: fixed; inset: 0; background: rgba(4,17,26,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 24px; overflow-y: auto; }
+.zxnom-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; width: 100%; max-width: 460px; padding: 26px 28px; }
+.zxnom-modal.wide { max-width: 780px; margin: auto; }
+.zxnom-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.zxnom-modal-head h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.zxnom-x { background: none; border: none; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.zxnom-x:hover { color: var(--ink); }
+
+/* form fields */
+.zxnom-form { display: flex; flex-direction: column; gap: 16px; }
+.zxnom-field { display: flex; flex-direction: column; gap: 5px; }
+.zxnom-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.zxnom-input { font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); width: 100%; outline: none; }
+.zxnom-input:focus { border-color: var(--ink); }
+.zxnom-input.money { font-variant-numeric: tabular-nums; }
+.zxnom-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* segmented choice (quincena) */
+.zxnom-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.zxnom-segbtn { font-family: inherit; padding: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); text-align: center; cursor: pointer; }
+.zxnom-segbtn:hover { background: var(--chip); }
+.zxnom-segbtn.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.zxnom-segbtn .t { font-weight: 700; font-size: 14px; }
+.zxnom-segbtn .d { font-size: 12px; opacity: 0.65; margin-top: 2px; }
+
+.zxnom-modal-actions { display: flex; gap: 10px; padding-top: 6px; }
+.zxnom-modal-actions .zxnom-btn { flex: 1; justify-content: center; padding: 11px 16px; }
+
+/* confirm-pay breakdown */
+.zxnom-break { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 18px 20px; margin-bottom: 18px; }
+.zxnom-break .period-k { font-size: 12px; color: var(--muted); }
+.zxnom-break .period-v { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin-top: 2px; }
+.zxnom-break-rows { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.zxnom-brow { display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; }
+.zxnom-brow .lbl { color: var(--muted); }
+.zxnom-brow .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+.zxnom-brow .val.neg { color: var(--bad); }
+.zxnom-brow.total { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px; }
+.zxnom-brow.total .lbl { color: var(--ink); font-size: 16px; font-weight: 700; }
+.zxnom-brow.total .val { font-size: 20px; font-weight: 800; color: var(--ok); }
+.zxnom-warnline { font-size: 13px; color: var(--warn); margin: 0 0 18px; }
+
+/* edit-entry modal groups */
+.zxnom-cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.zxnom-group { border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+.zxnom-group.earn { border-top: 3px solid var(--ok); }
+.zxnom-group.ded { border-top: 3px solid var(--bad); }
+.zxnom-group h3 { margin: 0 0 14px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+.zxnom-group.earn h3 { color: var(--ok); }
+.zxnom-group.ded h3 { color: var(--bad); }
+.zxnom-group .fields { display: flex; flex-direction: column; gap: 12px; }
+.zxnom-group-total { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-weight: 700; font-variant-numeric: tabular-nums; }
+.zxnom-group.earn .zxnom-group-total { color: var(--ok); }
+.zxnom-group.ded .zxnom-group-total { color: var(--bad); }
+
+/* net summary bar */
+.zxnom-netbar { margin-top: 18px; background: var(--ink); color: var(--paper); border-radius: 6px; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; }
+.zxnom-netbar .lbl { font-size: 15px; opacity: 0.85; }
+.zxnom-netbar .amt { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 900px) {
+  .zxnom { padding: 28px 16px 56px; }
+  .zxnom-tiles { grid-template-columns: repeat(2, 1fr); }
+  .zxnom-cols2 { grid-template-columns: 1fr; }
+  .zxnom-grid2 { grid-template-columns: 1fr; }
+}

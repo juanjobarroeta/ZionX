@@ -97,6 +97,34 @@ const publishMeta = (s) => {
   return info ? { label: info.label, variant: PUBLISH_VARIANT[info.tone] } : null;
 };
 
+// ---------- production pipeline ----------
+// Live, stateful stages for a post (replaces the stateless "Falta para publicar"
+// checklist). Labels/statuses are Spanish, no emoji.
+const STAGE_LABELS = {
+  design: "Diseño",
+  copy: "Copy",
+  music: "Música",
+  internal_approval: "Aprobación interna",
+  client_approval: "Aprobación del cliente",
+  paid_promo: "Promoción pagada",
+  schedule: "Programación",
+};
+const STATUS_LABELS = {
+  pendiente: "Pendiente",
+  en_progreso: "En progreso",
+  listo: "Listo",
+  cambios: "Cambios pedidos",
+};
+const STATUS_ORDER = ["pendiente", "en_progreso", "listo", "cambios"];
+// Pill color -> brand tokens (muted / warn / ok / bad).
+const STATUS_VARIANT = { pendiente: "muted", en_progreso: "warn", listo: "ok", cambios: "bad" };
+const OPTIONAL_STAGES = new Set(["music", "paid_promo"]);
+const stageOwnerLabel = (s) => {
+  if (s.stage_key === "client_approval") return "Cliente";
+  if (s.owner_id == null) return "Sin asignar";
+  return s.owner_name || `#${s.owner_id}`;
+};
+
 const ContentPlanningCenter = () => {
   const [searchParams] = useSearchParams();
   const [view, setView] = useState("week");
@@ -117,6 +145,11 @@ const ContentPlanningCenter = () => {
   const [employees, setEmployees] = useState([]);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState(null);
+  // Production pipeline (right-panel) state.
+  const [pipeline, setPipeline] = useState({ loading: false, stages: [], postId: null });
+  const [assignable, setAssignable] = useState([]);
+  const [stageBusy, setStageBusy] = useState(null);
+  const [copyDraft, setCopyDraft] = useState(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 
@@ -135,6 +168,58 @@ const ContentPlanningCenter = () => {
       .then((r) => setEmployees(Array.isArray(r.data) ? r.data : (r.data?.employees || [])))
       .catch(() => setEmployees([]));
   }, [headers]);
+
+  // Assignable team members for pipeline owner reassignment (fetched once).
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/pipeline/assignable`, { headers })
+      .then((r) => setAssignable(Array.isArray(r.data?.team_members) ? r.data.team_members : []))
+      .catch(() => setAssignable([]));
+  }, [headers]);
+
+  // Lazily load (and seed) the pipeline whenever a post opens in the drawer.
+  useEffect(() => {
+    const pid = selected?.id;
+    if (!pid) {
+      setPipeline({ loading: false, stages: [], postId: null });
+      setCopyDraft(null);
+      return;
+    }
+    setPipeline({ loading: true, stages: [], postId: pid });
+    setCopyDraft(null);
+    let alive = true;
+    axios.get(`${API_BASE_URL}/content-calendar/${pid}/pipeline`, { headers })
+      .then((r) => { if (alive) setPipeline({ loading: false, stages: Array.isArray(r.data?.stages) ? r.data.stages : [], postId: pid }); })
+      .catch(() => { if (alive) setPipeline({ loading: false, stages: [], postId: pid }); });
+    return () => { alive = false; };
+  }, [selected?.id, headers]);
+
+  // PATCH a single stage (status and/or owner) and replace it from the response.
+  const patchStage = async (stageKey, body) => {
+    const pid = pipeline.postId;
+    if (!pid) return;
+    setStageBusy(stageKey);
+    try {
+      const r = await axios.patch(`${API_BASE_URL}/content-calendar/${pid}/pipeline/${stageKey}`, body, { headers });
+      const stage = r.data?.stage;
+      if (stage) setPipeline((prev) => ({ ...prev, stages: prev.stages.map((s) => (s.stage_key === stageKey ? stage : s)) }));
+    } catch {
+      /* keep UI responsive; a failed stage write just no-ops */
+    } finally {
+      setStageBusy(null);
+    }
+  };
+
+  // Copy AI-draft stub — returns { draft: null }; surface a neutral "Próximamente".
+  const generateDraft = async () => {
+    const pid = pipeline.postId;
+    if (!pid) return;
+    try {
+      const r = await axios.post(`${API_BASE_URL}/content-calendar/${pid}/pipeline/copy/ai-draft`, {}, { headers });
+      setCopyDraft({ done: true, draft: r.data?.draft ?? null });
+    } catch {
+      setCopyDraft({ done: true, draft: null });
+    }
+  };
 
   const designers = useMemo(() => employees.filter((e) => (e.role || "").toLowerCase() === "designer"), [employees]);
   const cms = useMemo(() => employees.filter((e) => ["community_manager", "cm"].includes((e.role || "").toLowerCase())), [employees]);
@@ -600,6 +685,63 @@ const ContentPlanningCenter = () => {
                 </select>
               </div>
 
+              {/* Production pipeline — live, stateful stages */}
+              <div className="zxc-field">
+                <span className="k">Producción</span>
+                {pipeline.loading ? (
+                  <div className="zxc-pipe-loading">Cargando producción…</div>
+                ) : pipeline.stages.length === 0 ? (
+                  <div className="zxc-pipe-loading">Sin etapas de producción.</div>
+                ) : (
+                  <div className="zxc-pipe">
+                    {pipeline.stages.map((s) => {
+                      const optional = OPTIONAL_STAGES.has(s.stage_key);
+                      return (
+                        <div key={s.stage_key} className={`zxc-stage${optional ? " opt" : ""}`}>
+                          <div className="zxc-stage-top">
+                            <span className="zxc-stage-name">
+                              {STAGE_LABELS[s.stage_key] || s.stage_key}
+                              {optional && <span className="zxc-opt-tag">opcional</span>}
+                            </span>
+                            <span className={`zxc-pill v-stage-${STATUS_VARIANT[s.status] || "muted"}`}>
+                              {STATUS_LABELS[s.status] || s.status}
+                            </span>
+                          </div>
+                          <div className="zxc-stage-owner">{stageOwnerLabel(s)}</div>
+                          <div className="zxc-stage-controls">
+                            <select
+                              className="zxc-select sm"
+                              value={s.status || "pendiente"}
+                              disabled={stageBusy === s.stage_key}
+                              onChange={(e) => patchStage(s.stage_key, { status: e.target.value })}
+                            >
+                              {STATUS_ORDER.map((k) => <option key={k} value={k}>{STATUS_LABELS[k]}</option>)}
+                            </select>
+                            {s.stage_key !== "client_approval" && (
+                              <select
+                                className="zxc-select sm"
+                                value={s.owner_id ?? ""}
+                                disabled={stageBusy === s.stage_key}
+                                onChange={(e) => patchStage(s.stage_key, { owner_id: e.target.value === "" ? null : Number(e.target.value) })}
+                              >
+                                <option value="">Sin asignar</option>
+                                {assignable.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          {s.stage_key === "copy" && (
+                            <div className="zxc-stage-ai">
+                              <button type="button" className="zxc-linkbtn" onClick={generateDraft}>Generar borrador</button>
+                              {copyDraft?.done && !copyDraft?.draft && <span className="zxc-soon">Próximamente</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Client sign-off (per-post approval link) */}
               <div className="zxc-field">
                 <span className="k">Cliente</span>
@@ -648,10 +790,7 @@ const ContentPlanningCenter = () => {
                       {busy ? "Programando…" : "Programar publicación"}
                     </button>
                   ) : (
-                    <div className="zxc-missing">
-                      <span>Falta para publicar:</span>
-                      <ul>{rd.missing.map((m) => <li key={m}>{m}</li>)}</ul>
-                    </div>
+                    <div className="zxc-missing">Completa las etapas de producción para habilitar la programación.</div>
                   );
                 })()}
               </div>

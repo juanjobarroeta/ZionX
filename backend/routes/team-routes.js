@@ -343,10 +343,18 @@ router.post("/projects", async (req, res) => {
 // TEAM MEMBERS
 // =====================================================
 
-// Get team members
+// Get team members. Optional ?role= filter (e.g. designer, community,
+// senior_community) for the pipeline assignment dropdowns.
 router.get("/team-members", async (req, res) => {
   try {
     const pool = req.pool;
+    const { role } = req.query;
+    const params = [];
+    let roleClause = '';
+    if (role) {
+      params.push(role);
+      roleClause = ` AND tm.role = $${params.length}`;
+    }
     const query = `
       SELECT
         tm.*,
@@ -355,12 +363,12 @@ router.get("/team-members", async (req, res) => {
       FROM team_members tm
       LEFT JOIN task_assignments ta ON tm.id = ta.assignee_id
       LEFT JOIN tasks t ON ta.task_id = t.id AND t.status IN ('todo', 'in_progress')
-      WHERE tm.is_active = true
+      WHERE tm.is_active = true${roleClause}
       GROUP BY tm.id
       ORDER BY tm.name
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
     res.json({ team_members: result.rows });
 
   } catch (error) {

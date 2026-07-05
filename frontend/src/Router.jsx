@@ -45,7 +45,6 @@ const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
 const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
 const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
 const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
-const CfdiFiscal = lazy(() => import("./pages/CfdiFiscal"));
 const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
 const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
 const PeopleManagement = lazy(() => import("./pages/PeopleManagement"));
@@ -155,7 +154,8 @@ const AppRouter = () => (
         <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
         <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
         <Route path="/income/invoices/:id" element={<FinanceRoute><InvoiceDetail /></FinanceRoute>} />
-        <Route path="/income/cfdi" element={<FinanceRoute><CfdiFiscal /></FinanceRoute>} />
+        {/* CFDIs merged into Facturas — keep the old path as a redirect. */}
+        <Route path="/income/cfdi" element={<Navigate to="/income/invoices" replace />} />
         <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
         <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
 

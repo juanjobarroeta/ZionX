@@ -2,6 +2,7 @@ import { API_BASE_URL } from "../utils/constants";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
+import "./AdminExpenses.css";
 
 const AdminExpenses = () => {
   const token = localStorage.getItem("token");
@@ -277,180 +278,138 @@ const AdminExpenses = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black">💳 Gestión de Gastos</h1>
-                <p className="text-gray-500 text-sm mt-1">Control de gastos operativos y contabilidad automática</p>
-              </div>
-              <button
-                onClick={fetchExpenses}
-                className="bg-white border border-zionx-secondary px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                🔄 Actualizar
-              </button>
+      <div className="zxexp">
+        <div className="zxexp-inner">
+          {/* Header */}
+          <div className="zxexp-head">
+            <div>
+              <div className="zxexp-eyebrow">Finanzas</div>
+              <h1 className="zxexp-h1">Gestión de <span className="zxexp-serif">gastos</span></h1>
+              <p className="zxexp-sub">Control de gastos operativos y contabilidad automática</p>
+            </div>
+            <div className="zxexp-actions">
+              <button onClick={fetchExpenses} className="zxexp-btn">Actualizar</button>
             </div>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl border border-zionx-secondary p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Total Gastos</p>
-                  <p className="text-3xl font-bold text-red-600">{formatCurrency(analytics.total)}</p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">💸</span>
-                </div>
-              </div>
+          <div className="zxexp-tiles">
+            <div className="zxexp-tile lead">
+              <span className="k">Total Gastos</span>
+              <span className="v">{formatCurrency(analytics.total)}</span>
             </div>
-
-            <div className="bg-white rounded-xl border border-zionx-secondary p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Registros</p>
-                  <p className="text-3xl font-bold text-blue-600">{expenses.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">📋</span>
-                </div>
-              </div>
+            <div className="zxexp-tile">
+              <span className="k">Registros</span>
+              <span className="v">{expenses.length}</span>
             </div>
-
-            <div className="bg-white rounded-xl border border-zionx-secondary p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Presupuesto</p>
-                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(analytics.totalBudget)}</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🎯</span>
-                </div>
-              </div>
+            <div className="zxexp-tile">
+              <span className="k">Presupuesto</span>
+              <span className="v">{formatCurrency(analytics.totalBudget)}</span>
             </div>
-
-            <div className="bg-white rounded-xl border border-zionx-secondary p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Restante</p>
-                  <p className="text-3xl font-bold text-green-600">{formatCurrency(analytics.totalBudget - analytics.total)}</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">✅</span>
-                </div>
-              </div>
+            <div className="zxexp-tile">
+              <span className="k">Restante</span>
+              <span className={`v ${analytics.totalBudget - analytics.total < 0 ? "bad" : "ok"}`}>{formatCurrency(analytics.totalBudget - analytics.total)}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="zxexp-cols">
             {/* Registration Form */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl border border-zionx-secondary p-6">
-                <h2 className="text-xl font-bold text-zionx-primary mb-6">📝 Registrar Nuevo Gasto</h2>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <div className="zxexp-panel">
+                <h2>Registrar nuevo gasto</h2>
+
+                <form onSubmit={handleSubmit} className="zxexp-form">
                   {/* Category Selection - Visual Cards */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Categoría del Gasto *</label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Categoría del Gasto *</label>
+                    <div className="zxexp-cats">
                       {expenseCategories.map(cat => (
                         <button
                           key={cat.id}
                           type="button"
                           onClick={() => handleCategorySelect(cat)}
-                          className={`p-4 rounded-lg border-2 transition-all text-left ${
-                            form.category === cat.id
-                              ? 'border-zionx-primary bg-lime-50 shadow-lg'
-                              : 'border-gray-200 hover:border-gray-300 hover:shadow'
-                          }`}
+                          className={`zxexp-cat${form.category === cat.id ? " active" : ""}`}
                         >
-                          <div className="text-3xl mb-1">{cat.icon}</div>
-                          <div className="font-medium text-sm">{cat.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">{formatCurrency(cat.budget)}</div>
+                          <div className="ic">{cat.icon}</div>
+                          <div className="nm">{cat.name}</div>
+                          <div className="bd">{formatCurrency(cat.budget)}</div>
                         </button>
                       ))}
                     </div>
                     {form.category && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        💡 {expenseCategories.find(c => c.id === form.category)?.description}
+                      <p className="zxexp-hint">
+                        {expenseCategories.find(c => c.id === form.category)?.description}
                       </p>
                     )}
                   </div>
 
                   {/* Amount and Date */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Monto *</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <div className="zxexp-grid2">
+                    <div className="zxexp-field">
+                      <label className="zxexp-label">Monto *</label>
+                      <div className="zxexp-money">
+                        <span className="sign">$</span>
                         <input
                           type="number"
                           step="0.01"
                           name="amount"
                           value={form.amount}
                           onChange={(e) => setForm({...form, amount: e.target.value})}
-                          className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                          className="zxexp-input"
                           placeholder="0.00"
                           required
                         />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
+                    <div className="zxexp-field">
+                      <label className="zxexp-label">Fecha *</label>
                       <input
                         type="date"
                         name="expense_date"
                         value={form.expense_date}
                         onChange={(e) => setForm({...form, expense_date: e.target.value})}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                        className="zxexp-input"
                         required
                       />
                     </div>
                   </div>
 
                   {/* Vendor */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Proveedor / Vendor</label>
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Proveedor / Vendor</label>
                     <input
                       type="text"
                       name="vendor"
                       value={form.vendor}
                       onChange={(e) => setForm({...form, vendor: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                      className="zxexp-input"
                       placeholder="Nombre del proveedor"
                     />
                   </div>
 
                   {/* Description */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Descripción *</label>
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Descripción *</label>
                     <textarea
                       name="description"
                       value={form.description}
                       onChange={(e) => setForm({...form, description: e.target.value})}
                       rows="3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                      className="zxexp-textarea"
                       placeholder="Describe el gasto..."
                       required
                     />
                   </div>
 
                   {/* Payment Method */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Método de Pago</label>
                     <select
                       name="payment_method"
                       value={form.payment_method}
                       onChange={(e) => setForm({...form, payment_method: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                      className="zxexp-select"
                     >
                       <option value="">Por pagar</option>
                       <option value="transferencia">🏦 Transferencia</option>
@@ -458,20 +417,20 @@ const AdminExpenses = () => {
                       <option value="tarjeta">💳 Tarjeta</option>
                       <option value="cheque">📝 Cheque</option>
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="zxexp-hint">
                       {form.payment_method ? '✅ Se registrará como pagado' : '⏳ Se registrará como por pagar'}
                     </p>
                   </div>
 
                   {/* Notes */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Notas</label>
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Notas</label>
                     <input
                       type="text"
                       name="notes"
                       value={form.notes}
                       onChange={(e) => setForm({...form, notes: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-zionx-primary focus:border-transparent"
+                      className="zxexp-input"
                       placeholder="Notas adicionales..."
                     />
                   </div>
@@ -480,48 +439,48 @@ const AdminExpenses = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-zionx-primary text-black font-bold py-3 px-6 rounded-lg hover:bg-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="zxexp-btn solid block"
                   >
-                    {loading ? "⏳ Guardando..." : "💾 Registrar Gasto"}
+                    {loading ? "Guardando…" : "Registrar Gasto"}
                   </button>
                 </form>
               </div>
             </div>
 
             {/* Categories Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl border border-zionx-secondary p-6 sticky top-6">
-                <h3 className="text-lg font-bold text-zionx-primary mb-4">📊 Presupuesto por Categoría</h3>
-                <div className="space-y-4">
+            <div>
+              <div className="zxexp-panel zxexp-sticky">
+                <h3>Presupuesto por categoría</h3>
+                <div className="zxexp-budget">
                   {expenseCategories.map(category => {
                     const data = analytics.byCategory[category.id] || { spent: 0, percentage: 0, count: 0 };
                     const remaining = category.budget - data.spent;
-                    
+
                     return (
-                      <div key={category.id} className="border-b border-gray-100 pb-3 last:border-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{category.icon}</span>
-                            <span className="font-medium text-sm">{category.name}</span>
+                      <div key={category.id} className="zxexp-brow">
+                        <div className="zxexp-btop">
+                          <div className="nm">
+                            <span className="ic">{category.icon}</span>
+                            <span>{category.name}</span>
                           </div>
-                          <span className="text-xs text-gray-500">{data.count} gastos</span>
+                          <span className="cnt">{data.count} gastos</span>
                         </div>
-                        <div className="text-sm text-gray-600 mb-1">
+                        <div className="zxexp-bnums">
                           {formatCurrency(data.spent)} / {formatCurrency(category.budget)}
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all ${
-                              data.percentage > 90 ? 'bg-red-600' :
-                              data.percentage > 75 ? 'bg-orange-500' :
-                              'bg-green-500'
+                        <div className="zxexp-track">
+                          <div
+                            className={`zxexp-fill ${
+                              data.percentage > 90 ? 'bad' :
+                              data.percentage > 75 ? 'warn' :
+                              ''
                             }`}
                             style={{ width: `${Math.min(data.percentage, 100)}%` }}
                           />
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="zxexp-bfoot">
                           <span>{data.percentage.toFixed(1)}%</span>
-                          <span className={remaining < 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
+                          <span className={remaining < 0 ? 'over' : 'left'}>
                             {remaining < 0 ? 'Excedido' : `Quedan ${formatCurrency(remaining)}`}
                           </span>
                         </div>
@@ -534,159 +493,155 @@ const AdminExpenses = () => {
           </div>
 
           {/* Expenses List */}
-          <div className="mt-8 bg-white rounded-xl border border-zionx-secondary overflow-hidden">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zionx-primary">📋 Gastos Registrados</h2>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className={`px-4 py-2 rounded-lg text-sm ${activeTab === 'all' ? 'bg-black text-white' : 'bg-gray-100'}`}
-                >
-                  Todos ({expenses.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`px-4 py-2 rounded-lg text-sm ${activeTab === 'pending' ? 'bg-orange-500 text-white' : 'bg-gray-100'}`}
-                >
-                  Por Pagar ({pendingExpenses.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('paid')}
-                  className={`px-4 py-2 rounded-lg text-sm ${activeTab === 'paid' ? 'bg-green-500 text-white' : 'bg-gray-100'}`}
-                >
-                  Pagados ({paidExpenses.length})
-                </button>
-              </div>
+          <div className="zxexp-listhead">
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em" }}>Gastos registrados</h2>
+            <div className="zxexp-filter">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`zxexp-fbtn${activeTab === 'all' ? ' active' : ''}`}
+              >
+                Todos ({expenses.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`zxexp-fbtn${activeTab === 'pending' ? ' active' : ''}`}
+              >
+                Por Pagar ({pendingExpenses.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('paid')}
+                className={`zxexp-fbtn${activeTab === 'paid' ? ' active' : ''}`}
+              >
+                Pagados ({paidExpenses.length})
+              </button>
             </div>
+          </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {expenses
-                    .filter(e => {
-                      if (activeTab === 'pending') return e.status !== 'paid';
-                      if (activeTab === 'paid') return e.status === 'paid';
-                      return true;
-                    })
-                    .map((expense) => {
-                    const category = expenseCategories.find(c => c.id === expense.category);
-                    return (
-                      <tr key={expense.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {new Date(expense.expense_date || expense.created_at).toLocaleDateString('es-MX')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{category?.icon || '📦'}</span>
-                            <span className="text-sm font-medium">{category?.name || expense.category}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="font-medium">{expense.description}</div>
-                          {expense.vendor && (
-                            <div className="text-xs text-gray-500 mt-1">Proveedor: {expense.vendor}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <div className="font-bold text-zionx-primary">{formatCurrency(expense.amount)}</div>
-                          {expense.payment_method && (
-                            <div className="text-xs text-gray-500">{expense.payment_method}</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            expense.status === 'paid' ? 'bg-green-100 text-green-800' :
-                            expense.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                            'bg-orange-100 text-orange-800'
-                          }`}>
-                            {expense.status === 'paid' ? '✅ Pagado' :
-                             expense.status === 'approved' ? '👍 Aprobado' :
-                             '⏳ Pendiente'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          {expense.status !== 'paid' && (
-                            <button
-                              onClick={() => handlePayExpense(expense)}
-                              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 mr-2"
-                            >
-                              💰 Pagar
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              setSelectedExpense(expense);
-                              setShowModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            👁️ Ver
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {expenses.length === 0 && (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                        <div className="flex flex-col items-center">
-                          <span className="text-4xl mb-2">📋</span>
-                          <p>No hay gastos registrados</p>
-                          <p className="text-xs mt-1">Registra tu primer gasto arriba</p>
+          <div className="zxexp-tablewrap">
+            <table className="zxexp-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Categoría</th>
+                  <th>Descripción</th>
+                  <th className="r">Monto</th>
+                  <th className="c">Estado</th>
+                  <th className="c">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses
+                  .filter(e => {
+                    if (activeTab === 'pending') return e.status !== 'paid';
+                    if (activeTab === 'paid') return e.status === 'paid';
+                    return true;
+                  })
+                  .map((expense) => {
+                  const category = expenseCategories.find(c => c.id === expense.category);
+                  return (
+                    <tr key={expense.id}>
+                      <td>
+                        {new Date(expense.expense_date || expense.created_at).toLocaleDateString('es-MX')}
+                      </td>
+                      <td>
+                        <div className="zxexp-cellcat">
+                          <span className="ic">{category?.icon || '📦'}</span>
+                          <span className="nm">{category?.name || expense.category}</span>
                         </div>
                       </td>
+                      <td>
+                        <div className="zxexp-desc">{expense.description}</div>
+                        {expense.vendor && (
+                          <div className="zxexp-meta">Proveedor: {expense.vendor}</div>
+                        )}
+                      </td>
+                      <td className="r">
+                        <div className="zxexp-amt">{formatCurrency(expense.amount)}</div>
+                        {expense.payment_method && (
+                          <div className="zxexp-meta">{expense.payment_method}</div>
+                        )}
+                      </td>
+                      <td className="c">
+                        <span className={`zxexp-pill ${
+                          expense.status === 'paid' ? 'paid' :
+                          expense.status === 'approved' ? 'approved' :
+                          'pending'
+                        }`}>
+                          {expense.status === 'paid' ? 'Pagado' :
+                           expense.status === 'approved' ? 'Aprobado' :
+                           'Pendiente'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {expense.status !== 'paid' && (
+                          <button
+                            onClick={() => handlePayExpense(expense)}
+                            className="zxexp-paybtn"
+                          >
+                            Pagar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSelectedExpense(expense);
+                            setShowModal(true);
+                          }}
+                          className="zxexp-linkbtn"
+                        >
+                          Ver
+                        </button>
+                      </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+                {expenses.length === 0 && (
+                  <tr>
+                    <td colSpan="6">
+                      <div className="zxexp-empty">
+                        <span className="big">📋</span>
+                        <p>No hay gastos registrados</p>
+                        <p className="small">Registra tu primer gasto arriba</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* Payment Modal */}
         {showPaymentModal && selectedExpense && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-zionx-primary">💰 Registrar Pago de Gasto</h3>
+          <div className="zxexp-overlay">
+            <div className="zxexp-modal">
+              <div className="zxexp-mhead">
+                <h3>Registrar pago de gasto</h3>
                 <button
                   onClick={() => setShowPaymentModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="zxexp-close"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-600">Gasto</p>
-                <p className="font-bold">{selectedExpense.description}</p>
-                <p className="text-sm text-gray-600 mt-2">Categoría</p>
-                <p className="font-medium">{expenseCategories.find(c => c.id === selectedExpense.category)?.name}</p>
-                <div className="mt-3 pt-3 border-t">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Monto:</span>
-                    <span className="font-bold text-lg">{formatCurrency(selectedExpense.amount)}</span>
-                  </div>
+              <div className="zxexp-recap">
+                <p className="lbl">Gasto</p>
+                <p className="val">{selectedExpense.description}</p>
+                <p className="lbl">Categoría</p>
+                <p className="val">{expenseCategories.find(c => c.id === selectedExpense.category)?.name}</p>
+                <div className="zxexp-recap-total">
+                  <span className="lbl">Monto</span>
+                  <span className="big">{formatCurrency(selectedExpense.amount)}</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago *</label>
+              <div className="zxexp-mbody">
+                <div className="zxexp-field">
+                  <label className="zxexp-label">Método de Pago *</label>
                   <select
                     value={paymentData.payment_method}
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxexp-select"
                   >
                     <option value="transferencia">🏦 Transferencia Bancaria</option>
                     <option value="efectivo">💵 Efectivo</option>
@@ -695,41 +650,41 @@ const AdminExpenses = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Referencia / No. Transacción</label>
+                <div className="zxexp-field">
+                  <label className="zxexp-label">Referencia / No. Transacción</label>
                   <input
                     type="text"
                     value={paymentData.reference}
                     onChange={(e) => setPaymentData({...paymentData, reference: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxexp-input"
                     placeholder="Ej: SPEI-123456, No. Cheque, etc."
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Pago</label>
+                <div className="zxexp-field">
+                  <label className="zxexp-label">Fecha de Pago</label>
                   <input
                     type="date"
                     value={paymentData.payment_date}
                     onChange={(e) => setPaymentData({...paymentData, payment_date: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="zxexp-input"
                   />
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
+                <div className="zxexp-ledger">
+                  <p className="t">
                     📒 <strong>Asientos Contables:</strong> Al pagar, se crearán automáticamente:
                   </p>
-                  <div className="text-xs text-blue-700 mt-2 space-y-1">
+                  <div className="lines">
                     <div>• Debe: {selectedExpense.category ? expenseCategories.find(c => c.id === selectedExpense.category)?.account_code : '6999'} (Gasto) - {formatCurrency(selectedExpense.amount)}</div>
                     <div>• Haber: {paymentData.payment_method === 'efectivo' ? '1101 (Caja)' : '1102 (Banco)'} - {formatCurrency(selectedExpense.amount)}</div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                <div className="zxexp-mactions">
                   <button
                     onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="zxexp-btn grow"
                     disabled={loading}
                   >
                     Cancelar
@@ -737,9 +692,9 @@ const AdminExpenses = () => {
                   <button
                     onClick={handleRecordPayment}
                     disabled={loading}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    className="zxexp-btn ok grow"
                   >
-                    {loading ? 'Registrando...' : '✓ Registrar Pago'}
+                    {loading ? 'Registrando…' : 'Registrar Pago'}
                   </button>
                 </div>
               </div>
@@ -749,71 +704,71 @@ const AdminExpenses = () => {
 
         {/* View Modal */}
         {showModal && selectedExpense && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-zionx-primary">📄 Detalle del Gasto</h3>
+          <div className="zxexp-overlay">
+            <div className="zxexp-modal wide">
+              <div className="zxexp-mhead">
+                <h3>Detalle del gasto</h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="zxexp-close"
                 >
                   ×
                 </button>
               </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-gray-600">Fecha</label>
-                    <p className="font-medium">{new Date(selectedExpense.expense_date || selectedExpense.created_at).toLocaleDateString('es-MX')}</p>
+
+              <div className="zxexp-mbody">
+                <div className="zxexp-dgrid">
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Fecha</label>
+                    <p className="val">{new Date(selectedExpense.expense_date || selectedExpense.created_at).toLocaleDateString('es-MX')}</p>
                   </div>
-                  <div>
-                    <label className="text-sm text-gray-600">Categoría</label>
-                    <p className="font-medium">{expenseCategories.find(c => c.id === selectedExpense.category)?.name || selectedExpense.category}</p>
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Categoría</label>
+                    <p className="val">{expenseCategories.find(c => c.id === selectedExpense.category)?.name || selectedExpense.category}</p>
                   </div>
-                  <div>
-                    <label className="text-sm text-gray-600">Monto</label>
-                    <p className="font-bold text-lg text-zionx-primary">{formatCurrency(selectedExpense.amount)}</p>
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Monto</label>
+                    <p className="val big">{formatCurrency(selectedExpense.amount)}</p>
                   </div>
-                  <div>
-                    <label className="text-sm text-gray-600">Estado</label>
-                    <p className="font-medium">
-                      {selectedExpense.status === 'paid' ? '✅ Pagado' : '⏳ Pendiente'}
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Estado</label>
+                    <p className="val">
+                      {selectedExpense.status === 'paid' ? 'Pagado' : 'Pendiente'}
                     </p>
                   </div>
                 </div>
-                
+
                 {selectedExpense.vendor && (
-                  <div>
-                    <label className="text-sm text-gray-600">Proveedor</label>
-                    <p className="font-medium">{selectedExpense.vendor}</p>
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Proveedor</label>
+                    <p className="val">{selectedExpense.vendor}</p>
                   </div>
                 )}
-                
-                <div>
-                  <label className="text-sm text-gray-600">Descripción</label>
-                  <p>{selectedExpense.description || "Sin descripción"}</p>
+
+                <div className="zxexp-dfield">
+                  <label className="lbl">Descripción</label>
+                  <p className="val" style={{ fontWeight: 400 }}>{selectedExpense.description || "Sin descripción"}</p>
                 </div>
 
                 {selectedExpense.notes && (
-                  <div>
-                    <label className="text-sm text-gray-600">Notas</label>
-                    <p className="text-sm">{selectedExpense.notes}</p>
+                  <div className="zxexp-dfield">
+                    <label className="lbl">Notas</label>
+                    <p className="val" style={{ fontWeight: 400 }}>{selectedExpense.notes}</p>
                   </div>
                 )}
 
                 {selectedExpense.payment_method && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <label className="text-sm text-green-800 font-medium">Información de Pago</label>
-                    <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-                      <div>
-                        <span className="text-gray-600">Método:</span>
-                        <span className="ml-2 font-medium">{selectedExpense.payment_method}</span>
+                  <div className="zxexp-payinfo">
+                    <label className="t">Información de Pago</label>
+                    <div className="zxexp-dgrid" style={{ marginTop: 8 }}>
+                      <div className="row">
+                        <span>Método:</span>
+                        <span style={{ fontWeight: 600 }}>{selectedExpense.payment_method}</span>
                       </div>
                       {selectedExpense.payment_reference && (
-                        <div>
-                          <span className="text-gray-600">Ref:</span>
-                          <span className="ml-2 font-medium">{selectedExpense.payment_reference}</span>
+                        <div className="row">
+                          <span>Ref:</span>
+                          <span style={{ fontWeight: 600 }}>{selectedExpense.payment_reference}</span>
                         </div>
                       )}
                     </div>
@@ -821,21 +776,21 @@ const AdminExpenses = () => {
                 )}
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <div className="zxexp-mactions">
                 {selectedExpense.status !== 'paid' && (
                   <button
                     onClick={() => {
                       setShowModal(false);
                       handlePayExpense(selectedExpense);
                     }}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    className="zxexp-btn ok grow"
                   >
-                    💰 Pagar Ahora
+                    Pagar Ahora
                   </button>
                 )}
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                  className="zxexp-btn grow"
                 >
                   Cerrar
                 </button>

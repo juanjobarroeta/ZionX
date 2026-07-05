@@ -38,6 +38,8 @@ const CustomerProfile = () => {
   const [activeTab, setActiveTab] = useState("resumen");
   const [files, setFiles] = useState({ branding: [], media: [], designs: [], escaleta: [] });
   const [teamMembers, setTeamMembers] = useState([]);
+  const [roster, setRoster] = useState({});
+  const [rosterMembers, setRosterMembers] = useState([]);
   const [invoices, setInvoices] = useState({ loading: true, list: [], denied: false });
   const [upcoming, setUpcoming] = useState(null);
   const [uploading, setUploading] = useState({});
@@ -93,19 +95,28 @@ const CustomerProfile = () => {
     return () => { alive = false; };
   }, [id, headers, fetchFiles]);
 
-  const designers = useMemo(() => teamMembers.filter((m) => /designer|diseñ/i.test(m.role || "")), [teamMembers]);
-  const cms = useMemo(() => teamMembers.filter((m) => /community|content|manager|cm/i.test(m.role || "")), [teamMembers]);
+  // Production roster (assigned designer / community / senior). Options list ALL
+  // active members — role tags are free-form, so hard-filtering would empty the
+  // dropdowns. Saved via PUT /customers/:id/roster.
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/pipeline/assignable`, { headers })
+      .then((r) => setRosterMembers(Array.isArray(r.data?.team_members) ? r.data.team_members : []))
+      .catch(() => setRosterMembers([]));
+    axios.get(`${API_BASE_URL}/customers/${id}/roster`, { headers })
+      .then((r) => setRoster(r.data || {}))
+      .catch(() => setRoster({}));
+  }, [id, headers]);
 
-  const assign = async (role, memberId) => {
+  const saveRoster = async (key, memberId) => {
+    const value = memberId === "" ? null : Number(memberId);
+    const prev = roster;
+    setRoster((r) => ({ ...r, [key]: value }));
     try {
-      const body = {
-        default_designer: role === "designer" ? memberId : customer?.default_designer,
-        default_community_manager: role === "community_manager" ? memberId : customer?.default_community_manager,
-      };
-      await axios.put(`${API_BASE_URL}/customers/${id}/team-assignment`, body, { headers });
-      setCustomer((prev) => ({ ...prev, ...body }));
+      const res = await axios.put(`${API_BASE_URL}/customers/${id}/roster`, { [key]: value }, { headers });
+      if (res.data?.roster) setRoster(res.data.roster);
     } catch {
-      alert("Error actualizando la asignación del equipo");
+      setRoster(prev);
+      alert("Error actualizando el equipo asignado");
     }
   };
 
@@ -196,7 +207,7 @@ const CustomerProfile = () => {
 
               <div className="zxp-grid">
                 <div className="zxp-card">
-                  <h3>🏢 Datos fiscales</h3>
+                  <h3>Datos fiscales</h3>
                   <div className="zxp-field"><span className="k">Razón social</span>{val(customer.business_name)}</div>
                   <div className="zxp-field"><span className="k">Nombre comercial</span>{val(customer.commercial_name)}</div>
                   <div className="zxp-field"><span className="k">RFC</span>{customer.rfc ? <span className="v mono">{customer.rfc}</span> : val(null)}</div>
@@ -207,7 +218,7 @@ const CustomerProfile = () => {
                 </div>
 
                 <div className="zxp-card">
-                  <h3>👤 Contacto</h3>
+                  <h3>Contacto</h3>
                   <div className="zxp-field"><span className="k">Nombre</span>{val(contact)}</div>
                   <div className="zxp-field"><span className="k">Puesto</span>{val(customer.contact_position)}</div>
                   <div className="zxp-field"><span className="k">Email</span>{val(customer.contact_email || customer.email)}</div>
@@ -216,22 +227,32 @@ const CustomerProfile = () => {
                 </div>
 
                 <div className="zxp-card">
-                  <h3>👥 Equipo asignado</h3>
+                  <h3>Equipo asignado</h3>
                   <div className="zxp-field">
-                    <span className="k">Diseñador principal</span>
-                    <select className="zxp-select" value={customer.default_designer || ""} onChange={(e) => assign("designer", e.target.value)}>
-                      <option value="">Seleccionar diseñador…</option>
-                      {designers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    <span className="k">Diseñador</span>
+                    <select className="zxp-select" value={roster.assigned_designer || ""} onChange={(e) => saveRoster("assigned_designer", e.target.value)}>
+                      <option value="">Sin asignar</option>
+                      {rosterMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
+                    {roster.assigned_designer_name && <span className="zxp-hint">Actual: {roster.assigned_designer_name}</span>}
                   </div>
                   <div className="zxp-field">
-                    <span className="k">Community manager</span>
-                    <select className="zxp-select" value={customer.default_community_manager || ""} onChange={(e) => assign("community_manager", e.target.value)}>
-                      <option value="">Seleccionar CM…</option>
-                      {cms.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    <span className="k">Community</span>
+                    <select className="zxp-select" value={roster.assigned_community || ""} onChange={(e) => saveRoster("assigned_community", e.target.value)}>
+                      <option value="">Sin asignar</option>
+                      {rosterMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
+                    {roster.assigned_community_name && <span className="zxp-hint">Actual: {roster.assigned_community_name}</span>}
                   </div>
-                  <p className="zxp-hint">Se aplican por defecto a los posts nuevos de este cliente; puedes cambiarlas por post en el calendario.</p>
+                  <div className="zxp-field">
+                    <span className="k">Senior</span>
+                    <select className="zxp-select" value={roster.assigned_senior || ""} onChange={(e) => saveRoster("assigned_senior", e.target.value)}>
+                      <option value="">Sin asignar</option>
+                      {rosterMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                    {roster.assigned_senior_name && <span className="zxp-hint">Actual: {roster.assigned_senior_name}</span>}
+                  </div>
+                  <p className="zxp-hint">Roster de producción usado por el pipeline de cada publicación.</p>
                 </div>
               </div>
             </>

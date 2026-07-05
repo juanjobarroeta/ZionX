@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import "./TeamManagement.css";
 
 const TeamManagement = () => {
   const navigate = useNavigate();
@@ -160,20 +161,19 @@ const TeamManagement = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'busy': return 'bg-yellow-100 text-yellow-800';
-      case 'offline': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active': return 'active';
+      case 'busy': return 'busy';
+      case 'offline': return 'offline';
+      default: return 'default';
     }
   };
 
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-zionx-highlight mx-auto mb-4"></div>
-            <p className="text-zionx-accent">Cargando equipo...</p>
+        <div className="zxtem">
+          <div className="zxtem-inner">
+            <div className="zxtem-loading">Cargando equipo…</div>
           </div>
         </div>
       </Layout>
@@ -182,152 +182,129 @@ const TeamManagement = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-zionx-secondary via-zionx-tertiary to-zionx-secondary">
-        {/* Header */}
-        <div className="bg-zionx-tertiary border-b border-zionx-secondary">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-zionx-primary font-display">👥 Gestión de Equipo</h1>
-                <p className="text-zionx-accent mt-2">Administra diseñadores, community managers y el equipo creativo</p>
-              </div>
-              <button
-                onClick={() => {
-                  resetForm();
-                  setEditingMember(null);
-                  setShowAddModal(true);
-                }}
-                className="bg-gradient-to-r from-zionx-accent to-zionx-primary text-white px-6 py-3 rounded-lg hover:from-zionx-primary hover:to-zionx-accent transition-all duration-200 transform hover:scale-105"
-              >
-                ➕ Agregar Miembro
-              </button>
+      <div className="zxtem">
+        <div className="zxtem-inner">
+          {/* Header */}
+          <div className="zxtem-head">
+            <div>
+              <div className="zxtem-eyebrow">Equipo</div>
+              <h1 className="zxtem-h1">Gestión de <span className="zxtem-serif">equipo</span></h1>
+              <p className="zxtem-sub">Administra diseñadores, community managers y el equipo creativo</p>
             </div>
+            <button
+              onClick={() => {
+                resetForm();
+                setEditingMember(null);
+                setShowAddModal(true);
+              }}
+              className="zxtem-btn solid"
+            >
+              Agregar miembro
+            </button>
           </div>
-        </div>
 
-        {/* Team Overview */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Total Miembros</p>
-                  <p className="text-2xl font-bold text-zionx-primary">{teamMembers.length}</p>
-                </div>
-                <span className="text-3xl">👥</span>
-              </div>
+          {/* Team Overview */}
+          <div className="zxtem-stats">
+            <div className="zxtem-stat">
+              <span className="v">{teamMembers.length}</span>
+              <span className="k">Total miembros</span>
             </div>
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Diseñadores</p>
-                  <p className="text-2xl font-bold text-zionx-primary">
-                    {Array.isArray(teamMembers) ? teamMembers.filter(m => m && (m.role === 'designer_jr' || m.role === 'designer_sr' || m.role === 'designer')).length : 0}
-                  </p>
-                </div>
-                <span className="text-3xl">🎨</span>
-              </div>
+            <div className="zxtem-stat">
+              <span className="v">
+                {Array.isArray(teamMembers) ? teamMembers.filter(m => m && (m.role === 'designer_jr' || m.role === 'designer_sr' || m.role === 'designer')).length : 0}
+              </span>
+              <span className="k">Diseñadores</span>
             </div>
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Community Managers</p>
-                  <p className="text-2xl font-bold text-zionx-primary">
-                    {Array.isArray(teamMembers) ? teamMembers.filter(m => m && m.role === 'community_manager').length : 0}
-                  </p>
-                </div>
-                <span className="text-3xl">📱</span>
-              </div>
+            <div className="zxtem-stat">
+              <span className="v">
+                {Array.isArray(teamMembers) ? teamMembers.filter(m => m && m.role === 'community_manager').length : 0}
+              </span>
+              <span className="k">Community Managers</span>
             </div>
-            <div className="bg-white rounded-xl p-6 border border-zionx-secondary">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zionx-accent text-sm">Tareas Activas</p>
-                  <p className="text-2xl font-bold text-zionx-primary">
-                    {Array.isArray(teamMembers) ? teamMembers.reduce((sum, m) => sum + (m && m.current_tasks || 0), 0) : 0}
-                  </p>
-                </div>
-                <span className="text-3xl">📋</span>
-              </div>
+            <div className="zxtem-stat">
+              <span className="v">
+                {Array.isArray(teamMembers) ? teamMembers.reduce((sum, m) => sum + (m && m.current_tasks || 0), 0) : 0}
+              </span>
+              <span className="k">Tareas activas</span>
             </div>
           </div>
 
           {/* Team Members Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="zxtem-grid">
             {Array.isArray(teamMembers) && teamMembers.length > 0 ? (
               teamMembers.map((member) => {
                 const roleInfo = getRoleInfo(member.role);
                 return (
-                  <div key={member.id} className="bg-white rounded-xl p-6 border border-zionx-secondary hover:shadow-lg transition-shadow">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-zionx-accent to-zionx-primary rounded-full flex items-center justify-center text-white font-bold">
+                  <div key={member.id} className="zxtem-card">
+                    <div className="zxtem-card-top">
+                      <div className="zxtem-id">
+                        <div className="zxtem-avatar">
                           {member.name.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-bold text-zionx-primary">{member.name}</h3>
-                          <p className="text-sm text-zionx-accent">{member.email}</p>
+                          <div className="name">{member.name}</div>
+                          <div className="email">{member.email}</div>
                         </div>
                       </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(member.status)}`}>
+                      <span className={`zxtem-status ${getStatusColor(member.status)}`}>
                         {member.status}
                       </span>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{roleInfo.icon}</span>
-                        <span className="text-sm font-medium text-zionx-primary">{roleInfo.label}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zionx-accent">Tareas Actuales:</span>
-                        <span className="font-medium text-zionx-primary">{member.current_tasks || 0}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zionx-accent">Completadas (mes):</span>
-                        <span className="font-medium text-green-600">{member.completed_this_month || 0}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zionx-accent">Salario Mensual:</span>
-                        <span className="font-medium text-zionx-primary">${member.monthly_wage?.toLocaleString()}</span>
-                      </div>
-
-                      {member.skills && member.skills.length > 0 && (
-                        <div>
-                          <p className="text-xs text-zionx-accent mb-2">Habilidades:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {member.skills.slice(0, 3).map((skill, idx) => (
-                              <span key={idx} className="bg-zionx-secondary text-zionx-primary px-2 py-1 rounded text-xs">
-                                {skill}
-                              </span>
-                            ))}
-                            {member.skills.length > 3 && (
-                              <span className="text-xs text-zionx-accent">+{member.skills.length - 3} más</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                    <div className="zxtem-role">
+                      <span className="ico">{roleInfo.icon}</span>
+                      <span>{roleInfo.label}</span>
                     </div>
 
-                    <div className="flex space-x-2 mt-4 pt-4 border-t border-zionx-secondary">
+                    <div className="zxtem-meta">
+                      <div className="zxtem-metarow">
+                        <span className="k">Tareas Actuales</span>
+                        <span className="val">{member.current_tasks || 0}</span>
+                      </div>
+
+                      <div className="zxtem-metarow">
+                        <span className="k">Completadas (mes)</span>
+                        <span className="val ok">{member.completed_this_month || 0}</span>
+                      </div>
+
+                      <div className="zxtem-metarow">
+                        <span className="k">Salario Mensual</span>
+                        <span className="val">${member.monthly_wage?.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {member.skills && member.skills.length > 0 && (
+                      <div className="zxtem-skills">
+                        <div className="lbl">Habilidades</div>
+                        <div className="zxtem-chips">
+                          {member.skills.slice(0, 3).map((skill, idx) => (
+                            <span key={idx} className="zxtem-chip">
+                              {skill}
+                            </span>
+                          ))}
+                          {member.skills.length > 3 && (
+                            <span className="zxtem-more">+{member.skills.length - 3} más</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="zxtem-cardfoot">
                       <button
                         onClick={() => handleEdit(member)}
-                        className="flex-1 bg-zionx-secondary text-zionx-primary px-3 py-2 rounded text-sm hover:bg-zionx-accent hover:text-white transition-colors"
+                        className="zxtem-btn sm grow"
                       >
                         ✏️ Editar
                       </button>
                       <button
                         onClick={() => navigate(`/employee/${member.id}`)}
-                        className="flex-1 bg-zionx-highlight text-white px-3 py-2 rounded text-sm hover:bg-zionx-accent transition-colors"
+                        className="zxtem-btn sm grow"
                       >
                         👤 Perfil
                       </button>
                       <button
                         onClick={() => handleDelete(member.id)}
-                        className="bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600 transition-colors"
+                        className="zxtem-btn sm danger"
                       >
                         🗑️
                       </button>
@@ -336,152 +313,151 @@ const TeamManagement = () => {
                 );
               })
             ) : (
-              <div className="col-span-full text-center py-12 text-zionx-accent">
-                <span className="text-4xl block mb-4">👥</span>
+              <div className="zxtem-empty">
+                <span className="ico">👥</span>
                 <p>No hay miembros del equipo</p>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Add/Edit Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-zionx-primary">
-                  {editingMember ? 'Editar Miembro' : 'Agregar Miembro'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingMember(null);
-                    resetForm();
-                  }}
-                  className="text-zionx-accent hover:text-zionx-primary"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">Nombre</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">Rol</label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value, skills: []})}
-                    className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                  >
-                    {roles.map(role => (
-                      <option key={role.value} value={role.value}>
-                        {role.icon} {role.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">Habilidades</label>
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
-                    {skillOptions[formData.role]?.map(skill => (
-                      <label key={skill} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={formData.skills.includes(skill)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData({...formData, skills: [...formData.skills, skill]});
-                            } else {
-                              setFormData({...formData, skills: formData.skills.filter(s => s !== skill)});
-                            }
-                          }}
-                          className="rounded"
-                        />
-                        <span className="text-sm">{skill}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zionx-primary mb-1">Salario Mensual ($)</label>
-                    <input
-                      type="number"
-                      value={formData.monthly_wage}
-                      onChange={(e) => setFormData({...formData, monthly_wage: e.target.value})}
-                      className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                      placeholder="15000"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-zionx-primary mb-1">Max tareas/día</label>
-                    <input
-                      type="number"
-                      value={formData.max_daily_tasks}
-                      onChange={(e) => setFormData({...formData, max_daily_tasks: parseInt(e.target.value)})}
-                      className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                      min="1"
-                      max="20"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zionx-primary mb-1">Teléfono</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="w-full border border-zionx-secondary rounded-lg px-3 py-2 focus:border-zionx-highlight focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex space-x-3 pt-4">
+          {/* Add/Edit Modal */}
+          {showAddModal && (
+            <div className="zxtem-scrim">
+              <div className="zxtem-modal">
+                <div className="zxtem-modal-head">
+                  <h3>
+                    {editingMember ? 'Editar miembro' : 'Agregar miembro'}
+                  </h3>
                   <button
-                    type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingMember(null);
                       resetForm();
                     }}
-                    className="flex-1 bg-zionx-secondary text-zionx-primary px-4 py-2 rounded-lg hover:bg-zionx-accent hover:text-white transition-colors"
+                    className="zxtem-close"
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-zionx-accent to-zionx-primary text-white px-4 py-2 rounded-lg hover:from-zionx-primary hover:to-zionx-accent transition-all"
-                  >
-                    {editingMember ? 'Actualizar' : 'Crear'}
+                    ✕
                   </button>
                 </div>
-              </form>
+
+                <form onSubmit={handleSubmit} className="zxtem-form">
+                  <div className="zxtem-fld">
+                    <label>Nombre</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="zxtem-input"
+                      required
+                    />
+                  </div>
+
+                  <div className="zxtem-fld">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      className="zxtem-input"
+                      required
+                    />
+                  </div>
+
+                  <div className="zxtem-fld">
+                    <label>Rol</label>
+                    <select
+                      value={formData.role}
+                      onChange={(e) => setFormData({...formData, role: e.target.value, skills: []})}
+                      className="zxtem-select"
+                    >
+                      {roles.map(role => (
+                        <option key={role.value} value={role.value}>
+                          {role.icon} {role.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="zxtem-fld">
+                    <label>Habilidades</label>
+                    <div className="zxtem-checks">
+                      {skillOptions[formData.role]?.map(skill => (
+                        <label key={skill} className="zxtem-check">
+                          <input
+                            type="checkbox"
+                            checked={formData.skills.includes(skill)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({...formData, skills: [...formData.skills, skill]});
+                              } else {
+                                setFormData({...formData, skills: formData.skills.filter(s => s !== skill)});
+                              }
+                            }}
+                          />
+                          <span>{skill}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="zxtem-two">
+                    <div className="zxtem-fld">
+                      <label>Salario Mensual ($)</label>
+                      <input
+                        type="number"
+                        value={formData.monthly_wage}
+                        onChange={(e) => setFormData({...formData, monthly_wage: e.target.value})}
+                        className="zxtem-input"
+                        placeholder="15000"
+                      />
+                    </div>
+                    <div className="zxtem-fld">
+                      <label>Max tareas/día</label>
+                      <input
+                        type="number"
+                        value={formData.max_daily_tasks}
+                        onChange={(e) => setFormData({...formData, max_daily_tasks: parseInt(e.target.value)})}
+                        className="zxtem-input"
+                        min="1"
+                        max="20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="zxtem-fld">
+                    <label>Teléfono</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      className="zxtem-input"
+                    />
+                  </div>
+
+                  <div className="zxtem-modal-foot">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setEditingMember(null);
+                        resetForm();
+                      }}
+                      className="zxtem-btn"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="zxtem-btn solid"
+                    >
+                      {editingMember ? 'Actualizar' : 'Crear'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Layout>
   );

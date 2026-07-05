@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import "./CreateCustomer.css";
 
 const CreateCustomer = () => {
   const navigate = useNavigate();
@@ -259,13 +260,7 @@ const CreateCustomer = () => {
 
   const FileUploadZone = ({ type, title, accept, description }) => (
     <div
-      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
-        dragActive[type] 
-          ? 'border-primary-400 bg-primary-50' 
-          : files[type] 
-            ? 'border-primary-500 bg-primary-50' 
-            : 'border-neutral-300 hover:border-neutral-400'
-      }`}
+      className={`zxccu-drop ${dragActive[type] ? 'active' : ''} ${files[type] ? 'has' : ''}`}
       onDragEnter={(e) => handleDrag(e, type)}
       onDragLeave={(e) => handleDrag(e, type)}
       onDragOver={(e) => handleDrag(e, type)}
@@ -275,23 +270,23 @@ const CreateCustomer = () => {
         type="file"
         accept={accept}
         onChange={(e) => handleFileUpload(type, e.target.files[0])}
-        className="hidden"
+        style={{ display: "none" }}
         id={`file-${type}`}
       />
-      
-      <label htmlFor={`file-${type}`} className="cursor-pointer">
-        <div className="text-4xl mb-2">
+
+      <label htmlFor={`file-${type}`}>
+        <div className="dic">
           {files[type] ? '✅' : '📎'}
         </div>
-        <div className="text-neutral-800 font-medium mb-1">{title}</div>
-        <div className="text-neutral-600 text-sm mb-3">{description}</div>
-        
+        <div className="dt">{title}</div>
+        <div className="dd">{description}</div>
+
         {files[type] ? (
-          <div className="text-primary-600 text-sm">
+          <div className="dfile">
             ✓ {files[type].name}
           </div>
         ) : (
-          <div className="text-neutral-500 text-sm">
+          <div className="dhint">
             Arrastra aquí o haz clic para seleccionar
           </div>
         )}
@@ -301,132 +296,113 @@ const CreateCustomer = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-surface-50 to-surface-100 text-neutral-800">
-        {/* Header */}
-        <div className="bg-white border-b border-neutral-200 p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => navigate("/crm")}
-                  className="mr-4 p-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg transition-colors"
-                >
-                  ← Volver
-                </button>
-                <div>
-                  <h1 className="text-3xl font-bold text-zionx-primary">Crear Cliente Empresarial</h1>
-                  <p className="text-zionx-accent">Complete la información de la empresa paso a paso</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-primary-600">{completionPercentage}%</div>
-                <div className="text-neutral-600 text-sm">Completado</div>
+      <div className="zxccu">
+        <div className="zxccu-inner">
+          {/* Header */}
+          <div className="zxccu-head">
+            <div className="zxccu-head-l">
+              <button
+                onClick={() => navigate("/crm")}
+                className="zxccu-btn"
+              >
+                ← Volver
+              </button>
+              <div>
+                <p className="zxccu-eyebrow">Nuevo registro</p>
+                <h1>Crear <span className="zxccu-serif">cliente</span> empresarial</h1>
+                <p className="zxccu-sub">Complete la información de la empresa paso a paso</p>
               </div>
             </div>
-
-            {/* Progress Steps */}
-            <div className="flex items-center space-x-4 overflow-x-auto pb-4">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center flex-shrink-0">
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-200 ${
-                    currentStep > step.id
-                      ? 'bg-primary-500 border-primary-500 text-neutral-800'
-                      : currentStep === step.id
-                        ? 'bg-primary-600 border-primary-600 text-neutral-800'
-                        : 'bg-neutral-200 border-neutral-300 text-neutral-600'
-                  }`}>
-                    <span className="text-lg">{step.icon}</span>
-                  </div>
-                  <div className="ml-3 min-w-0">
-                    <div className={`font-medium text-sm ${
-                      currentStep >= step.id ? 'text-neutral-800' : 'text-neutral-500'
-                    }`}>
-                      {step.title}
-                    </div>
-                    <div className="text-neutral-600 text-xs">{step.description}</div>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`w-8 h-px mx-4 ${
-                      currentStep > step.id ? 'bg-primary-500' : 'bg-neutral-300'
-                    }`} />
-                  )}
-                </div>
-              ))}
+            <div className="zxccu-pct">
+              <div className="n">{completionPercentage}%</div>
+              <div className="l">Completado</div>
             </div>
           </div>
-        </div>
 
-        {/* Form Content */}
-        <div className="max-w-6xl mx-auto p-6">
-          <div className="bg-white rounded-xl p-8 border border-neutral-200 shadow-lg">
+          {/* Progress Steps */}
+          <div className="zxccu-steps">
+            {steps.map((step, index) => (
+              <div key={step.id} className={`zxccu-step ${currentStep > step.id ? 'done' : ''} ${currentStep === step.id ? 'active' : ''}`}>
+                <div className="zxccu-step-node">
+                  <div className="zxccu-step-dot">
+                    <span>{step.icon}</span>
+                  </div>
+                  <div className="zxccu-step-txt">
+                    <div className="t">{step.title}</div>
+                    <div className="d">{step.description}</div>
+                  </div>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className="zxccu-step-line" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Form Content */}
+          <div className="zxccu-panel">
             
             {/* Step 1: Personal Information */}
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">🏢</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Información de la Empresa</h2>
-                  <p className="text-zionx-accent">Datos básicos del negocio</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">🏢</div>
+                  <h2>Información de la Empresa</h2>
+                  <p>Datos básicos del negocio</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Razón Social *</label>
+                <div className="zxccu-grid">
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Razón Social *</label>
                     <input
                       type="text"
                       name="business_name"
                       value={form.business_name}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.business_name ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.business_name ? 'err' : ''}`}
                       placeholder="Nombre legal de la empresa"
                     />
                     {validationErrors.business_name && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.business_name}</p>
+                      <p className="zxccu-err">{validationErrors.business_name}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Nombre Comercial</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Nombre Comercial</label>
                     <input
                       type="text"
                       name="commercial_name"
                       value={form.commercial_name}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-input"
                       placeholder="Nombre comercial (si es diferente)"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">RFC *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">RFC *</label>
                     <input
                       type="text"
                       name="rfc"
                       value={form.rfc}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.rfc ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.rfc ? 'err' : ''}`}
                       placeholder="RFC de la empresa"
                       maxLength="13"
                       style={{textTransform: 'uppercase'}}
                     />
                     {validationErrors.rfc && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.rfc}</p>
+                      <p className="zxccu-err">{validationErrors.rfc}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Giro Comercial *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Giro Comercial *</label>
                     <select
                       name="industry"
                       value={form.industry}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.industry ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-select ${validationErrors.industry ? 'err' : ''}`}
                     >
                       <option value="">Seleccionar giro</option>
                       <option value="Tecnología">Tecnología</option>
@@ -441,17 +417,17 @@ const CreateCustomer = () => {
                       <option value="Otro">Otro</option>
                     </select>
                     {validationErrors.industry && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.industry}</p>
+                      <p className="zxccu-err">{validationErrors.industry}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Régimen Fiscal *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Régimen Fiscal *</label>
                     <select
                       name="tax_regime"
                       value={form.tax_regime}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-select"
                     >
                       <option value="">Seleccionar régimen</option>
                       <option value="General">General de Ley Personas Morales</option>
@@ -461,14 +437,14 @@ const CreateCustomer = () => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Sitio Web</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Sitio Web</label>
                     <input
                       type="url"
                       name="website"
                       value={form.website}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-input"
                       placeholder="https://www.empresa.com"
                     />
                   </div>
@@ -479,87 +455,79 @@ const CreateCustomer = () => {
 
             {/* Step 2: Fiscal Address Information */}
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">📍</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Dirección Fiscal</h2>
-                  <p className="text-zionx-accent">Información fiscal y de facturación</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">📍</div>
+                  <h2>Dirección Fiscal</h2>
+                  <p>Información fiscal y de facturación</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <label className="block text-zionx-primary font-medium mb-2">Dirección Fiscal *</label>
+                <div className="zxccu-grid">
+                  <div className="zxccu-field zxccu-col2">
+                    <label className="zxccu-label">Dirección Fiscal *</label>
                     <input
                       type="text"
                       name="fiscal_address"
                       value={form.fiscal_address}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.fiscal_address ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.fiscal_address ? 'err' : ''}`}
                       placeholder="Calle, número exterior e interior"
                     />
                     {validationErrors.fiscal_address && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.fiscal_address}</p>
+                      <p className="zxccu-err">{validationErrors.fiscal_address}</p>
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-zionx-primary font-medium mb-2">Información Adicional</label>
+                  <div className="zxccu-field zxccu-col2">
+                    <label className="zxccu-label">Información Adicional</label>
                     <input
                       type="text"
                       name="fiscal_address2"
                       value={form.fiscal_address2}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-input"
                       placeholder="Colonia, referencias, entre calles"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-neutral-700 font-medium mb-2">Código Postal *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Código Postal *</label>
                     <input
                       type="text"
                       name="fiscal_postal_code"
                       value={form.fiscal_postal_code}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.fiscal_postal_code ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.fiscal_postal_code ? 'err' : ''}`}
                       placeholder="12345"
                       maxLength="5"
                     />
                     {validationErrors.fiscal_postal_code && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.fiscal_postal_code}</p>
+                      <p className="zxccu-err">{validationErrors.fiscal_postal_code}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Ciudad *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Ciudad *</label>
                     <input
                       type="text"
                       name="fiscal_city"
                       value={form.fiscal_city}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.fiscal_city ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.fiscal_city ? 'err' : ''}`}
                       placeholder="Ciudad"
                     />
                     {validationErrors.fiscal_city && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.fiscal_city}</p>
+                      <p className="zxccu-err">{validationErrors.fiscal_city}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Estado *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Estado *</label>
                     <select
                       name="fiscal_state"
                       value={form.fiscal_state}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.fiscal_state ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-select ${validationErrors.fiscal_state ? 'err' : ''}`}
                     >
                       <option value="">Seleccione estado</option>
                       <option value="Puebla">Puebla</option>
@@ -570,7 +538,7 @@ const CreateCustomer = () => {
                       <option value="Estado de México">Estado de México</option>
                     </select>
                     {validationErrors.fiscal_state && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.fiscal_state}</p>
+                      <p className="zxccu-err">{validationErrors.fiscal_state}</p>
                     )}
                   </div>
                 </div>
@@ -579,81 +547,75 @@ const CreateCustomer = () => {
 
             {/* Step 3: Financial Information */}
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">👤</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Persona de Contacto</h2>
-                  <p className="text-zionx-accent">Responsable de comunicación</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">👤</div>
+                  <h2>Persona de Contacto</h2>
+                  <p>Responsable de comunicación</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Nombre del Contacto *</label>
+                <div className="zxccu-grid">
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Nombre del Contacto *</label>
                     <input
                       type="text"
                       name="contact_first_name"
                       value={form.contact_first_name}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.contact_first_name ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.contact_first_name ? 'err' : ''}`}
                       placeholder="Nombre del responsable"
                     />
                     {validationErrors.contact_first_name && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.contact_first_name}</p>
+                      <p className="zxccu-err">{validationErrors.contact_first_name}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Apellidos del Contacto *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Apellidos del Contacto *</label>
                     <input
                       type="text"
                       name="contact_last_name"
                       value={form.contact_last_name}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.contact_last_name ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.contact_last_name ? 'err' : ''}`}
                       placeholder="Apellidos del responsable"
                     />
                     {validationErrors.contact_last_name && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.contact_last_name}</p>
+                      <p className="zxccu-err">{validationErrors.contact_last_name}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Puesto/Cargo</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Puesto/Cargo</label>
                     <input
                       type="text"
                       name="contact_position"
                       value={form.contact_position}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-input"
                       placeholder="Director de Marketing, Gerente General, etc."
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Email del Contacto *</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Email del Contacto *</label>
                     <input
                       type="email"
                       name="contact_email"
                       value={form.contact_email}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.contact_email ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-input ${validationErrors.contact_email ? 'err' : ''}`}
                       placeholder="contacto@empresa.com"
                     />
                     {validationErrors.contact_email && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.contact_email}</p>
+                      <p className="zxccu-err">{validationErrors.contact_email}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Teléfono del Contacto *</label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 text-sm text-zionx-primary bg-zionx-secondary border border-r-0 border-zionx-secondary rounded-l-lg">
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Teléfono del Contacto *</label>
+                    <div className="zxccu-inputgroup">
+                      <span className="zxccu-prefix">
                         🇲🇽 +52
                       </span>
                       <input
@@ -661,21 +623,19 @@ const CreateCustomer = () => {
                         name="contact_phone"
                         value={form.contact_phone}
                         onChange={handleChange}
-                        className={`flex-1 p-3 bg-zionx-tertiary border rounded-r-lg text-zionx-primary focus:outline-none transition-colors ${
-                          validationErrors.contact_phone ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                        }`}
+                        className={`zxccu-input ${validationErrors.contact_phone ? 'err' : ''}`}
                         placeholder="Número de contacto"
                       />
                     </div>
                     {validationErrors.contact_phone && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.contact_phone}</p>
+                      <p className="zxccu-err">{validationErrors.contact_phone}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Teléfono Móvil</label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-3 text-sm text-zionx-primary bg-zionx-secondary border border-r-0 border-zionx-secondary rounded-l-lg">
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Teléfono Móvil</label>
+                    <div className="zxccu-inputgroup">
+                      <span className="zxccu-prefix">
                         📱 +52
                       </span>
                       <input
@@ -683,7 +643,7 @@ const CreateCustomer = () => {
                         name="contact_mobile"
                         value={form.contact_mobile}
                         onChange={handleChange}
-                        className="flex-1 p-3 bg-zionx-tertiary border border-zionx-secondary rounded-r-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                        className="zxccu-input"
                         placeholder="Celular del contacto"
                       />
                     </div>
@@ -694,23 +654,21 @@ const CreateCustomer = () => {
 
             {/* Step 4: Marketing Information */}
             {currentStep === 4 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">📈</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Información de Marketing</h2>
-                  <p className="text-zionx-accent">Datos comerciales y presupuesto</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">📈</div>
+                  <h2>Información de Marketing</h2>
+                  <p>Datos comerciales y presupuesto</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Tamaño de Empresa *</label>
+                <div className="zxccu-grid">
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Tamaño de Empresa *</label>
                     <select
                       name="business_size"
                       value={form.business_size}
                       onChange={handleChange}
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.business_size ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-select ${validationErrors.business_size ? 'err' : ''}`}
                     >
                       <option value="">Seleccionar tamaño</option>
                       <option value="Micro">Micro (1-10 empleados)</option>
@@ -719,33 +677,33 @@ const CreateCustomer = () => {
                       <option value="Grande">Grande (250+ empleados)</option>
                     </select>
                     {validationErrors.business_size && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.business_size}</p>
+                      <p className="zxccu-err">{validationErrors.business_size}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Número de Empleados</label>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Número de Empleados</label>
                     <input
                       type="number"
                       name="employees_count"
                       value={form.employees_count}
                       onChange={handleChange}
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-input"
                       placeholder="Cantidad aproximada"
                       min="1"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Facturación Anual</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-3 text-zionx-primary">$</span>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Facturación Anual</label>
+                    <div className="zxccu-money">
+                      <span className="sym">$</span>
                       <input
                         type="number"
                         name="annual_revenue"
                         value={form.annual_revenue}
                         onChange={handleChange}
-                        className="w-full pl-8 pr-3 py-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                        className="zxccu-input"
                         placeholder="0.00"
                         min="0"
                         step="0.01"
@@ -753,16 +711,16 @@ const CreateCustomer = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-zionx-primary font-medium mb-2">Presupuesto de Marketing</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-3 text-zionx-primary">$</span>
+                  <div className="zxccu-field">
+                    <label className="zxccu-label">Presupuesto de Marketing</label>
+                    <div className="zxccu-money">
+                      <span className="sym">$</span>
                       <input
                         type="number"
                         name="marketing_budget"
                         value={form.marketing_budget}
                         onChange={handleChange}
-                        className="w-full pl-8 pr-3 py-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                        className="zxccu-input"
                         placeholder="0.00"
                         min="0"
                         step="0.01"
@@ -770,31 +728,29 @@ const CreateCustomer = () => {
                     </div>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-zionx-primary font-medium mb-2">Mercado Objetivo *</label>
+                  <div className="zxccu-field zxccu-col2">
+                    <label className="zxccu-label">Mercado Objetivo *</label>
                     <textarea
                       name="target_market"
                       value={form.target_market}
                       onChange={handleChange}
                       rows="3"
-                      className={`w-full p-3 bg-zionx-tertiary border rounded-lg text-zionx-primary focus:outline-none transition-colors ${
-                        validationErrors.target_market ? 'border-red-500' : 'border-zionx-secondary focus:border-zionx-highlight'
-                      }`}
+                      className={`zxccu-textarea ${validationErrors.target_market ? 'err' : ''}`}
                       placeholder="Describe tu mercado objetivo, audiencia, demografía..."
                     />
                     {validationErrors.target_market && (
-                      <p className="text-red-500 text-sm mt-1">{validationErrors.target_market}</p>
+                      <p className="zxccu-err">{validationErrors.target_market}</p>
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-zionx-primary font-medium mb-2">Canales de Marketing Actuales</label>
+                  <div className="zxccu-field zxccu-col2">
+                    <label className="zxccu-label">Canales de Marketing Actuales</label>
                     <textarea
                       name="current_marketing_channels"
                       value={form.current_marketing_channels}
                       onChange={handleChange}
                       rows="3"
-                      className="w-full p-3 bg-zionx-tertiary border border-zionx-secondary rounded-lg text-zionx-primary focus:border-zionx-highlight focus:outline-none transition-colors"
+                      className="zxccu-textarea"
                       placeholder="Redes sociales, Google Ads, email marketing, etc."
                     />
                   </div>
@@ -804,14 +760,14 @@ const CreateCustomer = () => {
 
             {/* Step 5: Documents */}
             {currentStep === 5 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">📄</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Documentación Empresarial</h2>
-                  <p className="text-zionx-accent">Subir documentos de la empresa</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">📄</div>
+                  <h2>Documentación Empresarial</h2>
+                  <p>Subir documentos de la empresa</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="zxccu-grid">
                   <FileUploadZone
                     type="business_license"
                     title="Acta Constitutiva"
@@ -841,13 +797,13 @@ const CreateCustomer = () => {
                   />
                 </div>
 
-                <div className="bg-zionx-highlight/10 border border-zionx-highlight/30 rounded-lg p-4">
-                  <h4 className="text-zionx-highlight font-semibold mb-2">📋 Información sobre Documentos</h4>
-                  <ul className="text-zionx-primary text-sm space-y-1">
-                    <li>• Formatos aceptados: JPG, PNG, PDF</li>
-                    <li>• Tamaño máximo: 10MB por archivo</li>
-                    <li>• Los documentos deben ser legibles y vigentes</li>
-                    <li>• El Acta Constitutiva y RFC son obligatorios para facturación</li>
+                <div className="zxccu-note">
+                  <h4>📋 Información sobre Documentos</h4>
+                  <ul>
+                    <li>Formatos aceptados: JPG, PNG, PDF</li>
+                    <li>Tamaño máximo: 10MB por archivo</li>
+                    <li>Los documentos deben ser legibles y vigentes</li>
+                    <li>El Acta Constitutiva y RFC son obligatorios para facturación</li>
                   </ul>
                 </div>
               </div>
@@ -855,94 +811,84 @@ const CreateCustomer = () => {
 
             {/* Step 6: Confirmation */}
             {currentStep === 6 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <div className="text-6xl mb-4">✅</div>
-                  <h2 className="text-2xl font-bold text-zionx-primary">Confirmación</h2>
-                  <p className="text-zionx-accent">Revisar información antes de crear cliente</p>
+              <div>
+                <div className="zxccu-step-head">
+                  <div className="ic">✅</div>
+                  <h2>Confirmación</h2>
+                  <p>Revisar información antes de crear cliente</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="zxccu-grid">
                   {/* Business Info Summary */}
-                  <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-lg p-6 border border-zionx-accent">
-                    <h3 className="text-lg font-semibold text-zionx-primary mb-4">🏢 Información de la Empresa</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="text-zionx-accent">Razón Social:</span> <span className="text-zionx-primary font-medium">{form.business_name}</span></div>
-                      <div><span className="text-zionx-accent">RFC:</span> <span className="text-zionx-primary font-medium">{form.rfc}</span></div>
-                      <div><span className="text-zionx-accent">Giro:</span> <span className="text-zionx-primary">{form.industry}</span></div>
-                      <div><span className="text-zionx-accent">Sitio Web:</span> <span className="text-zionx-primary">{form.website || 'No proporcionado'}</span></div>
-                    </div>
+                  <div className="zxccu-sumcard">
+                    <h3>🏢 Información de la Empresa</h3>
+                    <div className="zxccu-sumrow"><span className="k">Razón Social</span> <span className="v">{form.business_name}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">RFC</span> <span className="v">{form.rfc}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Giro</span> <span className="v">{form.industry}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Sitio Web</span> <span className="v">{form.website || 'No proporcionado'}</span></div>
                   </div>
 
                   {/* Fiscal Address Summary */}
-                  <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-lg p-6 border border-zionx-accent">
-                    <h3 className="text-lg font-semibold text-zionx-primary mb-4">📍 Dirección Fiscal</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="text-zionx-accent">Dirección:</span> <span className="text-zionx-primary">{form.fiscal_address}</span></div>
-                      <div><span className="text-zionx-accent">C.P.:</span> <span className="text-zionx-primary">{form.fiscal_postal_code}</span></div>
-                      <div><span className="text-zionx-accent">Ciudad:</span> <span className="text-zionx-primary">{form.fiscal_city}</span></div>
-                      <div><span className="text-zionx-accent">Estado:</span> <span className="text-zionx-primary">{form.fiscal_state}</span></div>
-                    </div>
+                  <div className="zxccu-sumcard">
+                    <h3>📍 Dirección Fiscal</h3>
+                    <div className="zxccu-sumrow"><span className="k">Dirección</span> <span className="v">{form.fiscal_address}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">C.P.</span> <span className="v">{form.fiscal_postal_code}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Ciudad</span> <span className="v">{form.fiscal_city}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Estado</span> <span className="v">{form.fiscal_state}</span></div>
                   </div>
 
                   {/* Contact Person Summary */}
-                  <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-lg p-6 border border-zionx-accent">
-                    <h3 className="text-lg font-semibold text-zionx-primary mb-4">👤 Persona de Contacto</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="text-zionx-accent">Nombre:</span> <span className="text-zionx-primary">{form.contact_first_name} {form.contact_last_name}</span></div>
-                      <div><span className="text-zionx-accent">Puesto:</span> <span className="text-zionx-primary">{form.contact_position || 'No especificado'}</span></div>
-                      <div><span className="text-zionx-accent">Email:</span> <span className="text-zionx-primary">{form.contact_email}</span></div>
-                      <div><span className="text-zionx-accent">Teléfono:</span> <span className="text-zionx-primary">{form.contact_phone}</span></div>
-                    </div>
+                  <div className="zxccu-sumcard">
+                    <h3>👤 Persona de Contacto</h3>
+                    <div className="zxccu-sumrow"><span className="k">Nombre</span> <span className="v">{form.contact_first_name} {form.contact_last_name}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Puesto</span> <span className="v">{form.contact_position || 'No especificado'}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Email</span> <span className="v">{form.contact_email}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Teléfono</span> <span className="v">{form.contact_phone}</span></div>
                   </div>
 
                   {/* Marketing Summary */}
-                  <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-lg p-6 border border-zionx-accent">
-                    <h3 className="text-lg font-semibold text-zionx-primary mb-4">📈 Información de Marketing</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="text-zionx-accent">Tamaño:</span> <span className="text-zionx-primary">{form.business_size}</span></div>
-                      <div><span className="text-zionx-accent">Empleados:</span> <span className="text-zionx-primary">{form.employees_count || 'No especificado'}</span></div>
-                      <div><span className="text-zionx-accent">Facturación:</span> <span className="text-zionx-primary">${parseFloat(form.annual_revenue || 0).toLocaleString()}</span></div>
-                      <div><span className="text-zionx-accent">Presupuesto Marketing:</span> <span className="text-zionx-primary">${parseFloat(form.marketing_budget || 0).toLocaleString()}</span></div>
-                    </div>
+                  <div className="zxccu-sumcard">
+                    <h3>📈 Información de Marketing</h3>
+                    <div className="zxccu-sumrow"><span className="k">Tamaño</span> <span className="v">{form.business_size}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Empleados</span> <span className="v">{form.employees_count || 'No especificado'}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Facturación</span> <span className="v">${parseFloat(form.annual_revenue || 0).toLocaleString()}</span></div>
+                    <div className="zxccu-sumrow"><span className="k">Presupuesto Marketing</span> <span className="v">${parseFloat(form.marketing_budget || 0).toLocaleString()}</span></div>
                   </div>
 
                   {/* Documents Summary */}
-                  <div className="bg-gradient-to-br from-zionx-tertiary to-zionx-secondary rounded-lg p-6 border border-zionx-accent">
-                    <h3 className="text-lg font-semibold text-zionx-primary mb-4">📄 Documentos</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-zionx-accent">Acta Constitutiva:</span>
-                        <span className={files.business_license ? 'text-zionx-highlight' : 'text-zionx-accent'}>
-                          {files.business_license ? '✓ Subido' : '○ Opcional'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-zionx-accent">Constancia Fiscal:</span>
-                        <span className={files.tax_certificate ? 'text-zionx-highlight' : 'text-zionx-accent'}>
-                          {files.tax_certificate ? '✓ Subido' : '○ Opcional'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-zionx-accent">Comp. Domicilio Fiscal:</span>
-                        <span className={files.fiscal_address_proof ? 'text-zionx-highlight' : 'text-zionx-accent'}>
-                          {files.fiscal_address_proof ? '✓ Subido' : '○ Opcional'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-zionx-accent">ID Representante:</span>
-                        <span className={files.legal_representative_id ? 'text-zionx-highlight' : 'text-zionx-accent'}>
-                          {files.legal_representative_id ? '✓ Subido' : '○ Opcional'}
-                        </span>
-                      </div>
+                  <div className="zxccu-sumcard">
+                    <h3>📄 Documentos</h3>
+                    <div className="zxccu-sumrow">
+                      <span className="k">Acta Constitutiva</span>
+                      <span className={files.business_license ? 'v ok' : 'v off'}>
+                        {files.business_license ? '✓ Subido' : '○ Opcional'}
+                      </span>
+                    </div>
+                    <div className="zxccu-sumrow">
+                      <span className="k">Constancia Fiscal</span>
+                      <span className={files.tax_certificate ? 'v ok' : 'v off'}>
+                        {files.tax_certificate ? '✓ Subido' : '○ Opcional'}
+                      </span>
+                    </div>
+                    <div className="zxccu-sumrow">
+                      <span className="k">Comp. Domicilio Fiscal</span>
+                      <span className={files.fiscal_address_proof ? 'v ok' : 'v off'}>
+                        {files.fiscal_address_proof ? '✓ Subido' : '○ Opcional'}
+                      </span>
+                    </div>
+                    <div className="zxccu-sumrow">
+                      <span className="k">ID Representante</span>
+                      <span className={files.legal_representative_id ? 'v ok' : 'v off'}>
+                        {files.legal_representative_id ? '✓ Subido' : '○ Opcional'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-zionx-highlight/10 border border-zionx-highlight/30 rounded-lg p-4">
-                  <h4 className="text-zionx-highlight font-semibold mb-2">⚠️ Confirmación</h4>
-                  <p className="text-zionx-primary text-sm">
-                    ¿La información proporcionada es correcta? Una vez creado el cliente empresarial, 
+                <div className="zxccu-note warn">
+                  <h4>⚠️ Confirmación</h4>
+                  <p>
+                    ¿La información proporcionada es correcta? Una vez creado el cliente empresarial,
                     podrás editar estos campos y agregar proyectos de marketing desde el perfil del cliente.
                   </p>
                 </div>
@@ -950,22 +896,22 @@ const CreateCustomer = () => {
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex justify-between pt-8 border-t border-neutral-200">
+            <div className="zxccu-nav">
               <button
                 type="button"
                 onClick={prevStep}
                 disabled={currentStep === 1}
-                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-white disabled:text-gray-500 text-neutral-800 rounded-lg font-medium transition-colors"
+                className="zxccu-navbtn"
               >
                 ← Anterior
               </button>
 
-              <div className="flex gap-3">
+              <div className="r">
                 {currentStep < steps.length ? (
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-neutral-800 rounded-lg font-medium transition-colors"
+                    className="zxccu-navbtn solid"
                   >
                     Siguiente →
                   </button>
@@ -974,7 +920,7 @@ const CreateCustomer = () => {
                     type="button"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="px-8 py-3 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-600 text-neutral-800 rounded-lg font-bold transition-colors shadow-lg"
+                    className="zxccu-navbtn solid"
                   >
                     {isSubmitting ? "Creando Cliente..." : "✅ Crear Cliente"}
                   </button>
@@ -984,14 +930,14 @@ const CreateCustomer = () => {
 
             {/* Progress Bar for Upload */}
             {uploadProgress > 0 && (
-              <div className="mt-6">
-                <div className="flex justify-between text-sm text-neutral-600 mb-2">
+              <div className="zxccu-progress">
+                <div className="lab">
                   <span>Creando cliente...</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                <div className="track">
+                  <div
+                    className="bar"
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
