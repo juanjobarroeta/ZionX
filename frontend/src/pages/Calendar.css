@@ -11,6 +11,9 @@
   --line-soft: rgba(4,17,26,0.08);
   --muted: rgba(4,17,26,0.55);
   --crit: #8A1C1C;
+  --ok: #235B44;
+  --warn: #9A6B1E;
+  --bad: #8A1C1C;
   min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
@@ -24,6 +27,7 @@
   --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
   --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.08);
   --muted: rgba(4,17,26,0.55); --crit: #8A1C1C;
+  --ok: #235B44; --warn: #9A6B1E; --bad: #8A1C1C;
   font-family: 'Bricolage', Helvetica, Arial, sans-serif;
 }
 .zxc-drawer *, .zxc-modal * { box-sizing: border-box; }
@@ -150,6 +154,29 @@
 .zxc-missing ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
 .zxc-missing li { color: var(--ink); }
 .zxc-pill.v-muted { border: 1px solid rgba(4,17,26,0.2); opacity: 0.6; }
+
+/* Production pipeline (drawer) */
+.zxc-pipe { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+.zxc-pipe-loading { font-size: 13.5px; color: var(--muted); }
+.zxc-stage { padding: 12px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 8px; }
+.zxc-stage:last-child { border-bottom: none; }
+.zxc-stage.opt { opacity: 0.66; }
+.zxc-stage-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.zxc-stage-name { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 8px; }
+.zxc-opt-tag { font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px; }
+.zxc-stage-owner { font-size: 12.5px; color: var(--muted); }
+.zxc-stage-controls { display: flex; gap: 8px; }
+.zxc-stage-controls .zxc-select { flex: 1; }
+.zxc-select.sm { padding: 8px 10px; font-size: 13px; }
+.zxc-stage-ai { display: flex; align-items: center; gap: 10px; }
+.zxc-linkbtn { background: none; border: none; padding: 0; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.zxc-linkbtn:hover { opacity: 0.65; }
+.zxc-soon { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+/* Pipeline status pills (brand tokens) */
+.zxc-pill.v-stage-muted { border: 1px solid rgba(4,17,26,0.2); color: var(--muted); }
+.zxc-pill.v-stage-warn { background: var(--warn); color: var(--paper); }
+.zxc-pill.v-stage-ok { background: var(--ok); color: var(--paper); }
+.zxc-pill.v-stage-bad { background: var(--bad); color: var(--paper); }
 
 /* Status pill (drawer/legend) */
 .zxc-pill { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap; }
