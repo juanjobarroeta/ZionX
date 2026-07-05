@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import "./LeadsInbox.css";
 
 const LeadsInbox = () => {
   const [leads, setLeads] = useState([]);
@@ -126,219 +127,203 @@ const LeadsInbox = () => {
 
   return (
     <Layout>
-      <div className="flex h-screen bg-white">
-        {/* Left Sidebar - Leads List */}
-        <div className="w-96 border-r border-gray-200 flex flex-col">
+      <div className="zxlead">
+        <div className="zxlead-inner">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-black mb-4">💬 Leads Inbox</h1>
-            
-            {/* Status Filter */}
-            <div className="flex flex-wrap gap-2">
-              {['all', 'new', 'contacted', 'qualified', 'converted'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => {
-                    setStatusFilter(status);
-                    fetchLeads();
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    statusFilter === status
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {status === 'all' ? 'Todos' : status.charAt(0).toUpperCase() + status.slice(1)}
-                </button>
-              ))}
-            </div>
+          <header>
+            <p className="zxlead-eyebrow">Bandeja de entrada</p>
+            <h1 className="zxlead-h1">
+              Leads <span className="zxlead-serif">Inbox</span>
+            </h1>
+          </header>
+
+          {/* Status Filter */}
+          <div className="zxlead-filters">
+            {['all', 'new', 'contacted', 'qualified', 'converted'].map(status => (
+              <button
+                key={status}
+                onClick={() => {
+                  setStatusFilter(status);
+                  fetchLeads();
+                }}
+                className={`zxlead-chip ${statusFilter === status ? 'active' : ''}`}
+              >
+                {status === 'all' ? 'Todos' : status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {/* Leads List */}
-          <div className="flex-1 overflow-y-auto">
-            {loading && leads.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-              </div>
-            ) : leads.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <p className="mb-2">📭 No hay leads</p>
-                <p className="text-sm">Los nuevos leads aparecerán aquí</p>
-              </div>
-            ) : (
-              <div>
-                {leads.map(lead => (
-                  <div
-                    key={lead.id}
-                    onClick={() => handleSelectLead(lead)}
-                    className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedLead?.id === lead.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* Avatar */}
-                      <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                        {(lead.whatsapp_name || lead.phone_number || '?').charAt(0).toUpperCase()}
-                      </div>
+          {/* Two-pane shell */}
+          <div className="zxlead-shell">
+            {/* Left pane - Leads list */}
+            <div className="zxlead-side">
+              <div className="zxlead-list">
+                {loading && leads.length === 0 ? (
+                  <div className="zxlead-loading">
+                    <div className="zxlead-spin"></div>
+                  </div>
+                ) : leads.length === 0 ? (
+                  <div className="zxlead-empty-side">
+                    <p className="title">No hay leads</p>
+                    <p className="sub">Los nuevos leads aparecerán aquí</p>
+                  </div>
+                ) : (
+                  <div>
+                    {leads.map(lead => (
+                      <button
+                        key={lead.id}
+                        onClick={() => handleSelectLead(lead)}
+                        className={`zxlead-row ${selectedLead?.id === lead.id ? 'active' : ''}`}
+                      >
+                        <div className="zxlead-row-body">
+                          {/* Avatar */}
+                          <div className="zxlead-avatar">
+                            {(lead.whatsapp_name || lead.phone_number || '?').charAt(0).toUpperCase()}
+                          </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-semibold text-black truncate">
-                            {lead.whatsapp_name || lead.phone_number}
-                          </p>
-                          <span className="text-xs text-gray-500">
-                            {formatTime(lead.last_message_at || lead.created_at)}
-                          </span>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 truncate mb-2">
-                          {lead.last_message || 'Sin mensajes'}
-                        </p>
+                          {/* Info */}
+                          <div className="zxlead-row-main">
+                            <div className="zxlead-row-line">
+                              <span className={`zxlead-row-name ${lead.unread_count > 0 ? 'unread' : ''}`}>
+                                {lead.whatsapp_name || lead.phone_number}
+                              </span>
+                              <span className="zxlead-row-time">
+                                {formatTime(lead.last_message_at || lead.created_at)}
+                              </span>
+                            </div>
 
-                        <div className="flex items-center justify-between">
-                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(lead.status)}`}>
-                            {lead.status}
-                          </span>
-                          {lead.unread_count > 0 && (
-                            <span className="bg-green-500 text-white text-xs rounded-full px-2 py-1 font-medium">
-                              {lead.unread_count}
-                            </span>
-                          )}
+                            <p className="zxlead-row-preview">
+                              {lead.last_message || 'Sin mensajes'}
+                            </p>
+
+                            <div className="zxlead-row-line2">
+                              <span className={`zxlead-pill status-${lead.status}`}>
+                                {lead.status}
+                              </span>
+                              {lead.unread_count > 0 && (
+                                <span className="zxlead-unread-dot">
+                                  {lead.unread_count}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right pane - Chat */}
+            {selectedLead ? (
+              <div className="zxlead-main">
+                {/* Chat Header */}
+                <div className="zxlead-chat-head">
+                  <div className="zxlead-chat-who">
+                    <div className="zxlead-avatar sm">
+                      {(selectedLead.whatsapp_name || selectedLead.phone_number).charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="zxlead-chat-name">{selectedLead.whatsapp_name || 'Sin nombre'}</div>
+                      <div className="zxlead-chat-phone">{selectedLead.phone_number}</div>
                     </div>
                   </div>
-                ))}
+
+                  <div className="zxlead-chat-actions">
+                    <span className={`zxlead-pill status-${selectedLead.status}`}>
+                      {selectedLead.status}
+                    </span>
+                    <button
+                      onClick={() => window.location.href = `/leads/${selectedLead.id}`}
+                      className="zxlead-profile-btn"
+                    >
+                      Ver Perfil
+                    </button>
+                  </div>
+                </div>
+
+                {/* Messages Area */}
+                <div className="zxlead-messages">
+                  {messages.length === 0 ? (
+                    <div className="zxlead-chat-empty">
+                      <p>Aún no hay mensajes. Inicia la conversación.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {messages.map((msg, index) => (
+                        <div
+                          key={msg.id || index}
+                          className={`zxlead-msg-row ${msg.direction === 'outbound' ? 'mine' : 'theirs'}`}
+                        >
+                          <div className={`zxlead-bubble ${msg.direction === 'outbound' ? 'mine' : 'theirs'}`}>
+                            <p>{msg.content}</p>
+                            <div className="zxlead-meta">
+                              <span className="zxlead-time">
+                                {formatTime(msg.sent_at)}
+                              </span>
+                              {msg.direction === 'outbound' && (
+                                <span className={`zxlead-tick ${msg.status === 'failed' ? 'failed' : ''}`}>
+                                  {msg.status === 'sent' && '✓'}
+                                  {msg.status === 'delivered' && '✓✓'}
+                                  {msg.status === 'read' && '✓✓'}
+                                  {msg.status === 'failed' && 'Fallido'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </>
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <div className="zxlead-composer">
+                  <div className="zxlead-composer-row">
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Escribe un mensaje..."
+                      className="zxlead-textarea"
+                      rows={2}
+                      disabled={sending}
+                    />
+                    <button
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || sending}
+                      className="zxlead-send"
+                    >
+                      {sending ? (
+                        <>
+                          <div className="zxlead-spin sm"></div>
+                          <span>Enviando...</span>
+                        </>
+                      ) : (
+                        <span>Enviar</span>
+                      )}
+                    </button>
+                  </div>
+                  <p className="zxlead-hint">
+                    Presiona Enter para enviar, Shift+Enter para nueva línea
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="zxlead-noconv">
+                <div>
+                  <h2>Selecciona un lead</h2>
+                  <p>Elige una conversación de la izquierda para empezar</p>
+                </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Right Side - Chat Area */}
-        {selectedLead ? (
-          <div className="flex-1 flex flex-col">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">
-                    {(selectedLead.whatsapp_name || selectedLead.phone_number).charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-black">{selectedLead.whatsapp_name || 'Sin nombre'}</h3>
-                    <p className="text-sm text-gray-500">{selectedLead.phone_number}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <span className={`text-xs px-3 py-1 rounded-full ${getStatusColor(selectedLead.status)}`}>
-                    {selectedLead.status}
-                  </span>
-                  <button
-                    onClick={() => window.location.href = `/leads/${selectedLead.id}`}
-                    className="text-gray-600 hover:text-black px-3 py-2 rounded-lg hover:bg-gray-100"
-                  >
-                    ℹ️ Ver Perfil
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-              {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  <p>Aún no hay mensajes. ¡Inicia la conversación!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((msg, index) => (
-                    <div
-                      key={msg.id || index}
-                      className={`flex ${msg.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-md px-4 py-2 rounded-lg ${
-                          msg.direction === 'outbound'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-white border border-gray-200 text-black'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                        <div className="flex items-center justify-end space-x-2 mt-1">
-                          <p className={`text-xs ${msg.direction === 'outbound' ? 'text-green-100' : 'text-gray-500'}`}>
-                            {formatTime(msg.sent_at)}
-                          </p>
-                          {msg.direction === 'outbound' && (
-                            <span className="text-xs">
-                              {msg.status === 'sent' && '✓'}
-                              {msg.status === 'delivered' && '✓✓'}
-                              {msg.status === 'read' && '✓✓'}
-                              {msg.status === 'failed' && '❌'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 bg-white">
-              <div className="flex items-end space-x-2">
-                <div className="flex-1">
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Escribe un mensaje..."
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                    rows={2}
-                    disabled={sending}
-                  />
-                </div>
-                <button
-                  onClick={sendMessage}
-                  disabled={!newMessage.trim() || sending}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  {sending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Enviando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>📤</span>
-                      <span>Enviar</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                💡 Tip: Presiona Enter para enviar, Shift+Enter para nueva línea
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <div className="text-6xl mb-4">💬</div>
-              <p className="text-xl font-medium mb-2">Selecciona un lead</p>
-              <p className="text-sm">Elige una conversación de la izquierda para empezar</p>
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   );
 };
 
 export default LeadsInbox;
-
-
-

@@ -244,14 +244,14 @@ const MessageHub = () => {
                     className="zxmsg-new-btn"
                     title="Nueva conversación"
                   >
-                    ✏️
+                    Nueva
                   </button>
                 </div>
                 <button
                   onClick={() => navigate('/notifications')}
                   className="zxmsg-side-link"
                 >
-                  🔔 Ver notificaciones →
+                  Ver notificaciones →
                 </button>
               </div>
 
@@ -300,7 +300,6 @@ const MessageHub = () => {
                   ))
                 ) : (
                   <div className="zxmsg-empty-side">
-                    <span className="big">💬</span>
                     <p>No hay conversaciones</p>
                     <button
                       onClick={() => setShowNewConversation(true)}
@@ -329,14 +328,6 @@ const MessageHub = () => {
                           {selectedConversation.type === 'direct' ? 'Mensaje directo' : 'Grupo'}
                         </p>
                       </div>
-                    </div>
-                    <div className="zxmsg-thread-actions">
-                      <button className="zxmsg-icon-btn" title="Buscar en conversación">
-                        🔍
-                      </button>
-                      <button className="zxmsg-icon-btn" title="Más opciones">
-                        ⋮
-                      </button>
                     </div>
                   </div>
 
@@ -371,7 +362,9 @@ const MessageHub = () => {
                                       {/* Shared item */}
                                       {message.shared_item_type && (
                                         <div className="zxmsg-shared">
-                                          <span>📎</span>
+                                          <svg className="zxmsg-shared-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                          </svg>
                                           <span>
                                             {message.shared_item_type} #{message.shared_item_id}
                                           </span>
@@ -395,8 +388,7 @@ const MessageHub = () => {
                     ) : (
                       <div className="zxmsg-thread-empty">
                         <div>
-                          <span className="big">👋</span>
-                          <p>Inicia la conversación</p>
+                          <p>Aún no hay mensajes. Inicia la conversación.</p>
                         </div>
                       </div>
                     )}
@@ -406,13 +398,6 @@ const MessageHub = () => {
                   {/* Message Input */}
                   <form onSubmit={sendMessage} className="zxmsg-composer">
                     <div className="zxmsg-composer-row">
-                      <button
-                        type="button"
-                        className="zxmsg-attach"
-                        title="Adjuntar archivo"
-                      >
-                        📎
-                      </button>
                       <input
                         ref={messageInputRef}
                         type="text"
@@ -435,9 +420,8 @@ const MessageHub = () => {
                 /* No conversation selected */
                 <div className="zxmsg-noconv">
                   <div>
-                    <span className="big">💬</span>
                     <h2>Selecciona una conversación</h2>
-                    <p>O inicia una nueva con el botón ✏️</p>
+                    <p>Elige un mensaje de la lista o empieza uno nuevo.</p>
                     <button
                       onClick={() => setShowNewConversation(true)}
                       className="zxmsg-noconv-btn"
@@ -456,7 +440,7 @@ const MessageHub = () => {
           <div className="zxmsg-modal-overlay">
             <div className="zxmsg-modal">
               <div className="zxmsg-modal-head">
-                <h2>✏️ Nueva Conversación</h2>
+                <h2>Nueva Conversación</h2>
                 <button
                   onClick={() => { setShowNewConversation(false); setSearchUser(""); }}
                   className="zxmsg-modal-close"

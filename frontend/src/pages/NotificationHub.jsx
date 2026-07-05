@@ -132,30 +132,13 @@ const NotificationHub = () => {
     return date.toLocaleDateString('es-MX');
   };
 
-  const getTypeIcon = (type) => {
-    const icons = {
-      info: '📢',
-      success: '✅',
-      warning: '⚠️',
-      error: '❌',
-      message: '💬',
-      task: '📋',
-      system: '⚙️'
+  const getTypeTone = (type) => {
+    const tones = {
+      success: 'is-ok',
+      warning: 'is-warn',
+      error: 'is-bad'
     };
-    return icons[type] || '📢';
-  };
-
-  const getTypeBgColor = (type) => {
-    const colors = {
-      info: 'bg-blue-100',
-      success: 'bg-green-100',
-      warning: 'bg-yellow-100',
-      error: 'bg-red-100',
-      message: 'bg-purple-100',
-      task: 'bg-indigo-100',
-      system: 'bg-gray-100'
-    };
-    return colors[type] || 'bg-gray-100';
+    return tones[type] || '';
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -183,20 +166,20 @@ const NotificationHub = () => {
                 onClick={createTestNotifications}
                 className="zxntf-btn"
               >
-                🧪 Crear Pruebas
+                Crear pruebas
               </button>
               <button
                 onClick={() => navigate('/messages')}
                 className="zxntf-btn"
               >
-                💬 Mensajes
+                Mensajes
               </button>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   className="zxntf-btn solid"
                 >
-                  ✓ Marcar todo como leído
+                  Marcar todo como leído
                 </button>
               )}
             </div>
@@ -205,16 +188,16 @@ const NotificationHub = () => {
           {/* Filters */}
           <div className="zxntf-filters">
             {[
-              { id: 'all', label: 'Todas', icon: '📋' },
-              { id: 'unread', label: 'No leídas', icon: '🔵' },
-              { id: 'read', label: 'Leídas', icon: '✓' }
+              { id: 'all', label: 'Todas' },
+              { id: 'unread', label: 'No leídas' },
+              { id: 'read', label: 'Leídas' }
             ].map(f => (
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
                 className={`zxntf-chip ${filter === f.id ? 'active' : ''}`}
               >
-                {f.icon} {f.label}
+                {f.label}
               </button>
             ))}
 
@@ -223,7 +206,7 @@ const NotificationHub = () => {
                 onClick={clearAll}
                 className="zxntf-clear"
               >
-                🗑️ Limpiar todo
+                Limpiar todo
               </button>
             )}
           </div>
@@ -239,10 +222,8 @@ const NotificationHub = () => {
                   className={`zxntf-row ${notification.is_read ? '' : 'unread'}`}
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  {/* Icon */}
-                  <div className="zxntf-ico">
-                    {notification.icon || getTypeIcon(notification.type)}
-                  </div>
+                  {/* Type mark */}
+                  <div className={`zxntf-mark ${getTypeTone(notification.type)}`} aria-hidden="true"></div>
 
                   {/* Content */}
                   <div className="zxntf-body">
@@ -292,7 +273,12 @@ const NotificationHub = () => {
             </div>
           ) : (
             <div className="zxntf-empty">
-              <span className="big">🔔</span>
+              <svg className="big" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+                aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+              </svg>
               <div className="lead">
                 {filter === 'unread' ? 'No hay notificaciones sin leer' : 'No hay notificaciones'}
               </div>
