@@ -150,3 +150,12 @@
   .zxnom-cols2 { grid-template-columns: 1fr; }
   .zxnom-grid2 { grid-template-columns: 1fr; }
 }
+
+/* Fiscal CFDI stamping (contabilidad-os) */
+.zxnom-cfdi { font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; white-space: nowrap; }
+.zxnom-cfdi.ok { background: var(--ok); color: #fff; }
+.zxnom-cfdi.err { background: var(--bad); color: #fff; cursor: help; }
+.zxnom-cfdi.muted { border: 1px solid var(--line); color: var(--muted); }
+.zxnom-stamp-report { margin: 12px 22px 0; padding: 12px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; background: rgba(35,91,68,0.08); border: 1px solid rgba(35,91,68,0.3); color: var(--ink); }
+.zxnom-stamp-report.error { background: rgba(138,28,28,0.08); border-color: rgba(138,28,28,0.3); color: var(--bad); }
+.zxnom-stamp-errors { margin: 8px 0 0; padding-left: 18px; font-weight: 500; color: var(--bad); line-height: 1.6; }
