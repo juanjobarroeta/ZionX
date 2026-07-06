@@ -233,6 +233,11 @@ async function start() {
     // Bancos — bank statement reconciliation (finance — finanzas section)
     app.use('/api/bancos', withPool, authenticateToken, requireSection('finanzas'), bancosRoutes);
 
+    // Fiscal mirror from contabilidad-os (read-only)
+    const { nominaRouter, estadosRouter } = require('./routes/hub-mirror-routes');
+    app.use('/api', withPool, authenticateToken, requireSection('hr'), nominaRouter);
+    app.use('/api', withPool, authenticateToken, requireSection('finanzas'), estadosRouter);
+
     // Creative Briefs (has its own public/auth split)
     app.use('/api/briefs', withPool, creativeBriefsRoutes);
 

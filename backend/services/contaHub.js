@@ -234,8 +234,38 @@ async function uploadBankStatement(accountId, { fileContent, filename, encoding 
   return hub(`/api/bancos/${accountId}/upload`, { method: "POST", body: { fileContent, filename, encoding } });
 }
 
+// =====================================================
+// NÓMINA + ESTADOS FINANCIEROS — read-only mirror.
+// ContaOS is the fiscal source of truth; ZionX surfaces payroll runs and
+// financial statements over the hub (bearer-auth, scoped to companyId).
+// =====================================================
+
+// GET /api/nomina/run?companyId — payroll runs (periodo, totals, status).
+async function listPayrollRuns() {
+  const c = CFG();
+  return hub(`/api/nomina/run?companyId=${encodeURIComponent(c.companyId)}`);
+}
+
+// GET /api/nomina/run/:id — a run with its per-employee receipts.
+async function getPayrollRun(runId) {
+  return hub(`/api/nomina/run/${runId}`);
+}
+
+// GET /api/contabilidad/estado-resultados — income statement (P&L) for a month.
+async function estadoResultados(year, month) {
+  const c = CFG();
+  return hub(`/api/contabilidad/estado-resultados?companyId=${encodeURIComponent(c.companyId)}&year=${year}&month=${month}`);
+}
+
+// GET /api/contabilidad/balanza — trial balance for a month.
+async function balanza(year, month) {
+  const c = CFG();
+  return hub(`/api/contabilidad/balanza?companyId=${encodeURIComponent(c.companyId)}&year=${year}&month=${month}`);
+}
+
 module.exports = {
   isConfigured, stampInvoice, ensureReceptor, listInvoices, CFG,
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
+  listPayrollRuns, getPayrollRun, estadoResultados, balanza,
 };

@@ -45,6 +45,8 @@ const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
 const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
 const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
 const BancosManager = lazy(() => import("./pages/BancosManager"));
+const NominaFiscal = lazy(() => import("./pages/NominaFiscal"));
+const EstadosFinancieros = lazy(() => import("./pages/EstadosFinancieros"));
 const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
 const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
 const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
@@ -160,11 +162,13 @@ const AppRouter = () => (
         <Route path="/income/addons" element={<FinanceRoute><AddonsManager /></FinanceRoute>} />
         <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
         <Route path="/bancos" element={<FinanceRoute><BancosManager /></FinanceRoute>} />
+        <Route path="/finance/estados" element={<FinanceRoute><EstadosFinancieros /></FinanceRoute>} />
 
         {/* HR & Payroll */}
         <Route path="/people" element={<HRRoute><PeopleManagement /></HRRoute>} />
         <Route path="/hr/employees" element={<HRRoute><PeopleManagement /></HRRoute>} />
         <Route path="/hr/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
+        <Route path="/hr/nomina-fiscal" element={<HRRoute><NominaFiscal /></HRRoute>} />
         <Route path="/hr/financials" element={<HRRoute><FinancialStatements /></HRRoute>} />
         <Route path="/payroll" element={<HRRoute><PayrollManagement /></HRRoute>} />
 
