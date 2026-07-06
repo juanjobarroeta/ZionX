@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const contaHub = require('../services/contaHub');
+const facturasAdapter = require('../services/facturas-hub-adapter');
 
 // Import helper functions from income.js
 // These will be shared utilities
@@ -17,14 +18,22 @@ router.get('/cfdi/health', (req, res) => {
 });
 
 // Surface the company's real CFDIs from contabilidad-os (read-only mirror).
+// tipo filters INGRESO|EGRESO|NOMINA|PAGO; normalized for the Facturas page.
 router.get('/cfdi/invoices', async (req, res) => {
   try {
-    if (!contaHub.isConfigured()) return res.json({ configured: false, invoices: [] });
-    const invoices = await contaHub.listInvoices({ q: req.query.q, take: parseInt(req.query.take, 10) || 50 });
-    res.json({ configured: true, invoices });
+    if (!contaHub.isConfigured()) return res.json({ configured: false, facturas: [] });
+    const VALID_TIPO = ['INGRESO', 'EGRESO', 'NOMINA', 'PAGO', 'TRASLADO'];
+    const tipo = VALID_TIPO.includes(req.query.tipo) ? req.query.tipo : undefined;
+    const invoices = await contaHub.listInvoices({
+      q: req.query.q,
+      tipo,
+      take: Math.min(parseInt(req.query.take, 10) || 100, 200),
+      skip: parseInt(req.query.skip, 10) || 0,
+    });
+    res.json({ configured: true, facturas: facturasAdapter.normalizeFacturas(invoices) });
   } catch (error) {
     console.error('Error listing hub CFDIs:', error.message);
-    res.status(502).json({ configured: true, error: error.message, invoices: [] });
+    res.status(502).json({ configured: true, error: error.message, facturas: [] });
   }
 });
 
