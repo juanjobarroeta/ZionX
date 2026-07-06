@@ -100,4 +100,19 @@
 a.zxin-uuid:hover { text-decoration: underline; }
 .zxin-cancel { font-family: inherit; font-size: 12px; font-weight: 600; color: var(--bad); background: none; border: none; cursor: pointer; padding: 4px 6px; }
 .zxin-cancel:hover { text-decoration: underline; }
+
+/* Fiscal mirror (CFDI from contabilidad-os) */
+.zxin-sync { margin-top: 8px; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--ok); }
+.zxin-sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.zxin-toggle { display: inline-flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; width: fit-content; }
+.zxin-tbtn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 16px; border: none; background: var(--surface); color: var(--muted); cursor: pointer; }
+.zxin-tbtn.active { background: var(--ink); color: #fff; }
+.zxin-tipo { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; padding: 3px 8px; border-radius: 2px; white-space: nowrap; }
+.zxin-tipo.in { background: rgba(35,91,68,0.14); color: var(--ok); }
+.zxin-tipo.out { background: rgba(138,28,28,0.12); color: var(--bad); }
+.zxin-tipo.nom { background: rgba(31,78,107,0.12); color: #1F4E6B; }
+.zxin-tipo.pago { background: var(--chip); color: var(--muted); }
+.zxin-tipo.draft { border: 1px solid var(--line); color: var(--muted); }
+.zxin-rfc { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.zxin-table .muted { color: var(--muted); }
 .zxin-cancel:disabled { opacity: 0.5; cursor: default; }

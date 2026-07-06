@@ -53,6 +53,7 @@ const NAV_GROUPS = [
       { href: "/bancos", label: "Bancos", section: "finanzas" },
       { href: "/admin/budgets", label: "Presupuestos", section: "finanzas" },
       { href: "/hr/financials", label: "Estados Financieros", section: "finanzas" },
+      { href: "/finance/estados", label: "Estados Fiscales", section: "finanzas" },
     ],
   },
   {
@@ -61,6 +62,7 @@ const NAV_GROUPS = [
       { href: "/people", label: "Gestión de Equipo", section: "hr" },
       { href: "/team-management", label: "Miembros", section: "hr" },
       { href: "/hr/payroll", label: "Nómina", section: "hr" },
+      { href: "/hr/nomina-fiscal", label: "Nómina Fiscal", section: "hr" },
     ],
   },
   {
