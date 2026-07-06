@@ -184,4 +184,55 @@ async function listInvoices({ q, take = 50 } = {}) {
   return hub(`/api/facturas?${params.toString()}`);
 }
 
-module.exports = { isConfigured, stampInvoice, ensureReceptor, listInvoices, CFG };
+// =====================================================
+// BANCOS — bank reconciliation mirror.
+// ContaOS is the source of truth for bank data + conciliación. These call the
+// hub's /api/bancos endpoints (bearer-auth) so ZionX reads AND writes the same
+// records — a reconciliation done in either app shows in both. Raw hub JSON is
+// returned; bancos-routes normalizes it to the ZionX frontend shape.
+// =====================================================
+
+// GET /api/bancos?companyId — accounts with per-account stats.
+async function listBankAccounts() {
+  const c = CFG();
+  return hub(`/api/bancos?companyId=${encodeURIComponent(c.companyId)}`);
+}
+
+// POST /api/bancos — create an account under the agency's company.
+async function createBankAccount(body) {
+  const c = CFG();
+  return hub(`/api/bancos`, { method: "POST", body: { companyId: c.companyId, ...body } });
+}
+
+// GET /api/bancos/:id — paginated transactions + statusCounts.
+async function listBankTransactions(accountId, { status, page = 1, pageSize = 50 } = {}) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (status) params.set("status", status);
+  return hub(`/api/bancos/${accountId}?${params.toString()}`);
+}
+
+// GET /api/bancos/:id/match?txId — scored match candidates for a movement.
+async function bankCandidates(accountId, txId) {
+  return hub(`/api/bancos/${accountId}/match?txId=${encodeURIComponent(txId)}`);
+}
+
+// POST /api/bancos/:id/match — run the auto-match engine on the account.
+async function autoConciliar(accountId) {
+  return hub(`/api/bancos/${accountId}/match`, { method: "POST" });
+}
+
+// PATCH /api/bancos/transactions/:txId — match / ignore / unmatch / unignore.
+async function applyBankTx(txId, body) {
+  return hub(`/api/bancos/transactions/${txId}`, { method: "PATCH", body });
+}
+
+// POST /api/bancos/:id/upload — import a statement into the shared source.
+async function uploadBankStatement(accountId, { fileContent, filename, encoding }) {
+  return hub(`/api/bancos/${accountId}/upload`, { method: "POST", body: { fileContent, filename, encoding } });
+}
+
+module.exports = {
+  isConfigured, stampInvoice, ensureReceptor, listInvoices, CFG,
+  listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
+  autoConciliar, applyBankTx, uploadBankStatement,
+};

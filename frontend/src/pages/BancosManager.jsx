@@ -34,6 +34,7 @@ const BancosManager = () => {
   const [activeId, setActiveId] = useState(null);
   const [loadingAccts, setLoadingAccts] = useState(true);
   const [txState, setTxState] = useState({ loading: false, transactions: [], counts: { UNMATCHED: 0, MATCHED: 0, IGNORED: 0 } });
+  const [source, setSource] = useState(null); // 'hub' | 'local'
   const [filter, setFilter] = useState("");
   const [importReport, setImportReport] = useState(null);
   const [showDescartadas, setShowDescartadas] = useState(false);
@@ -53,6 +54,7 @@ const BancosManager = () => {
     try {
       const r = await axios.get(`${API_BASE_URL}/api/bancos/accounts`, { headers });
       const list = r.data?.accounts || [];
+      setSource(r.data?.source || null);
       setAccounts(list);
       setActiveId((prev) => prev && list.some((a) => a.id === prev) ? prev : (list[0]?.id ?? null));
     } catch {
@@ -122,7 +124,8 @@ const BancosManager = () => {
     setExpanded(tx.id);
     setCandidates({ loading: true, items: [] });
     try {
-      const r = await axios.get(`${API_BASE_URL}/api/bancos/transactions/${tx.id}/candidates`, { headers });
+      // account_id lets the hub scope candidates to the movement's account.
+      const r = await axios.get(`${API_BASE_URL}/api/bancos/transactions/${tx.id}/candidates?account_id=${activeId}`, { headers });
       setCandidates({ loading: false, items: r.data?.candidates || [] });
     } catch {
       setCandidates({ loading: false, items: [] });
@@ -158,6 +161,7 @@ const BancosManager = () => {
             <div>
               <div className="eyebrow">Finanzas</div>
               <h1>Conciliación <span className="zxbnk-serif">bancaria</span></h1>
+              {source === "hub" && <div className="zxbnk-sync">Sincronizado con contabilidad-os</div>}
             </div>
             <button className="zxbnk-btn primary" onClick={() => setShowAccountModal(true)}>Agregar cuenta</button>
           </div>

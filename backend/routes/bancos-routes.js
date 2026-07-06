@@ -7,6 +7,13 @@ const { parseStatement } = require('../services/bank-parser');
 const { persistTransactions } = require('../services/bank-import');
 const { findCandidates, autoConciliarCuenta } = require('../services/bank-reconcile');
 const { isBelvoConfigured } = require('../services/belvo');
+const contaHub = require('../services/contaHub');
+const hubAdapter = require('../services/bancos-hub-adapter');
+
+// When the contabilidad-os bridge is configured, ContaOS is the shared source
+// of truth: ZionX reads AND writes bank data through its API so a reconciliation
+// in either app shows in both. Otherwise ZionX falls back to its local tables.
+const hubMode = () => contaHub.isConfigured();
 
 // =====================================================
 // BANCOS — bank statement reconciliation (conciliación)
@@ -24,6 +31,10 @@ const MAIN_STATUSES = ['UNMATCHED', 'MATCHED', 'IGNORED'];
 // GET /api/bancos/accounts — accounts with per-account status counts + saldo.
 router.get('/accounts', async (req, res) => {
   try {
+    if (hubMode()) {
+      const hubAccounts = await contaHub.listBankAccounts();
+      return res.json({ accounts: hubAdapter.normalizeAccounts(hubAccounts), source: 'hub' });
+    }
     const pool = req.pool;
     const { rows: accounts } = await pool.query(
       `SELECT id, banco, nombre, numero_cuenta, clabe, moneda, tipo, titular,
@@ -57,6 +68,7 @@ router.get('/accounts', async (req, res) => {
         counts: countMap[a.id] || { UNMATCHED: 0, MATCHED: 0, IGNORED: 0 },
         saldo: saldoMap[a.id] ?? null,
       })),
+      source: 'local',
     });
   } catch (error) {
     console.error('Error listing bank accounts:', error);
@@ -67,9 +79,26 @@ router.get('/accounts', async (req, res) => {
 // POST /api/bancos/accounts — create an account.
 router.post('/accounts', async (req, res) => {
   try {
-    const pool = req.pool;
     const { banco, nombre, numero_cuenta, clabe, moneda, tipo, titular } = req.body || {};
     if (!banco) return res.status(400).json({ message: 'El banco es obligatorio' });
+
+    if (hubMode()) {
+      // ContaOS requires banco + nombre + numeroCuenta.
+      if (!nombre || !numero_cuenta) {
+        return res.status(400).json({ message: 'Nombre y número de cuenta son obligatorios' });
+      }
+      try {
+        const created = await contaHub.createBankAccount({
+          banco, nombre, numeroCuenta: numero_cuenta, clabe: clabe || undefined, moneda: moneda || 'MXN',
+        });
+        return res.status(201).json(hubAdapter.normalizeAccount(created));
+      } catch (err) {
+        const status = err.status === 409 ? 409 : 502;
+        return res.status(status).json({ message: err.message || 'No se pudo crear la cuenta en contabilidad-os' });
+      }
+    }
+
+    const pool = req.pool;
     const { rows } = await pool.query(
       `INSERT INTO bank_accounts (banco, nombre, numero_cuenta, clabe, moneda, tipo, titular)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
@@ -157,11 +186,22 @@ async function attachMatchLabels(pool, rows) {
 // GET /api/bancos/accounts/:id/transactions?status=&page=&pageSize=
 router.get('/accounts/:id/transactions', async (req, res) => {
   try {
-    const pool = req.pool;
     const { id } = req.params;
     const status = req.query.status;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize) || 50));
+
+    if (hubMode()) {
+      const hubResp = await contaHub.listBankTransactions(id, {
+        status: status && MAIN_STATUSES.includes(status) ? status : undefined,
+        page,
+        pageSize,
+      });
+      const norm = hubAdapter.normalizeTransactionList(hubResp);
+      return res.json({ ...norm, page, pageSize });
+    }
+
+    const pool = req.pool;
     const offset = (page - 1) * pageSize;
 
     const params = [id];
@@ -201,10 +241,7 @@ router.get('/accounts/:id/transactions', async (req, res) => {
 // Accepts either a multipart file field `file`, or JSON { fileContent, filename, encoding }.
 router.post('/accounts/:id/upload', upload.single('file'), async (req, res) => {
   try {
-    const pool = req.pool;
     const { id } = req.params;
-    const acc = await pool.query('SELECT id FROM bank_accounts WHERE id = $1', [id]);
-    if (!acc.rows.length) return res.status(404).json({ message: 'Cuenta no encontrada' });
 
     let buffer = null;
     let filename = '';
@@ -218,6 +255,27 @@ router.post('/accounts/:id/upload', upload.single('file'), async (req, res) => {
     } else {
       return res.status(400).json({ message: 'No se recibió archivo' });
     }
+
+    // Hub mode: hand the raw file to ContaOS so it lands in the shared source of
+    // truth (ContaOS parses it — incl. its bank-specific + vision handling).
+    if (hubMode()) {
+      const isBinary = /\.(xlsx|xls|xlsm)$/.test(filename.toLowerCase());
+      try {
+        const result = await contaHub.uploadBankStatement(id, {
+          fileContent: buffer.toString(isBinary ? 'base64' : 'utf8'),
+          filename,
+          encoding: isBinary ? 'base64' : 'text',
+        });
+        const norm = hubAdapter.normalizeImportResult(result);
+        return res.status(norm.success ? 200 : 422).json(norm);
+      } catch (err) {
+        return res.status(502).json({ message: err.message || 'No se pudo importar en contabilidad-os' });
+      }
+    }
+
+    const pool = req.pool;
+    const acc = await pool.query('SELECT id FROM bank_accounts WHERE id = $1', [id]);
+    if (!acc.rows.length) return res.status(404).json({ message: 'Cuenta no encontrada' });
 
     // Excel → CSV text; everything else is treated as text (CSV/OFX).
     const lower = filename.toLowerCase();
@@ -260,9 +318,12 @@ router.post('/accounts/:id/upload', upload.single('file'), async (req, res) => {
 // POST /api/bancos/accounts/:id/auto-conciliar — run auto-match.
 router.post('/accounts/:id/auto-conciliar', async (req, res) => {
   try {
-    const pool = req.pool;
     const { id } = req.params;
-    const matched = await autoConciliarCuenta(pool, id);
+    if (hubMode()) {
+      const r = await contaHub.autoConciliar(id);
+      return res.json({ success: true, matched: r.autoMatched ?? 0 });
+    }
+    const matched = await autoConciliarCuenta(req.pool, id);
     res.json({ success: true, matched });
   } catch (error) {
     console.error('Error auto-reconciling:', error);
@@ -271,10 +332,17 @@ router.post('/accounts/:id/auto-conciliar', async (req, res) => {
 });
 
 // GET /api/bancos/transactions/:txId/candidates — suggested matches.
+// In hub mode, pass ?account_id= (ContaOS scopes candidates by account).
 router.get('/transactions/:txId/candidates', async (req, res) => {
   try {
-    const pool = req.pool;
     const { txId } = req.params;
+    if (hubMode()) {
+      const accountId = req.query.account_id;
+      if (!accountId) return res.json({ candidates: [] });
+      const r = await contaHub.bankCandidates(accountId, txId);
+      return res.json({ candidates: hubAdapter.normalizeCandidates(r) });
+    }
+    const pool = req.pool;
     const { rows } = await pool.query(
       `SELECT id, fecha, descripcion, monto, status FROM bank_transactions WHERE id = $1`, [txId]
     );
@@ -290,10 +358,35 @@ router.get('/transactions/:txId/candidates', async (req, res) => {
 // PATCH /api/bancos/transactions/:txId — match / ignore / unmatch / unignore.
 router.patch('/transactions/:txId', async (req, res) => {
   try {
-    const pool = req.pool;
     const { txId } = req.params;
     const { action } = req.body || {};
 
+    if (hubMode()) {
+      // Translate ZionX's action vocabulary to ContaOS's.
+      let body;
+      if (action === 'match') {
+        const { matched_type, matched_id } = req.body;
+        if (matched_type !== 'invoice' || !matched_id) {
+          return res.status(400).json({ message: 'En modo hub sólo se puede conciliar con una factura (CFDI)' });
+        }
+        body = { action: 'match', invoiceId: matched_id };
+      } else if (action === 'ignore') {
+        body = { action: 'ignore', notes: req.body.category_tag || undefined };
+      } else if (action === 'unmatch' || action === 'unignore') {
+        body = { action };
+      } else {
+        return res.status(400).json({ message: 'Acción inválida', valid: ['match', 'ignore', 'unmatch', 'unignore'] });
+      }
+      try {
+        await contaHub.applyBankTx(txId, body);
+        return res.json({ success: true });
+      } catch (err) {
+        const status = err.status === 409 ? 409 : 502;
+        return res.status(status).json({ message: err.message || 'No se pudo actualizar en contabilidad-os' });
+      }
+    }
+
+    const pool = req.pool;
     const existing = await pool.query('SELECT * FROM bank_transactions WHERE id = $1', [txId]);
     if (!existing.rows.length) return res.status(404).json({ message: 'Movimiento no encontrado' });
 

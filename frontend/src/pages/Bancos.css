@@ -16,6 +16,8 @@
 .zxbnk-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .zxbnk-head .eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
 .zxbnk-head h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxbnk-sync { margin-top: 8px; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--ok); }
+.zxbnk-sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 
 /* buttons */
 .zxbnk-btn { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; transition: border-color 0.14s, background 0.14s; }
