@@ -251,6 +251,23 @@ async function getPayrollRun(runId) {
   return hub(`/api/nomina/run/${runId}`);
 }
 
+// GET /api/empleados?companyId — the company's employees (id, rfc, nombre).
+// Used to map ZionX team members to ContaOS employees by RFC before stamping.
+async function listEmployees() {
+  const c = CFG();
+  return hub(`/api/empleados?companyId=${encodeURIComponent(c.companyId)}`);
+}
+
+// POST /api/nomina/emit — stamp a fiscal CFDI de nómina for one employee.
+// body: { employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto }
+async function emitNomina({ employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto }) {
+  const c = CFG();
+  return hub(`/api/nomina/emit`, {
+    method: "POST",
+    body: { companyId: c.companyId, employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto },
+  });
+}
+
 // GET /api/contabilidad/estado-resultados — income statement (P&L) for a month.
 async function estadoResultados(year, month) {
   const c = CFG();
@@ -268,4 +285,5 @@ module.exports = {
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, balanza,
+  listEmployees, emitNomina,
 };

@@ -41,7 +41,10 @@ const PayrollManagement = () => {
   const [showEditEntryModal, setShowEditEntryModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [savingEntry, setSavingEntry] = useState(false);
-  
+  const [fiscalOn, setFiscalOn] = useState(false);
+  const [stamping, setStamping] = useState(false);
+  const [stampReport, setStampReport] = useState(null);
+
   // New period form
   const [newPeriod, setNewPeriod] = useState({
     period_type: '1ra_quincena', // 1ra_quincena, 2da_quincena
@@ -67,10 +70,35 @@ const PayrollManagement = () => {
 
       setPeriods(periodsRes.data);
       setEmployees(employeesRes.data);
+
+      // Is the fiscal integration (contabilidad-os) available? Gates the
+      // "Timbrar nómina fiscal" action.
+      axios.get(`${API_BASE_URL}/api/income/cfdi/health`, { headers })
+        .then((r) => setFiscalOn(!!r.data?.configured))
+        .catch(() => setFiscalOn(false));
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Stamp the fiscal CFDI de nómina for the open period in contabilidad-os.
+  const stampPeriod = async () => {
+    if (!selectedPeriod) return;
+    if (!window.confirm("Se timbrará el CFDI de nómina de este periodo en contabilidad-os, usando el sueldo base como monto fiscal de cada colaborador. ¿Continuar?")) return;
+    setStamping(true);
+    setStampReport(null);
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${API_BASE_URL}/api/hr/payroll/periods/${selectedPeriod.id}/stamp`, {}, { headers });
+      setStampReport(res.data);
+      await fetchPeriodDetails(selectedPeriod.id);
+    } catch (error) {
+      setStampReport({ error: error.response?.data?.error || "No se pudo timbrar la nómina" });
+    } finally {
+      setStamping(false);
     }
   };
 
@@ -471,13 +499,35 @@ const PayrollManagement = () => {
             <div className="zxnom-panel">
               <div className="zxnom-panel-head">
                 <h2>Detalle: {selectedPeriod.period_name}</h2>
-                <button
-                  onClick={() => setSelectedPeriod(null)}
-                  className="zxnom-link muted"
-                >
-                  ✕ Cerrar
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {fiscalOn && selectedPeriod.entries?.length > 0 && (
+                    <button onClick={stampPeriod} className="zxnom-link" disabled={stamping}>
+                      {stamping ? "Timbrando…" : "Timbrar nómina fiscal"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setSelectedPeriod(null); setStampReport(null); }}
+                    className="zxnom-link muted"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
+
+              {stampReport && (
+                <div className={`zxnom-stamp-report${stampReport.error ? " error" : ""}`}>
+                  {stampReport.error
+                    ? stampReport.error
+                    : `Timbradas ${stampReport.stamped}${stampReport.failed ? ` · ${stampReport.failed} con error` : ""}${stampReport.skipped ? ` · ${stampReport.skipped} ya timbradas` : ""}.`}
+                  {stampReport.results?.some((r) => r.status === "error") && (
+                    <ul className="zxnom-stamp-errors">
+                      {stampReport.results.filter((r) => r.status === "error").map((r) => (
+                        <li key={r.id}>{r.employee_name}: {r.error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               <div className="zxnom-panel-body">
                 {selectedPeriod.entries?.length > 0 ? (
@@ -493,6 +543,7 @@ const PayrollManagement = () => {
                         <th className="r">IMSS</th>
                         <th className="r">Otras Ded.</th>
                         <th className="r">Neto</th>
+                        {fiscalOn && <th>CFDI</th>}
                         {selectedPeriod.status !== 'paid' && (
                           <th className="c">Acciones</th>
                         )}
@@ -519,6 +570,17 @@ const PayrollManagement = () => {
                               {otherDed > 0 ? `-${formatCurrency(otherDed)}` : '-'}
                             </td>
                             <td className="r net">{formatCurrency(entry.net_pay)}</td>
+                            {fiscalOn && (
+                              <td>
+                                {entry.cfdi_uuid ? (
+                                  <span className="zxnom-cfdi ok" title={entry.cfdi_uuid}>Timbrada {String(entry.cfdi_uuid).slice(-6)}</span>
+                                ) : entry.cfdi_error ? (
+                                  <span className="zxnom-cfdi err" title={entry.cfdi_error}>Error</span>
+                                ) : (
+                                  <span className="zxnom-cfdi muted">Sin timbrar</span>
+                                )}
+                              </td>
+                            )}
                             {selectedPeriod.status !== 'paid' && (
                               <td className="c">
                                 <button

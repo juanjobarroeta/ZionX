@@ -3,6 +3,15 @@ const router = express.Router();
 const { createNotification, notifyAllUsers, NotificationTemplates } = require('../utils/notifications');
 const { calculateQuincenalPayroll } = require('../utils/mexicanTaxCalculations');
 const { requireSection } = require('../middleware/authorize');
+const contaHub = require('../services/contaHub');
+
+// Days in a period, inclusive, clamped to the SAT range emit accepts (1..31).
+function diasPagados(start, end) {
+  const a = new Date(start), b = new Date(end);
+  const days = Math.round((b - a) / 86400000) + 1;
+  return Math.min(31, Math.max(1, Number.isFinite(days) ? days : 15));
+}
+const isoDate = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
 // This router mixes a shared read (the employee LIST, which content roles need
 // for the calendar's designer/CM assignment dropdowns) with sensitive HR/finance
@@ -360,6 +369,101 @@ router.get('/payroll/periods/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching payroll period:', error);
     res.status(500).json({ error: 'Failed to fetch payroll period' });
+  }
+});
+
+/**
+ * POST /api/hr/payroll/periods/:id/stamp
+ * Stamp the fiscal CFDI de nómina for a payroll period in contabilidad-os.
+ * ZionX drives the fiscal side: each entry's team member is matched to a ContaOS
+ * employee by RFC, and the entry's base_salary is stamped as the fiscal gross
+ * (bonuses/commissions stay non-fiscal in ZionX). Idempotent — entries already
+ * carrying a cfdi_uuid are skipped unless ?restamp=1.
+ */
+router.post('/payroll/periods/:id/stamp', requireSection('hr'), async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) {
+      return res.status(503).json({ error: 'La integración con contabilidad-os no está configurada' });
+    }
+    const { id } = req.params;
+    const restamp = req.query.restamp === '1';
+
+    const periodRes = await req.pool.query('SELECT * FROM payroll_periods WHERE id = $1', [id]);
+    if (!periodRes.rows.length) return res.status(404).json({ error: 'Periodo no encontrado' });
+    const period = periodRes.rows[0];
+
+    const { rows: entries } = await req.pool.query(`
+      SELECT pe.id, pe.base_salary, pe.cfdi_uuid, tm.name AS employee_name, tm.rfc
+        FROM payroll_entries pe
+        JOIN team_members tm ON pe.team_member_id = tm.id
+       WHERE pe.payroll_period_id = $1
+       ORDER BY tm.name
+    `, [id]);
+    if (!entries.length) return res.status(400).json({ error: 'El periodo no tiene renglones' });
+
+    // Map ContaOS employees by RFC (uppercase).
+    let empByRfc = new Map();
+    try {
+      const employees = await contaHub.listEmployees();
+      for (const e of (Array.isArray(employees) ? employees : [])) {
+        if (e.rfc) empByRfc.set(String(e.rfc).toUpperCase().trim(), e);
+      }
+    } catch (err) {
+      return res.status(502).json({ error: `No se pudo leer el padrón de empleados: ${err.message}` });
+    }
+
+    const periodoInicio = isoDate(period.start_date);
+    const periodoFin = isoDate(period.end_date);
+    const fechaPago = isoDate(period.payment_date) || periodoFin;
+    const dias = diasPagados(period.start_date, period.end_date);
+
+    const results = [];
+    let stamped = 0, failed = 0, skipped = 0;
+
+    for (const e of entries) {
+      if (e.cfdi_uuid && !restamp) { skipped++; results.push({ id: e.id, employee_name: e.employee_name, status: 'skipped', cfdi_uuid: e.cfdi_uuid }); continue; }
+
+      const rfc = (e.rfc || '').toUpperCase().trim();
+      const sueldoBruto = Number(e.base_salary) || 0;
+      let error = null;
+      if (!rfc) error = 'El colaborador no tiene RFC';
+      else if (!empByRfc.has(rfc)) error = 'Empleado no encontrado en contabilidad-os (RFC)';
+      else if (sueldoBruto <= 0) error = 'Sueldo base en cero';
+
+      if (error) {
+        failed++;
+        await req.pool.query('UPDATE payroll_entries SET cfdi_error = $1, updated_at = NOW() WHERE id = $2', [error, e.id]);
+        results.push({ id: e.id, employee_name: e.employee_name, status: 'error', error });
+        continue;
+      }
+
+      const emp = empByRfc.get(rfc);
+      try {
+        const result = await contaHub.emitNomina({
+          employeeId: emp.id, periodoInicio, periodoFin, diasPagados: dias, fechaPago, sueldoBruto,
+        });
+        const uuid = result?.uuid || null;
+        if (!uuid) throw new Error(result?.error || 'La respuesta no incluye UUID');
+        await req.pool.query(
+          `UPDATE payroll_entries
+              SET cfdi_uuid = $1, cfdi_status = 'STAMPED', conta_employee_id = $2,
+                  cfdi_stamped_at = NOW(), cfdi_error = NULL, updated_at = NOW()
+            WHERE id = $3`,
+          [uuid, emp.id, e.id]
+        );
+        stamped++;
+        results.push({ id: e.id, employee_name: e.employee_name, status: 'stamped', cfdi_uuid: uuid });
+      } catch (err) {
+        failed++;
+        await req.pool.query('UPDATE payroll_entries SET cfdi_error = $1, updated_at = NOW() WHERE id = $2', [err.message, e.id]);
+        results.push({ id: e.id, employee_name: e.employee_name, status: 'error', error: err.message });
+      }
+    }
+
+    res.json({ success: true, stamped, failed, skipped, total: entries.length, results });
+  } catch (error) {
+    console.error('Error stamping payroll CFDIs:', error);
+    res.status(500).json({ error: 'Error interno al timbrar la nómina' });
   }
 });
 

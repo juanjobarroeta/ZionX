@@ -831,6 +831,16 @@ const createTables = async (pool) => {
         UNIQUE(payroll_period_id, team_member_id)
       );
     `);
+    // Fiscal linkage — a ZionX payroll entry can be stamped as a CFDI de nómina
+    // in contabilidad-os. cfdi_uuid ties the entry back to the stamped receipt.
+    await pool.query(`
+      ALTER TABLE payroll_entries
+        ADD COLUMN IF NOT EXISTS cfdi_uuid VARCHAR(64),
+        ADD COLUMN IF NOT EXISTS cfdi_status VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS cfdi_error TEXT,
+        ADD COLUMN IF NOT EXISTS conta_employee_id VARCHAR(64),
+        ADD COLUMN IF NOT EXISTS cfdi_stamped_at TIMESTAMP;
+    `);
     console.log("✅ Payroll entries table created");
 
     // Projects table
