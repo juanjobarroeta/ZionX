@@ -251,11 +251,14 @@ async function getPayrollRun(runId) {
   return hub(`/api/nomina/run/${runId}`);
 }
 
-// GET /api/empleados?companyId — the company's employees (id, rfc, nombre).
-// Used to map ZionX team members to ContaOS employees by RFC before stamping.
-async function listEmployees() {
+// GET /api/empleados?companyId — the company's employees (id, rfc, nombre,
+// salarioDiario, puesto, nss…). Used to map ZionX team members by RFC before
+// stamping, and to surface the roster on the Nómina Fiscal page.
+async function listEmployees({ withUltimoRecibo = false } = {}) {
   const c = CFG();
-  return hub(`/api/empleados?companyId=${encodeURIComponent(c.companyId)}`);
+  const params = new URLSearchParams({ companyId: c.companyId });
+  if (withUltimoRecibo) params.set("withUltimoRecibo", "1");
+  return hub(`/api/empleados?${params.toString()}`);
 }
 
 // POST /api/nomina/emit — stamp a fiscal CFDI de nómina for one employee.
