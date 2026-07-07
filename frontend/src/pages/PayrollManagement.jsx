@@ -86,7 +86,7 @@ const PayrollManagement = () => {
   // Stamp the fiscal CFDI de nómina for the open period in contabilidad-os.
   const stampPeriod = async () => {
     if (!selectedPeriod) return;
-    if (!window.confirm("Se timbrará el CFDI de nómina de este periodo en contabilidad-os, usando el sueldo base como monto fiscal de cada colaborador. ¿Continuar?")) return;
+    if (!window.confirm("Se timbrará el CFDI de nómina de este periodo en contabilidad-os. El monto fiscal de cada colaborador lo determina su salario registrado en contabilidad-os (histórico de recibos), no el sueldo operativo de ZionX. ¿Continuar?")) return;
     setStamping(true);
     setStampReport(null);
     try {
