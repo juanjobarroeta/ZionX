@@ -259,13 +259,14 @@ async function listEmployees() {
 }
 
 // POST /api/nomina/emit — stamp a fiscal CFDI de nómina for one employee.
-// body: { employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto }
+// sueldoBruto is OPTIONAL and normally omitted: ContaOS derives the fiscal
+// amount from the employee's registered salarioDiario (its historic recibo
+// standard). Only pass sueldoBruto to deliberately override that.
 async function emitNomina({ employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto }) {
   const c = CFG();
-  return hub(`/api/nomina/emit`, {
-    method: "POST",
-    body: { companyId: c.companyId, employeeId, periodoInicio, periodoFin, diasPagados, fechaPago, sueldoBruto },
-  });
+  const body = { companyId: c.companyId, employeeId, periodoInicio, periodoFin, diasPagados, fechaPago };
+  if (sueldoBruto != null) body.sueldoBruto = sueldoBruto;
+  return hub(`/api/nomina/emit`, { method: "POST", body });
 }
 
 // GET /api/contabilidad/estado-resultados — income statement (P&L) for a month.

@@ -375,9 +375,10 @@ router.get('/payroll/periods/:id', async (req, res) => {
 /**
  * POST /api/hr/payroll/periods/:id/stamp
  * Stamp the fiscal CFDI de nómina for a payroll period in contabilidad-os.
- * ZionX drives the fiscal side: each entry's team member is matched to a ContaOS
- * employee by RFC, and the entry's base_salary is stamped as the fiscal gross
- * (bonuses/commissions stay non-fiscal in ZionX). Idempotent — entries already
+ * ZionX only *triggers* the stamp: each entry's team member is matched to a
+ * ContaOS employee by RFC, and ContaOS computes the fiscal amount from that
+ * employee's registered salarioDiario (its historic recibo standard) — ZionX
+ * does NOT push its operational base_salary. Idempotent — entries already
  * carrying a cfdi_uuid are skipped unless ?restamp=1.
  */
 router.post('/payroll/periods/:id/stamp', requireSection('hr'), async (req, res) => {
@@ -424,11 +425,9 @@ router.post('/payroll/periods/:id/stamp', requireSection('hr'), async (req, res)
       if (e.cfdi_uuid && !restamp) { skipped++; results.push({ id: e.id, employee_name: e.employee_name, status: 'skipped', cfdi_uuid: e.cfdi_uuid }); continue; }
 
       const rfc = (e.rfc || '').toUpperCase().trim();
-      const sueldoBruto = Number(e.base_salary) || 0;
       let error = null;
       if (!rfc) error = 'El colaborador no tiene RFC';
       else if (!empByRfc.has(rfc)) error = 'Empleado no encontrado en contabilidad-os (RFC)';
-      else if (sueldoBruto <= 0) error = 'Sueldo base en cero';
 
       if (error) {
         failed++;
@@ -438,9 +437,13 @@ router.post('/payroll/periods/:id/stamp', requireSection('hr'), async (req, res)
       }
 
       const emp = empByRfc.get(rfc);
+      // The fiscal amount comes from ContaOS's registered salary (historic
+      // standard); we surface it for transparency but do NOT send it.
+      const salarioDiario = Number(emp.salarioDiario) || 0;
+      const brutoFiscal = salarioDiario > 0 ? Math.round(salarioDiario * dias * 100) / 100 : null;
       try {
         const result = await contaHub.emitNomina({
-          employeeId: emp.id, periodoInicio, periodoFin, diasPagados: dias, fechaPago, sueldoBruto,
+          employeeId: emp.id, periodoInicio, periodoFin, diasPagados: dias, fechaPago,
         });
         const uuid = result?.uuid || null;
         if (!uuid) throw new Error(result?.error || 'La respuesta no incluye UUID');
@@ -452,7 +455,7 @@ router.post('/payroll/periods/:id/stamp', requireSection('hr'), async (req, res)
           [uuid, emp.id, e.id]
         );
         stamped++;
-        results.push({ id: e.id, employee_name: e.employee_name, status: 'stamped', cfdi_uuid: uuid });
+        results.push({ id: e.id, employee_name: e.employee_name, status: 'stamped', cfdi_uuid: uuid, salario_diario: salarioDiario, bruto_fiscal: brutoFiscal });
       } catch (err) {
         failed++;
         await req.pool.query('UPDATE payroll_entries SET cfdi_error = $1, updated_at = NOW() WHERE id = $2', [err.message, e.id]);
