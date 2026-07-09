@@ -3,13 +3,21 @@ const router = express.Router();
 const { Pool } = require('pg');
 const whatsappService = require('../services/whatsappService');
 
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'crediya',
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5432,
-});
+// Use the managed database when DATABASE_URL is set (Railway); fall back to
+// local dev config otherwise. Previously this always pointed at localhost, so
+// on Railway every leads query failed with ECONNREFUSED 127.0.0.1:5432.
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false,
+    })
+  : new Pool({
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'crediya',
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT || 5432,
+    });
 
 // Middleware to authenticate requests
 const authenticateToken = (req, res, next) => {

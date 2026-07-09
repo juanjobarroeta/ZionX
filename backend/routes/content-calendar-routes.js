@@ -42,6 +42,27 @@ router.post("/content-calendar", async (req, res) => {
 
     console.log('📝 Creating content calendar entry with platform:', platform);
 
+    // Allocate a post_number that won't collide with the
+    // (customer_id, month_year, post_number) unique key. If none was provided,
+    // or the requested one is already taken, append the next available number.
+    let postNumber = post_number;
+    const nextRes = await pool.query(
+      `SELECT COALESCE(MAX(post_number), 0) + 1 AS next
+         FROM content_calendar WHERE customer_id = $1 AND month_year = $2`,
+      [customer_id, month_year]
+    );
+    const nextNumber = nextRes.rows[0].next;
+    if (!postNumber) {
+      postNumber = nextNumber;
+    } else {
+      const taken = await pool.query(
+        `SELECT 1 FROM content_calendar
+          WHERE customer_id = $1 AND month_year = $2 AND post_number = $3`,
+        [customer_id, month_year, postNumber]
+      );
+      if (taken.rows.length) postNumber = nextNumber;
+    }
+
     const result = await pool.query(`
       INSERT INTO content_calendar (
         customer_id, month_year, post_number, title, description, campaign, platform, pilar, content_type,
@@ -50,8 +71,8 @@ router.post("/content-calendar", async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *
     `, [
-      customer_id, month_year, post_number,
-      campaign || `Post ${post_number}`, // title (required)
+      customer_id, month_year, postNumber,
+      campaign || `Post ${postNumber}`, // title (required)
       pilar || '', // description
       campaign, platform, pilar, content_type,
       scheduled_date, status, idea_tema, referencia, copy_in, copy_out,
