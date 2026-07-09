@@ -25,6 +25,19 @@ nominaRouter.get('/nomina/runs', async (req, res) => {
   }
 });
 
+// GET /api/nomina/employees — the fiscal employee roster (name, RFC, NSS,
+// puesto, SBC/SDI, last receipt). Surfaced even when there are no runs yet.
+nominaRouter.get('/nomina/employees', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false, employees: [] });
+    const employees = await contaHub.listEmployees({ withUltimoRecibo: true });
+    res.json({ configured: true, employees: Array.isArray(employees) ? employees : [] });
+  } catch (error) {
+    console.error('Error listing employees:', error.message);
+    res.status(502).json({ configured: true, error: error.message, employees: [] });
+  }
+});
+
 // GET /api/nomina/runs/:id — a run with its per-employee receipts.
 nominaRouter.get('/nomina/runs/:id', async (req, res) => {
   try {
