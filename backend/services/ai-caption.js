@@ -121,41 +121,91 @@ function buildPrompt({ post, brief }) {
     .join('\n');
 }
 
-// Generate a caption draft. Returns { draft } on success, or { draft: null,
-// error } when the model is unavailable or fails. Never throws.
-async function generateCaptionDraft(pool, postId) {
+// Prompt for a content idea/tema — the concept a designer works from. Uses the
+// same client + post context as the caption prompt.
+function buildIdeaPrompt({ post, brief }) {
+  const brand = post.business_name || (brief && brief.company_name) || 'la marca';
+  const briefContext = brief
+    ? contextBlock([
+        ['Concepto central', brief.central_idea || brief.core_concept],
+        ['Propuesta de valor', brief.value_proposition],
+        ['Personalidad de marca', brief.brand_personality],
+        ['Emociones deseadas', brief.desired_emotions],
+        ['Palabras clave de marca', brief.brand_keywords],
+        ['Palabras a evitar', brief.anti_keywords],
+        ['Cliente ideal', brief.ideal_client_primary || brief.target_consumer],
+        ['Objetivo principal', brief.primary_objective],
+        ['Diferenciadores', brief.unique_differentiators || brief.differentiators],
+      ])
+    : '';
+  const postContext = contextBlock([
+    ['Marca', brand],
+    ['Industria', post.industry],
+    ['Pilar de contenido', post.pilar],
+    ['Tipo de contenido', post.content_type],
+    ['Plataforma', post.platform],
+    ['Campaña', post.campaign],
+    ['Notas existentes', post.idea_tema || post.description],
+  ]);
+
+  return [
+    `Eres estratega de contenido de ZIONX. Propón UNA idea/tema concreto para una publicación de ${brand}.`,
+    '',
+    'Contexto:',
+    postContext || '- (sin detalles adicionales)',
+    briefContext ? '\nLineamientos de marca (del brief creativo):' : '',
+    briefContext,
+    '',
+    'Instrucciones:',
+    '- Responde en español.',
+    `- La idea debe encajar con el pilar de contenido y la plataforma (${post.platform || 'red social'}).`,
+    '- Sé concreto y accionable: un concepto que el diseñador pueda ejecutar.',
+    '- No uses emojis.',
+    '- Devuelve solo la idea/tema en 1–2 líneas, sin encabezados ni explicaciones.',
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join('\n');
+}
+
+// Shared Claude call. Returns the concatenated text or throws.
+async function runClaude(apiKey, prompt, maxTokens) {
+  const client = new Anthropic({ apiKey });
+  const message = await client.messages.create({
+    model: 'claude-opus-4-8',
+    max_tokens: maxTokens,
+    thinking: { type: 'adaptive' },
+    messages: [{ role: 'user', content: prompt }],
+  });
+  return (message.content || [])
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+    .trim();
+}
+
+// Generate a draft of the given kind ('copy' | 'idea'). Returns { draft } on
+// success, or { draft: null, error } when unavailable. Never throws.
+async function generateDraft(pool, postId, kind = 'copy') {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return { draft: null, error: 'IA no configurada (falta ANTHROPIC_API_KEY)' };
-  }
+  if (!apiKey) return { draft: null, error: 'IA no configurada (falta ANTHROPIC_API_KEY)' };
 
   const ctx = await loadDraftContext(pool, postId);
   if (!ctx) return { draft: null, error: 'Publicación no encontrada', notFound: true };
 
-  const prompt = buildPrompt(ctx);
+  const prompt = kind === 'idea' ? buildIdeaPrompt(ctx) : buildPrompt(ctx);
+  const maxTokens = kind === 'idea' ? 400 : 1200;
 
   try {
-    const client = new Anthropic({ apiKey });
-    const message = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1200,
-      thinking: { type: 'adaptive' },
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    // Concatenate any text blocks in the response.
-    const draft = (message.content || [])
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('')
-      .trim();
-
+    const draft = await runClaude(apiKey, prompt, maxTokens);
     if (!draft) return { draft: null, error: 'La IA no devolvió texto' };
     return { draft };
   } catch (err) {
-    console.error('❌ ai-caption generation failed:', err.message);
+    console.error(`❌ ai ${kind} generation failed:`, err.message);
     return { draft: null, error: 'Error al generar el borrador con IA' };
   }
 }
 
-module.exports = { generateCaptionDraft, buildPrompt, loadDraftContext };
+const generateCaptionDraft = (pool, postId) => generateDraft(pool, postId, 'copy');
+const generateIdeaDraft = (pool, postId) => generateDraft(pool, postId, 'idea');
+
+module.exports = { generateDraft, generateCaptionDraft, generateIdeaDraft, buildPrompt, buildIdeaPrompt, loadDraftContext };
