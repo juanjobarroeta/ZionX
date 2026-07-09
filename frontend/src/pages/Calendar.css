@@ -239,3 +239,6 @@
 @media (prefers-reduced-motion: reduce) {
   .zxc-drawer { animation: none; }
 }
+
+/* Pinterest reference embed */
+.zxc-field .pin-embed a, .zxc-field .pin-link { font-size: 13px; font-weight: 600; color: var(--bad); text-decoration: underline; }

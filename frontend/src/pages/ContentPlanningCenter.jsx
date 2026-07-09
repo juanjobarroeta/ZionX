@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
+import PinterestEmbed from "../components/PinterestEmbed";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName as resolveCustomerName } from "../utils/customerName";
 import {
@@ -425,7 +426,7 @@ const ContentPlanningCenter = () => {
   // The rich content fields the legacy Excel grid owned now live here, so a post
   // can be authored end-to-end in the calendar. Writes via PUT /content-calendar/:id
   // (dynamic update from body keys).
-  const EDIT_FIELDS = ["platform", "content_type", "campaign", "pilar", "idea_tema", "referencia", "copy_in", "copy_out", "assigned_designer", "assigned_community_manager"];
+  const EDIT_FIELDS = ["platform", "content_type", "campaign", "pilar", "idea_tema", "referencia", "pinterest_ref", "copy_in", "copy_out", "assigned_designer", "assigned_community_manager"];
 
   const openEdit = () => {
     if (!selected) return;
@@ -664,6 +665,10 @@ const ContentPlanningCenter = () => {
                     <input className="zxc-input" type="text" value={editForm.referencia || ""} onChange={(e) => setEditForm({ ...editForm, referencia: e.target.value })} />
                   </div>
                   <div className="zxc-field">
+                    <span className="k">Pinterest (Pin/tablero)</span>
+                    <input className="zxc-input" type="url" placeholder="https://pinterest.com/pin/…" value={editForm.pinterest_ref || ""} onChange={(e) => setEditForm({ ...editForm, pinterest_ref: e.target.value })} />
+                  </div>
+                  <div className="zxc-field">
                     <span className="k">Copy in (brief)</span>
                     <textarea className="zxc-input" rows={2} value={editForm.copy_in || ""} onChange={(e) => setEditForm({ ...editForm, copy_in: e.target.value })} />
                   </div>
@@ -708,6 +713,12 @@ const ContentPlanningCenter = () => {
               )}
               {selected.copy_out && (
                 <div className="zxc-field"><span className="k">Copy</span><span className="val copy">{selected.copy_out}</span></div>
+              )}
+              {selected.pinterest_ref && (
+                <div className="zxc-field">
+                  <span className="k">Referencia visual</span>
+                  <PinterestEmbed url={selected.pinterest_ref} />
+                </div>
               )}
 
               <div className="zxc-field">

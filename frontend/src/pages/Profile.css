@@ -103,3 +103,9 @@
   .zxp-inner, .zxp-head-in { padding-left: 18px; padding-right: 18px; }
   .zxp-sum { grid-template-columns: 1fr; }
 }
+
+/* Pinterest reference / mood board */
+.pin-embed { min-height: 40px; }
+.pin-embed a { font-size: 13px; font-weight: 600; color: #8A1C1C; text-decoration: underline; }
+.pin-link { font-size: 13px; font-weight: 600; color: #8A1C1C; text-decoration: underline; }
+.zxp-pinwrap { margin-top: 12px; }

@@ -4,6 +4,7 @@ import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName, customerContact } from "../utils/customerName";
+import PinterestEmbed from "../components/PinterestEmbed";
 import "./Profile.css";
 
 const fmtMoney = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -43,6 +44,8 @@ const CustomerProfile = () => {
   const [invoices, setInvoices] = useState({ loading: true, list: [], denied: false });
   const [upcoming, setUpcoming] = useState(null);
   const [uploading, setUploading] = useState({});
+  const [pinBoard, setPinBoard] = useState("");
+  const [pinSaved, setPinSaved] = useState(false);
   const fileInputs = useRef({});
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
@@ -117,6 +120,23 @@ const CustomerProfile = () => {
     } catch {
       setRoster(prev);
       alert("Error actualizando el equipo asignado");
+    }
+  };
+
+  // Keep the Pinterest input in sync with the loaded customer.
+  useEffect(() => {
+    setPinBoard(customer?.pinterest_board_url || "");
+  }, [customer?.pinterest_board_url]);
+
+  const savePinterest = async () => {
+    try {
+      const res = await axios.put(`${API_BASE_URL}/customers/${id}/pinterest`, { pinterest_board_url: pinBoard }, { headers });
+      const saved = res.data?.pinterest_board_url ?? pinBoard;
+      setCustomer((c) => (c ? { ...c, pinterest_board_url: saved } : c));
+      setPinSaved(true);
+      setTimeout(() => setPinSaved(false), 2000);
+    } catch {
+      alert("No se pudo guardar el tablero de Pinterest");
     }
   };
 
@@ -253,6 +273,29 @@ const CustomerProfile = () => {
                     {roster.assigned_senior_name && <span className="zxp-hint">Actual: {roster.assigned_senior_name}</span>}
                   </div>
                   <p className="zxp-hint">Roster de producción usado por el pipeline de cada publicación.</p>
+                </div>
+
+                <div className="zxp-card">
+                  <h3>Mood board (Pinterest)</h3>
+                  <div className="zxp-field">
+                    <span className="k">Tablero</span>
+                    <input
+                      className="zxp-select"
+                      type="url"
+                      placeholder="https://pinterest.com/usuario/tablero"
+                      value={pinBoard}
+                      onChange={(e) => setPinBoard(e.target.value)}
+                      onBlur={savePinterest}
+                    />
+                    <span className="zxp-hint">
+                      {pinSaved ? "Guardado." : "Dirección visual del cliente para la escaleta del mes."}
+                    </span>
+                  </div>
+                  {customer?.pinterest_board_url && (
+                    <div className="zxp-pinwrap">
+                      <PinterestEmbed url={customer.pinterest_board_url} kind="embedBoard" />
+                    </div>
+                  )}
                 </div>
               </div>
             </>
