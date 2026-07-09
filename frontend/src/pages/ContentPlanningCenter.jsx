@@ -138,6 +138,7 @@ const ContentPlanningCenter = () => {
   const [assignable, setAssignable] = useState([]);
   const [stageBusy, setStageBusy] = useState(null);
   const [copyDraft, setCopyDraft] = useState(null);
+  const [ideaDraft, setIdeaDraft] = useState(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 
@@ -212,21 +213,49 @@ const ContentPlanningCenter = () => {
     }
   };
 
-  // Drop the generated draft into the editable copy field, opening edit mode if
-  // needed. The user still reviews and saves.
-  const useDraft = () => {
-    const draft = copyDraft?.draft;
-    if (!draft) return;
-    if (editForm) {
-      setEditForm({ ...editForm, copy_out: draft });
-    } else if (selected) {
-      const f = {};
-      for (const k of EDIT_FIELDS) f[k] = selected[k] ?? "";
-      f.copy_out = draft;
-      setEditForm(f);
+  // Idea/tema AI-draft — a content concept for the design stage, from the
+  // client's brief + this post's pilar/platform.
+  const generateIdea = async () => {
+    const pid = pipeline.postId;
+    if (!pid) return;
+    setIdeaDraft({ loading: true });
+    try {
+      const r = await axios.post(`${API_BASE_URL}/content-calendar/${pid}/pipeline/idea/ai-draft`, {}, { headers });
+      setIdeaDraft({ done: true, draft: r.data?.draft ?? null, error: null });
+    } catch (err) {
+      setIdeaDraft({ done: true, draft: null, error: err.response?.data?.error || "No se pudo generar la idea" });
     }
-    setEditing(true);
+  };
+
+  // Persist an AI draft onto the post, reflect it locally (and in the open edit
+  // form), and nudge its stage into progress — so using AI actually moves the
+  // work forward instead of just filling a textarea.
+  const applyAiDraft = async (field, value, stageKey) => {
+    const pid = pipeline.postId;
+    if (!pid) return;
+    try {
+      await axios.put(`${API_BASE_URL}/content-calendar/${pid}`, { [field]: value }, { headers });
+      applyPatch(pid, { [field]: value });
+      if (editForm) setEditForm({ ...editForm, [field]: value });
+      const st = pipeline.stages.find((s) => s.stage_key === stageKey);
+      if (st && st.status === "pendiente") await patchStage(stageKey, { status: "en_progreso" });
+    } catch {
+      /* keep UI responsive; a failed write just no-ops */
+    }
+  };
+
+  // Save the AI copy draft to copy_out and advance the copy stage.
+  const useDraft = async () => {
+    if (!copyDraft?.draft) return;
+    await applyAiDraft("copy_out", copyDraft.draft, "copy");
     setCopyDraft(null);
+  };
+
+  // Save the AI idea to idea_tema and advance the design stage.
+  const useIdea = async () => {
+    if (!ideaDraft?.draft) return;
+    await applyAiDraft("idea_tema", ideaDraft.draft, "design");
+    setIdeaDraft(null);
   };
 
   const designers = useMemo(() => employees.filter((e) => (e.role || "").toLowerCase() === "designer"), [employees]);
@@ -737,6 +766,28 @@ const ContentPlanningCenter = () => {
                               </select>
                             )}
                           </div>
+                          {s.stage_key === "design" && (
+                            <div className="zxc-stage-ai">
+                              <button
+                                type="button"
+                                className="zxc-linkbtn"
+                                onClick={generateIdea}
+                                disabled={ideaDraft?.loading}
+                              >
+                                {ideaDraft?.loading ? "Generando…" : "Generar idea con IA"}
+                              </button>
+                              {ideaDraft?.error && <span className="zxc-soon">{ideaDraft.error}</span>}
+                              {ideaDraft?.draft && (
+                                <div className="zxc-ai-draft">
+                                  <div className="zxc-ai-draft-text">{ideaDraft.draft}</div>
+                                  <div className="zxc-ai-draft-actions">
+                                    <button type="button" className="zxc-linkbtn" onClick={useIdea}>Usar como idea/tema</button>
+                                    <button type="button" className="zxc-linkbtn muted" onClick={() => setIdeaDraft(null)}>Descartar</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {s.stage_key === "copy" && (
                             <div className="zxc-stage-ai">
                               <button

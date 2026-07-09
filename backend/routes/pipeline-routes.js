@@ -11,7 +11,7 @@ const {
   advanceAfter,
 } = require('../services/pipeline');
 const { userIdsForTeamMembers, teamMemberIdForUser } = require('../services/identity');
-const { generateCaptionDraft } = require('../services/ai-caption');
+const { generateCaptionDraft, generateIdeaDraft } = require('../services/ai-caption');
 
 // =====================================================
 // POST PRODUCTION PIPELINE ROUTES
@@ -253,6 +253,25 @@ router.post('/content-calendar/:id/pipeline/copy/ai-draft', async (req, res) => 
     res.json({ draft: result.draft });
   } catch (error) {
     console.error('Error generating AI caption:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// -----------------------------------------------------
+// POST /content-calendar/:id/pipeline/idea/ai-draft
+// Generate a content idea/tema (the concept a designer works from) using the
+// client's brief + the post's pilar/platform. Same graceful degradation.
+// -----------------------------------------------------
+router.post('/content-calendar/:id/pipeline/idea/ai-draft', async (req, res) => {
+  try {
+    const pool = req.pool;
+    const { id } = req.params;
+    const result = await generateIdeaDraft(pool, id);
+    if (result.notFound) return res.status(404).json({ message: 'Entrada no encontrada' });
+    if (result.draft == null) return res.status(503).json({ draft: null, error: result.error });
+    res.json({ draft: result.draft });
+  } catch (error) {
+    console.error('Error generating AI idea:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
