@@ -86,6 +86,58 @@ async function seedStagesForPost(pool, postId) {
   }
 }
 
+/**
+ * Set one stage's status directly (used by the approval flows to keep the
+ * pipeline in sync with the real approval state). Seed-safe: if the post's
+ * stages don't exist yet, seed them first. Best-effort — never throws.
+ * Returns the updated row or null.
+ */
+async function setStageStatus(pool, postId, stageKey, status) {
+  try {
+    if (!isValidStageKey(stageKey) || !STAGE_STATUSES.includes(status)) return null;
+    let upd = await pool.query(
+      `UPDATE post_pipeline_stages SET status = $3, updated_at = NOW()
+        WHERE content_calendar_id = $1 AND stage_key = $2 RETURNING *`,
+      [postId, stageKey, status]
+    );
+    if (!upd.rows.length) {
+      await seedStagesForPost(pool, postId);
+      upd = await pool.query(
+        `UPDATE post_pipeline_stages SET status = $3, updated_at = NOW()
+          WHERE content_calendar_id = $1 AND stage_key = $2 RETURNING *`,
+        [postId, stageKey, status]
+      );
+    }
+    return upd.rows[0] || null;
+  } catch (err) {
+    console.error(`⚠️ setStageStatus(${postId}, ${stageKey}) skipped:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * After a stage is completed, nudge the next *required* stage from 'pendiente'
+ * to 'en_progreso' so work visibly flows to the next owner. Only touches a
+ * still-pending stage (never overrides en_progreso/listo/cambios). Best-effort.
+ * Returns the advanced stage row or null.
+ */
+async function advanceAfter(pool, postId, stageKey) {
+  try {
+    const next = nextRequiredStage(stageKey);
+    if (!next) return null;
+    const { rows } = await pool.query(
+      `UPDATE post_pipeline_stages SET status = 'en_progreso', updated_at = NOW()
+        WHERE content_calendar_id = $1 AND stage_key = $2 AND status = 'pendiente'
+        RETURNING *`,
+      [postId, next.stage_key]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    console.error(`⚠️ advanceAfter(${postId}, ${stageKey}) skipped:`, err.message);
+    return null;
+  }
+}
+
 module.exports = {
   CANONICAL_STAGES,
   STAGE_KEYS,
@@ -95,4 +147,6 @@ module.exports = {
   stageDef,
   nextRequiredStage,
   seedStagesForPost,
+  setStageStatus,
+  advanceAfter,
 };

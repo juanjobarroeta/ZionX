@@ -2,6 +2,11 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const { resolveNotifyUserIds } = require('../services/identity');
+const { setStageStatus, advanceAfter } = require('../services/pipeline');
+const publishSync = require('../services/publishSync');
+
+// Public base for absolutizing media when promoting to the publish queue.
+const publicBase = (req) => process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`;
 
 // =====================================================
 // PUBLIC CLIENT APPROVAL ENDPOINTS (no auth required)
@@ -91,11 +96,16 @@ router.post('/client/:token/approve/:postId', async (req, res) => {
       WHERE id = $1
     `, [postId, feedback || '']);
 
+    // Keep the pipeline in sync: client approval completes the client_approval
+    // stage and flows work to the next stage.
+    await setStageStatus(req.pool, postId, 'client_approval', 'listo');
+    await advanceAfter(req.pool, postId, 'client_approval');
+
     // If internally approved too, auto-schedule the post
     const post = validation.post;
     let autoScheduled = false;
     if (post.approval_status === 'approved' || post.status === 'aprobado') {
-      autoScheduled = await tryAutoSchedule(req.pool, post);
+      autoScheduled = await tryAutoSchedule(req.pool, post, publicBase(req));
     }
 
     // Notify internal team. assigned_* are team_members.id (resolve to users.id
@@ -147,6 +157,9 @@ router.post('/client/:token/request-changes/:postId', async (req, res) => {
       WHERE id = $1
     `, [postId, feedback]);
 
+    // Reflect the client's request for changes on the pipeline stage.
+    await setStageStatus(req.pool, postId, 'client_approval', 'cambios');
+
     // Notify internal team (assigned_* are team_members.id → users.id; submitted_by is users.id)
     const post = validation.post;
     const notifyUserIds = await resolveNotifyUserIds(req.pool, {
@@ -195,55 +208,26 @@ async function validateTokenAndPost(pool, token, postId) {
   return { post: postResult.rows[0] };
 }
 
-// Helper: auto-schedule a post after approval
-async function tryAutoSchedule(pool, post) {
-  if (!post.scheduled_date) return false;
-  const message = post.copy_out || post.copy_in;
-  if (!message) return false;
-
-  // Find matching social account for this customer + platform
-  const accountResult = await pool.query(
-    `SELECT id FROM social_accounts
-     WHERE customer_id = $1 AND platform = $2 AND is_active = true
-     LIMIT 1`,
-    [post.customer_id, post.platform]
-  );
-
-  if (!accountResult.rows.length) return false;
-
-  const accountId = accountResult.rows[0].id;
-
-  // Check for duplicate
-  const existing = await pool.query(
-    `SELECT id FROM scheduled_posts
-     WHERE social_account_id = $1 AND scheduled_for::date = $2::date AND status != 'cancelled'
-       AND message = $3`,
-    [accountId, post.scheduled_date, message]
-  );
-  if (existing.rows.length > 0) return false;
-
-  const mediaUrls = [];
-  if (post.arte) mediaUrls.push(post.arte);
-
-  await pool.query(`
-    INSERT INTO scheduled_posts (
-      social_account_id, customer_id, content_type, message,
-      media_urls, scheduled_for, status
-    ) VALUES ($1, $2, $3, $4, $5, $6, 'scheduled')
-  `, [
-    accountId, post.customer_id,
-    post.content_type || post.formato || 'post',
-    message, mediaUrls.length > 0 ? mediaUrls : null,
-    post.scheduled_date
-  ]);
-
-  await pool.query(
-    "UPDATE content_calendar SET status = 'programado', updated_at = NOW() WHERE id = $1",
-    [post.id]
-  );
-
-  console.log(`📅 Auto-scheduled post #${post.id} for ${post.scheduled_date}`);
-  return true;
+// Helper: auto-schedule a post after approval. Delegates to publishSync.promote,
+// the single gated path — it runs the full readiness check, resolves the account
+// (incl. the Instagram special case), and links scheduled_posts.content_calendar_id
+// so the scheduler can flip the calendar to 'publicado' when it goes out.
+async function tryAutoSchedule(pool, post, base) {
+  try {
+    const result = await publishSync.promote(pool, post.id, base);
+    if (result.ok) {
+      await pool.query(
+        "UPDATE content_calendar SET status = 'programado', updated_at = NOW() WHERE id = $1 AND status <> 'publicado'",
+        [post.id]
+      );
+      console.log(`📅 Auto-scheduled post #${post.id}`);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error(`⚠️ tryAutoSchedule(${post.id}) skipped:`, err.message);
+    return false;
+  }
 }
 
 // =====================================================
@@ -501,10 +485,15 @@ router.post('/approve/:contentId', async (req, res) => {
       }
     }
 
+    // Keep the pipeline in sync: internal approval completes the
+    // internal_approval stage and flows work to the next stage.
+    await setStageStatus(req.pool, contentId, 'internal_approval', 'listo');
+    await advanceAfter(req.pool, contentId, 'internal_approval');
+
     // Auto-schedule if client also approved (or if no client review needed)
     let autoScheduled = false;
     if (content.client_status === 'approved' || !content.client_status) {
-      autoScheduled = await tryAutoSchedule(req.pool, content);
+      autoScheduled = await tryAutoSchedule(req.pool, content, publicBase(req));
     }
 
     res.json({
@@ -557,6 +546,9 @@ router.post('/reject/:contentId', async (req, res) => {
         (content_id, content_type, decision_by, decision_at, action, feedback, internal_notes, revision_number)
       VALUES ($1, 'calendar_post', $2, CURRENT_TIMESTAMP, 'rejected', $3, $4, $5)
     `, [contentId, rejectedBy, reason, feedback, result.rows[0].current_revision || 1]);
+
+    // Reflect the rejection on the pipeline stage.
+    await setStageStatus(req.pool, contentId, 'internal_approval', 'cambios');
 
     // send_back_to + assigned_* are team_members.id → users.id; submitted_by and
     // rejectedBy are users.id. Link points at the real route (/content-calendar),

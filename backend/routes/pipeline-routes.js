@@ -8,6 +8,7 @@ const {
   stageDef,
   nextRequiredStage,
   seedStagesForPost,
+  advanceAfter,
 } = require('../services/pipeline');
 const { userIdsForTeamMembers, teamMemberIdForUser } = require('../services/identity');
 const { generateCaptionDraft } = require('../services/ai-caption');
@@ -34,6 +35,41 @@ async function notifyOwner(pool, ownerMemberId, message, postId) {
     );
   } catch (err) {
     console.error('⚠️ pipeline notifyOwner failed:', err.message);
+  }
+}
+
+// Map an approval-stage transition to the content_calendar approval columns the
+// publish path actually gates on. Only the two approval stages drive state;
+// other stages are pure workflow. Best-effort — never throws.
+async function syncApprovalFromStage(pool, postId, stageKey, status) {
+  try {
+    if (stageKey === 'internal_approval') {
+      if (status === 'listo') {
+        await pool.query(
+          `UPDATE content_calendar SET approval_status = 'approved', status = 'aprobado', updated_at = NOW() WHERE id = $1`,
+          [postId]
+        );
+      } else if (status === 'cambios') {
+        await pool.query(
+          `UPDATE content_calendar SET approval_status = 'revision_requested', status = 'en_diseño', updated_at = NOW() WHERE id = $1`,
+          [postId]
+        );
+      }
+    } else if (stageKey === 'client_approval') {
+      if (status === 'listo') {
+        await pool.query(
+          `UPDATE content_calendar SET client_status = 'approved', client_reviewed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+          [postId]
+        );
+      } else if (status === 'cambios') {
+        await pool.query(
+          `UPDATE content_calendar SET client_status = 'changes_requested', updated_at = NOW() WHERE id = $1`,
+          [postId]
+        );
+      }
+    }
+  } catch (err) {
+    console.error(`⚠️ syncApprovalFromStage(${postId}, ${stageKey}) skipped:`, err.message);
   }
 }
 
@@ -140,6 +176,8 @@ router.patch('/content-calendar/:id/pipeline/:stageKey', async (req, res) => {
       const label = postLabel(post);
 
       if (status === 'listo') {
+        // Auto-advance: move the next required stage into progress.
+        await advanceAfter(pool, id, stageKey);
         // Notify the owner of the next non-optional stage: it's their turn.
         const next = nextRequiredStage(stageKey);
         if (next) {
@@ -154,6 +192,11 @@ router.patch('/content-calendar/:id/pipeline/:stageKey', async (req, res) => {
         // Notify this stage's own owner that changes were requested.
         await notifyOwner(pool, stage.owner_id, `«${label}» requiere cambios en tu etapa`, id);
       }
+
+      // Drive the real approval state from the approval stages, so completing
+      // (or reopening) them in the pipeline actually gates publishing — the
+      // publish path reads content_calendar.approval_status / client_status.
+      await syncApprovalFromStage(pool, id, stageKey, status);
     }
 
     // Return the freshly joined stage row.
