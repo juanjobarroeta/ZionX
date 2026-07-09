@@ -14,12 +14,12 @@ router.get('/', async (req, res) => {
   try {
     const { unread_only, limit = 50, offset = 0 } = req.query;
     
+    // notifications has no from_user_id column (all inserts use user_id/type/
+    // message/link/item_id/item_type), so the old join errored out. Select the
+    // row directly.
     let query = `
-      SELECT 
-        n.*,
-        u.name as from_user_name
+      SELECT n.*
       FROM notifications n
-      LEFT JOIN users u ON n.from_user_id = u.id
       WHERE n.user_id = $1
     `;
     const params = [req.user.id];
