@@ -535,4 +535,23 @@ router.get("/customers/:id/content-calendar/:month", async (req, res) => {
   }
 });
 
+// PUT /customers/:id/pinterest — set the client's Pinterest mood board URL.
+// Empty/null clears it. Used as the visual direction for the month's escaleta.
+router.put("/customers/:id/pinterest", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const url = (req.body?.pinterest_board_url || "").trim() || null;
+    const result = await req.pool.query(
+      `UPDATE customers SET pinterest_board_url = $1, updated_at = NOW()
+        WHERE id = $2 RETURNING id, pinterest_board_url`,
+      [url, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, pinterest_board_url: result.rows[0].pinterest_board_url });
+  } catch (error) {
+    console.error("Error updating Pinterest board:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;

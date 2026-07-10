@@ -598,7 +598,14 @@ const createTables = async (pool) => {
         ADD COLUMN IF NOT EXISTS fotos_video TEXT,
         ADD COLUMN IF NOT EXISTS elementos_utilizar TEXT,
         ADD COLUMN IF NOT EXISTS hashtags TEXT,
-        ADD COLUMN IF NOT EXISTS location TEXT;
+        ADD COLUMN IF NOT EXISTS location TEXT,
+        ADD COLUMN IF NOT EXISTS pinterest_ref TEXT;
+    `);
+
+    // Pinterest mood board attached to a client (visual direction for the month).
+    await pool.query(`
+      ALTER TABLE customers
+        ADD COLUMN IF NOT EXISTS pinterest_board_url TEXT;
     `);
     console.log("✅ content_calendar columns aligned with routes");
 
