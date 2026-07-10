@@ -24,8 +24,10 @@ router.get("/stores", async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const pool = req.pool;
+    // Select only columns guaranteed to exist so a missing optional column
+    // (e.g. last_login on older DBs) can't 500 this and blank the whole list.
     const result = await pool.query(`
-      SELECT id, name, email, role, store_id, is_active, created_at, last_login
+      SELECT id, name, email, role, store_id, is_active, created_at
       FROM users
       WHERE is_active = true OR is_active IS NULL
       ORDER BY name ASC

@@ -64,6 +64,7 @@ const CreateUser = () => {
   const [error, setError] = useState("");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState("");
   const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => { fetchUsers(); }, []);
@@ -75,8 +76,16 @@ const CreateUser = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(Array.isArray(res.data) ? res.data : []);
+      setListError("");
     } catch (err) {
       console.error("Error fetching users:", err);
+      // Surface the cause instead of silently showing an empty list.
+      const status = err.response?.status;
+      setListError(
+        status === 403
+          ? "Sin permiso para ver los usuarios (se requiere rol de administrador)."
+          : "No se pudieron cargar los usuarios. Intenta de nuevo."
+      );
     } finally {
       setLoading(false);
     }
@@ -231,6 +240,11 @@ const CreateUser = () => {
 
               {loading ? (
                 <div className="zxcu-empty">Cargando usuarios…</div>
+              ) : listError ? (
+                <div className="zxcu-empty">
+                  <div className="lead">No se pudo cargar la lista</div>
+                  <div style={{ marginTop: 6 }}>{listError}</div>
+                </div>
               ) : users.length === 0 ? (
                 <div className="zxcu-empty">
                   <div className="lead">No hay usuarios registrados</div>
