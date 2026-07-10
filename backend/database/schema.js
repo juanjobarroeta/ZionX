@@ -59,6 +59,11 @@ const createTables = async (pool) => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
   `);
+  // last_login is selected by GET /admin/users; without it that query errored
+  // (500) and the user list came back empty.
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+  `);
   // Add permissions column for RBAC
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
