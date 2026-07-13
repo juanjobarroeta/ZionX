@@ -123,6 +123,26 @@ const CreateUser = () => {
     }
   };
 
+  const addToTeam = async (user) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `${API_BASE_URL}/admin/users/${user.id}/team-member`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setError("");
+      setMessage(
+        res.data?.created
+          ? `${user.name} agregado al equipo — ya es asignable en producción`
+          : `${user.name} ya está en el equipo (activado)`
+      );
+    } catch (err) {
+      console.error("Error adding to team:", err);
+      setError(err.response?.data?.message || "No se pudo agregar al equipo");
+    }
+  };
+
   const handleChange = (e) => {
     if (e.target.name === "role") {
       const preset = rolePresets[e.target.value]?.permissions || {};
@@ -263,6 +283,7 @@ const CreateUser = () => {
                         </div>
                       </div>
                       <div className="zxcu-user-actions">
+                        <button className="zxcu-linkbtn" onClick={() => addToTeam(user)} title="Crea/activa un perfil de equipo para que sea asignable en producción">Añadir al equipo</button>
                         <button className="zxcu-linkbtn" onClick={() => handleEdit(user)}>Editar</button>
                         <button className="zxcu-linkbtn danger" onClick={() => handleDeactivate(user.id)}>Desactivar</button>
                       </div>
