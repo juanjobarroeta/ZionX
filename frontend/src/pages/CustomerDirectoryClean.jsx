@@ -10,6 +10,7 @@ const CustomerDirectoryClean = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -29,6 +30,26 @@ const CustomerDirectoryClean = () => {
     };
     fetchCustomers();
   }, []);
+
+  // Archive = reversible soft-delete: removes the client from the directory but
+  // keeps its ledger, files and content intact (restorable from the backend).
+  const archive = async (c) => {
+    const label = customerName(c);
+    if (!window.confirm(`¿Archivar a "${label}"?\n\nSe quitará del directorio pero se conserva toda su información (contenido, archivos, facturación). Es reversible.`)) return;
+    try {
+      setBusyId(c.id);
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/customers/${c.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCustomers((prev) => prev.filter((x) => x.id !== c.id));
+    } catch (error) {
+      console.error("Error archiving customer:", error);
+      alert(error.response?.data?.message || "No se pudo archivar el cliente");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const nameOf = customerName;
   const emailOf = (c) => c.contact_email || c.email || "";
@@ -84,18 +105,28 @@ const CustomerDirectoryClean = () => {
           ) : (
             <div className="zxcr-list">
               {filtered.map((c) => (
-                <Link key={c.id} to={`/customer/${c.id}`} className="zxcr-row">
-                  <span className="zxcr-avatar">{nameOf(c).charAt(0).toUpperCase()}</span>
-                  <div className="zxcr-who">
-                    <div className="name">{nameOf(c)}</div>
-                    <div className="sub">
-                      {customerContact(c) && customerContact(c) !== nameOf(c) && <span>{customerContact(c)}</span>}
-                      {emailOf(c) && <span>{emailOf(c)}</span>}
-                      {c.industry && <span className="zxcr-tag">{c.industry}</span>}
+                <div key={c.id} className="zxcr-rowwrap">
+                  <Link to={`/customer/${c.id}`} className="zxcr-row">
+                    <span className="zxcr-avatar">{nameOf(c).charAt(0).toUpperCase()}</span>
+                    <div className="zxcr-who">
+                      <div className="name">{nameOf(c)}</div>
+                      <div className="sub">
+                        {customerContact(c) && customerContact(c) !== nameOf(c) && <span>{customerContact(c)}</span>}
+                        {emailOf(c) && <span>{emailOf(c)}</span>}
+                        {c.industry && <span className="zxcr-tag">{c.industry}</span>}
+                      </div>
                     </div>
-                  </div>
-                  <span className="zxcr-arrow">→</span>
-                </Link>
+                    <span className="zxcr-arrow">→</span>
+                  </Link>
+                  <button
+                    className="zxcr-archive"
+                    title="Archivar cliente (reversible)"
+                    disabled={busyId === c.id}
+                    onClick={() => archive(c)}
+                  >
+                    {busyId === c.id ? "…" : "Archivar"}
+                  </button>
+                </div>
               ))}
             </div>
           )}

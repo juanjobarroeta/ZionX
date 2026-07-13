@@ -51,6 +51,20 @@
 .zxcr-tag { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; background: var(--chip); color: var(--ink); padding: 2px 8px; border-radius: 2px; }
 .zxcr-arrow { color: var(--muted); font-size: 20px; flex: 0 0 auto; }
 
+/* Row + inline actions: the wrapper carries the divider so the link and the
+   archive button sit on one line. */
+.zxcr-rowwrap { display: flex; align-items: stretch; border-top: 1px solid var(--line-soft); }
+.zxcr-rowwrap:first-child { border-top: none; }
+.zxcr-rowwrap .zxcr-row { flex: 1; border-top: none; min-width: 0; }
+.zxcr-archive {
+  flex: 0 0 auto; align-self: center; margin-right: 14px;
+  font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted);
+  background: transparent; border: 1px solid var(--line); border-radius: 3px;
+  padding: 7px 12px; cursor: pointer; white-space: nowrap; transition: color 0.14s, border-color 0.14s;
+}
+.zxcr-archive:hover:not(:disabled) { color: var(--ink); border-color: var(--ink); }
+.zxcr-archive:disabled { opacity: 0.5; cursor: default; }
+
 .zxcr-empty { padding: 60px 20px; text-align: center; color: var(--muted); }
 .zxcr-empty .lead { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 10px; }
 .zxcr-empty a { color: var(--ink); font-weight: 600; }

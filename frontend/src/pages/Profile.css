@@ -109,3 +109,32 @@
 .pin-embed a { font-size: 13px; font-weight: 600; color: #8A1C1C; text-decoration: underline; }
 .pin-link { font-size: 13px; font-weight: 600; color: #8A1C1C; text-decoration: underline; }
 .zxp-pinwrap { margin-top: 12px; }
+
+/* ---- Edit modal ---- */
+.zxp-modal-overlay {
+  position: fixed; inset: 0; background: rgba(4,17,26,0.42);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 48px 16px; z-index: 1000; overflow-y: auto;
+}
+.zxp-modal {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  width: 100%; max-width: 640px; box-shadow: 0 24px 60px rgba(4,17,26,0.22);
+}
+.zxp-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--line);
+}
+.zxp-modal-head h2 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.zxp-modal-x { background: none; border: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.zxp-modal-x:hover { color: var(--ink); }
+.zxp-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 22px; }
+.zxp-modal-section h3 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.zxp-modal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.zxp-modal-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.zxp-modal-field input {
+  font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; width: 100%;
+}
+.zxp-modal-field input:focus { border-color: var(--ink); }
+.zxp-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
+@media (max-width: 560px) { .zxp-modal-grid { grid-template-columns: 1fr; } }

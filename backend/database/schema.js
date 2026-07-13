@@ -119,6 +119,12 @@ const createTables = async (pool) => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  // Archive (soft-delete) support: is_active=false hides a customer from the
+  // directory without destroying its ledger/content. archived_at records when.
+  await pool.query(`
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
+  `);
   console.log("✅ Customers table created");
 
   // Add business customer columns if they don't exist

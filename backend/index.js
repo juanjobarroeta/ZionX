@@ -137,7 +137,14 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email]);
+    // Match email case-insensitively (emails aren't case-sensitive) and treat a
+    // NULL is_active as active — only an explicit is_active = false blocks login.
+    // Some legacy rows have is_active = NULL, which the old `= true` filter
+    // rejected, locking valid users out with a misleading "Invalid credentials".
+    const result = await pool.query(
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active IS NOT FALSE ORDER BY id LIMIT 1',
+      [email]
+    );
     if (result.rows.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
 
     const user = result.rows[0];
