@@ -44,6 +44,7 @@ const NAV_GROUPS = [
       { sub: "Facturación" },
       { href: "/income", label: "Ingresos", section: "ingresos" },
       { href: "/income/subscriptions", label: "Suscripciones", section: "ingresos" },
+      { href: "/income/cobros", label: "Cobros", section: "ingresos" },
       { href: "/income/payments", label: "Pagos", section: "ingresos" },
       { href: "/income/invoices", label: "Facturas", section: "ingresos" },
       { href: "/income/addons", label: "Add-ons", section: "ingresos" },
