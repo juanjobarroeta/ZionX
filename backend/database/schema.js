@@ -64,6 +64,11 @@ const createTables = async (pool) => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
   `);
+  // updated_at is written by PATCH /admin/users/:id; without it every user
+  // update failed with a 500 ("column updated_at does not exist").
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+  `);
   // Add permissions column for RBAC
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
