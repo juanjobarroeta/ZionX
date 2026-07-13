@@ -6,6 +6,50 @@ const bcrypt = require('bcryptjs');
 // ADMIN MANAGEMENT (stores, users)
 // =====================================================
 
+// POST /admin/users/:id/team-member
+// Create (or re-activate + link) a team_member for this user, so the user can
+// be assigned production work and show up in the assignment dropdowns and in
+// "Mi trabajo". Idempotent: matches an existing team_member by user_id or email.
+router.post("/users/:id/team-member", async (req, res) => {
+  try {
+    const pool = req.pool;
+    const { id } = req.params;
+
+    const uRes = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1", [id]);
+    if (!uRes.rows.length) return res.status(404).json({ message: "Usuario no encontrado" });
+    const user = uRes.rows[0];
+
+    // Already a team member (by explicit link or by email)? Re-activate + link.
+    const existing = await pool.query(
+      `SELECT id FROM team_members
+        WHERE user_id = $1 OR (email IS NOT NULL AND LOWER(email) = LOWER($2))
+        ORDER BY (user_id = $1) DESC LIMIT 1`,
+      [user.id, user.email || ""]
+    );
+    if (existing.rows.length) {
+      const { rows } = await pool.query(
+        `UPDATE team_members
+            SET user_id = $1, is_active = true, updated_at = NOW()
+          WHERE id = $2
+          RETURNING id, name, email, role, is_active`,
+        [user.id, existing.rows[0].id]
+      );
+      return res.json({ success: true, linked: true, team_member: rows[0] });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO team_members (user_id, name, email, role, department, is_active)
+       VALUES ($1, $2, $3, $4, 'Marketing', true)
+       RETURNING id, name, email, role, is_active`,
+      [user.id, user.name, user.email, user.role || "community_manager"]
+    );
+    res.status(201).json({ success: true, created: true, team_member: rows[0] });
+  } catch (err) {
+    console.error("Error linking user to team:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 // Get all stores
 router.get("/stores", async (req, res) => {
   try {
