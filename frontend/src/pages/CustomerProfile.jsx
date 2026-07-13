@@ -46,6 +46,10 @@ const CustomerProfile = () => {
   const [uploading, setUploading] = useState({});
   const [pinBoard, setPinBoard] = useState("");
   const [pinSaved, setPinSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const fileInputs = useRef({});
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
@@ -159,6 +163,49 @@ const CustomerProfile = () => {
     }
   };
 
+  const EDIT_FIELDS = [
+    { section: "Datos fiscales", fields: [
+      { k: "commercial_name", label: "Nombre comercial" },
+      { k: "business_name", label: "Razón social" },
+      { k: "rfc", label: "RFC" },
+      { k: "tax_regime", label: "Régimen fiscal" },
+      { k: "fiscal_postal_code", label: "Código postal" },
+      { k: "industry", label: "Giro" },
+      { k: "website", label: "Sitio web" },
+    ] },
+    { section: "Contacto", fields: [
+      { k: "contact_first_name", label: "Nombre" },
+      { k: "contact_last_name", label: "Apellido" },
+      { k: "contact_position", label: "Puesto" },
+      { k: "contact_email", label: "Email", type: "email" },
+      { k: "contact_phone", label: "Teléfono" },
+      { k: "contact_mobile", label: "Móvil" },
+    ] },
+  ];
+
+  const openEdit = () => {
+    const seed = {};
+    EDIT_FIELDS.forEach((g) => g.fields.forEach(({ k }) => { seed[k] = customer[k] || ""; }));
+    setEditForm(seed);
+    setSaveError("");
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await axios.patch(`${API_BASE_URL}/customers/${id}`, editForm, { headers });
+      if (res.data?.customer) setCustomer(res.data.customer);
+      setEditing(false);
+    } catch (err) {
+      console.error("Error saving customer:", err);
+      setSaveError(err.response?.data?.message || "No se pudo guardar. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Layout><div className="zxp"><div className="zxp-loading">Cargando perfil…</div></div></Layout>;
   if (error || !customer) {
     return (
@@ -197,6 +244,7 @@ const CustomerProfile = () => {
               </div>
               <div className="zxp-actions">
                 <Link to="/crm" className="zxp-btn">← Volver</Link>
+                <button className="zxp-btn" onClick={openEdit}>Editar</button>
                 <Link to="/messages" className="zxp-btn">Mensajes</Link>
                 <button className="zxp-btn solid" onClick={() => { setActiveTab("recursos"); }}>Subir archivos</button>
               </div>
@@ -387,6 +435,43 @@ const CustomerProfile = () => {
             )
           )}
         </div>
+
+        {editing && (
+          <div className="zxp-modal-overlay" onClick={() => !saving && setEditing(false)}>
+            <div className="zxp-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="zxp-modal-head">
+                <h2>Editar <span className="zxp-serif">cliente</span></h2>
+                <button className="zxp-modal-x" onClick={() => !saving && setEditing(false)} aria-label="Cerrar">×</button>
+              </div>
+              <div className="zxp-modal-body">
+                {EDIT_FIELDS.map((g) => (
+                  <div className="zxp-modal-section" key={g.section}>
+                    <h3>{g.section}</h3>
+                    <div className="zxp-modal-grid">
+                      {g.fields.map(({ k, label, type }) => (
+                        <label className="zxp-modal-field" key={k}>
+                          <span>{label}</span>
+                          <input
+                            type={type || "text"}
+                            value={editForm[k] ?? ""}
+                            onChange={(e) => setEditForm((f) => ({ ...f, [k]: e.target.value }))}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {saveError && <div className="zxp-note warn"><strong>{saveError}</strong></div>}
+              </div>
+              <div className="zxp-modal-foot">
+                <button className="zxp-btn" onClick={() => setEditing(false)} disabled={saving}>Cancelar</button>
+                <button className="zxp-btn solid" onClick={saveEdit} disabled={saving}>
+                  {saving ? "Guardando…" : "Guardar cambios"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

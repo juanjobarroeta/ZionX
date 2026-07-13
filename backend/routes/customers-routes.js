@@ -278,13 +278,16 @@ router.post("/customers/upload", async (req, res) => {
   }
 });
 
-// Get all customers
+// Get all customers (archived customers are hidden by default).
 router.get("/customers", async (req, res) => {
   try {
     const pool = req.pool;
-    const result = await pool.query(`
-      SELECT * FROM customers ORDER BY created_at DESC
-    `);
+    const includeArchived = req.query.include_archived === "true";
+    const result = await pool.query(
+      includeArchived
+        ? `SELECT * FROM customers ORDER BY created_at DESC`
+        : `SELECT * FROM customers WHERE is_active IS NOT FALSE ORDER BY created_at DESC`
+    );
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching customers:", err);
@@ -551,6 +554,156 @@ router.put("/customers/:id/pinterest", async (req, res) => {
   } catch (error) {
     console.error("Error updating Pinterest board:", error);
     res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// =====================================================
+// EDIT / DELETE CUSTOMER
+// =====================================================
+
+// Update editable customer fields (whitelist). Backs the profile edit form.
+router.patch("/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = req.pool;
+    const ALLOWED = [
+      "business_name", "commercial_name", "rfc", "tax_regime", "business_type",
+      "industry", "website", "fiscal_address", "fiscal_postal_code", "fiscal_city",
+      "fiscal_state", "contact_first_name", "contact_last_name", "contact_position",
+      "contact_email", "contact_phone", "contact_mobile",
+      "first_name", "last_name", "phone", "email",
+    ];
+    const sets = [];
+    const values = [];
+    let n = 1;
+    for (const key of ALLOWED) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        sets.push(`${key} = $${n++}`);
+        const v = req.body[key];
+        values.push(typeof v === "string" && v.trim() === "" ? null : v);
+      }
+    }
+    if (!sets.length) return res.status(400).json({ message: "No hay campos para actualizar" });
+    sets.push(`updated_at = NOW()`);
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE customers SET ${sets.join(", ")} WHERE id = $${n} RETURNING *`,
+      values
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, customer: result.rows[0] });
+  } catch (err) {
+    console.error("Error updating customer:", err);
+    res.status(500).json({ message: "Error al actualizar cliente" });
+  }
+});
+
+// Archive (soft-delete) — hides the customer from the directory but keeps ALL
+// data (ledger, files, content). Reversible via /restore. The safe default.
+router.delete("/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await req.pool.query(
+      `UPDATE customers SET is_active = false, archived_at = NOW() WHERE id = $1 RETURNING id`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, archived: true, message: "Cliente archivado" });
+  } catch (err) {
+    console.error("Error archiving customer:", err);
+    res.status(500).json({ message: "Error al archivar cliente" });
+  }
+});
+
+// Restore an archived customer.
+router.post("/customers/:id/restore", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await req.pool.query(
+      `UPDATE customers SET is_active = true, archived_at = NULL WHERE id = $1 RETURNING id`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, message: "Cliente restaurado" });
+  } catch (err) {
+    console.error("Error restoring customer:", err);
+    res.status(500).json({ message: "Error al restaurar cliente" });
+  }
+});
+
+// Permanent delete — admin only, and only when the customer has no real ledger
+// activity (protects accounting history). Removes the customer and its owned
+// marketing/CRM rows plus the zero-value setup accounting entries, atomically.
+router.delete("/customers/:id/permanent", async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Solo un administrador puede eliminar permanentemente." });
+  }
+  const { id } = req.params;
+  const pool = req.pool;
+  const client = await pool.connect();
+  try {
+    const exists = await client.query("SELECT id FROM customers WHERE id = $1", [id]);
+    if (!exists.rows.length) {
+      client.release();
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+
+    const idPadded = Number(id).toString().padStart(4, "0");
+    const codeLike = `%-${idPadded}`;
+
+    // Guard: block if this customer has any non-zero ledger posting (real
+    // financial history). Only the zero-value setup entries are safe to remove.
+    const activity = await client.query(
+      `SELECT COUNT(*)::int AS n FROM journal_entries
+        WHERE account_code LIKE $1 AND (COALESCE(debit,0) <> 0 OR COALESCE(credit,0) <> 0)`,
+      [codeLike]
+    ).catch(() => ({ rows: [{ n: 0 }] }));
+    if (activity.rows[0].n > 0) {
+      client.release();
+      return res.status(409).json({
+        message: "Este cliente tiene movimientos contables. Archívalo para conservar el historial en lugar de eliminarlo.",
+      });
+    }
+
+    const tableExists = async (t) => {
+      const r = await client.query("SELECT to_regclass($1) AS reg", [`public.${t}`]);
+      return !!r.rows[0].reg;
+    };
+
+    await client.query("BEGIN");
+    // Owned children first (guard each so a missing table can't abort the tx).
+    if (await tableExists("post_pipeline_stages")) {
+      await client.query(
+        `DELETE FROM post_pipeline_stages WHERE post_id IN (SELECT id FROM content_calendar WHERE customer_id = $1)`,
+        [id]
+      );
+    }
+    for (const t of ["content_calendar", "creative_briefs", "customer_notes", "customer_files"]) {
+      if (await tableExists(t)) {
+        await client.query(`DELETE FROM ${t} WHERE customer_id = $1`, [id]);
+      }
+    }
+    // Zero-value setup accounting rows for this customer only.
+    if (await tableExists("journal_entries")) {
+      await client.query(`DELETE FROM journal_entries WHERE account_code LIKE $1`, [codeLike]);
+      await client.query(`DELETE FROM journal_entries WHERE source_type = 'customer_setup' AND source_id = $1`, [id]);
+    }
+    if (await tableExists("chart_of_accounts")) {
+      await client.query(`DELETE FROM chart_of_accounts WHERE code LIKE $1`, [codeLike]);
+    }
+    await client.query(`DELETE FROM customers WHERE id = $1`, [id]);
+    await client.query("COMMIT");
+    res.json({ success: true, deleted: true, message: "Cliente eliminado permanentemente" });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Error permanently deleting customer:", err);
+    // A leftover foreign-key reference we don't clean up lands here — tell the
+    // admin to archive instead rather than leaving a half state.
+    res.status(500).json({
+      message: "No se pudo eliminar permanentemente (el cliente tiene datos relacionados). Archívalo en su lugar.",
+    });
+  } finally {
+    client.release();
   }
 });
 

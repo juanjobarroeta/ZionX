@@ -38,10 +38,15 @@ export const customerName = (c) => {
   const clean = (s) => (s || "").toString().trim();
   const businessContact = [clean(c.contact_first_name), clean(c.contact_last_name)].filter(Boolean).join(" ").trim();
   const personName = [clean(c.first_name), clean(c.last_name)].filter(Boolean).join(" ").trim();
+  // Prefer the commercial name (nombre comercial / marca) — that's how the
+  // agency identifies a business. Several businesses can share one razón social
+  // (business_name), so leading with the legal name shows the same entity two or
+  // three times in dropdowns. Fall back to the legal name only when there's no
+  // commercial name.
   return (
-    clean(c.business_name) ||
     clean(c.commercial_name) ||
     blobField(c.address, "marca", "nombre comercial") ||
+    clean(c.business_name) ||
     blobField(c.address, "razón social", "razon social") ||
     businessContact ||
     personName ||
