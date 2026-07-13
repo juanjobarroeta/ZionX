@@ -61,6 +61,7 @@ const MyWork = () => {
   const [state, setState] = useState({ loading: true, items: [], memberId: undefined, error: null });
   const [queue, setQueue] = useState({ loading: true, items: [] });
   const [supervision, setSupervision] = useState({ loading: true, items: [] });
+  const [busyStage, setBusyStage] = useState(null);
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
   const userName = localStorage.getItem("userName") || "";
   const firstName = userName.split(" ")[0] || "";
@@ -98,25 +99,62 @@ const MyWork = () => {
       ? "/approvals"
       : `/content-calendar?customer=${item.customer_id}`;
 
+  // Advance one of my stages right from here. Completing (listo) auto-advances
+  // the next stage on the backend, so we refetch the queue + supervision after.
+  const patchMyStage = async (stage, status) => {
+    setBusyStage(stage.id);
+    try {
+      await axios.patch(
+        `${API_BASE_URL}/content-calendar/${stage.post_id}/pipeline/${stage.stage_key}`,
+        { status },
+        { headers }
+      );
+      const [q, sup] = await Promise.all([
+        axios.get(`${API_BASE_URL}/pipeline/my-queue`, { headers }).catch(() => ({ data: { items: [] } })),
+        axios.get(`${API_BASE_URL}/pipeline/supervision`, { headers }).catch(() => ({ data: { items: [] } })),
+      ]);
+      setQueue({ loading: false, items: q.data?.items || [] });
+      setSupervision({ loading: false, items: sup.data?.items || [] });
+    } catch {
+      /* keep UI responsive; a failed write just no-ops */
+    } finally {
+      setBusyStage(null);
+    }
+  };
+
   // -------- pipeline queue card --------
-  const QueueCard = ({ stage }) => (
-    <Link className="zxw-card" to={`/content-calendar?customer=${stage.customer_id}`}>
-      <div className="top">
-        <span className="plat">{platLabel(stage.platform)} · {cap(stage.content_type) || "Post"}</span>
-        <span className={`zxw-pill v-${STATUS_VARIANT[stage.status] || "muted"}`}>
-          {STATUS_LABELS[stage.status] || stage.status}
-        </span>
+  const QueueCard = ({ stage }) => {
+    const busy = busyStage === stage.id;
+    return (
+      <div className="zxw-card">
+        <div className="top">
+          <span className="plat">{platLabel(stage.platform)} · {cap(stage.content_type) || "Post"}</span>
+          <span className={`zxw-pill v-${STATUS_VARIANT[stage.status] || "muted"}`}>
+            {STATUS_LABELS[stage.status] || stage.status}
+          </span>
+        </div>
+        <div className="title">{postTitle(stage)}</div>
+        <div className="client">{stage.customer_name || "—"}</div>
+        <div className="foot">
+          <span className="date">{fmtDate(stage.scheduled_date)}</span>
+          <span className="zxw-roles">
+            <span className="zxw-role stage">{STAGE_LABELS[stage.stage_key] || stage.stage_key}</span>
+          </span>
+        </div>
+        <div className="zxw-card-actions">
+          <button className="zxw-act primary" disabled={busy} onClick={() => patchMyStage(stage, "listo")}>
+            {busy ? "…" : "Marcar listo"}
+          </button>
+          {stage.status === "en_progreso" ? (
+            <button className="zxw-act" disabled={busy} onClick={() => patchMyStage(stage, "cambios")}>Pedir cambios</button>
+          ) : (
+            <button className="zxw-act" disabled={busy} onClick={() => patchMyStage(stage, "en_progreso")}>Empezar</button>
+          )}
+          <Link className="zxw-act link" to={`/content-calendar?customer=${stage.customer_id}`}>Ver</Link>
+        </div>
       </div>
-      <div className="title">{postTitle(stage)}</div>
-      <div className="client">{stage.customer_name || "—"}</div>
-      <div className="foot">
-        <span className="date">{fmtDate(stage.scheduled_date)}</span>
-        <span className="zxw-roles">
-          <span className="zxw-role stage">{STAGE_LABELS[stage.stage_key] || stage.stage_key}</span>
-        </span>
-      </div>
-    </Link>
-  );
+    );
+  };
 
   // -------- supervision row --------
   const SupervisionRow = ({ post }) => {
