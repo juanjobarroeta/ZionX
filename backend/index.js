@@ -65,10 +65,25 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 app.use('/uploads', express.static(uploadDir));
 
 // Database connection
+// Resilience options shared by both connection modes. On Railway the internal
+// network (postgres.railway.internal) drops idle connections routinely — idle
+// timeout, a Postgres restart, or a transient blip. Without keepAlive + an
+// error handler, a dropped idle client surfaces as "Connection terminated
+// unexpectedly" and the pool emits an unhandled 'error', which becomes an
+// uncaught exception and takes the whole backend down (frontend can't reach it).
+const poolResilience = {
+  max: 10,                          // cap connections (Railway PG has a low limit)
+  idleTimeoutMillis: 30000,         // recycle idle clients before the server drops them
+  connectionTimeoutMillis: 10000,   // fail fast instead of hanging a request
+  keepAlive: true,                  // TCP keepalive keeps idle sockets from being reaped
+  keepAliveInitialDelayMillis: 10000,
+};
+
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false
+      ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false,
+      ...poolResilience,
     })
   : new Pool({
       user: process.env.DB_USER || 'postgres',
@@ -76,7 +91,16 @@ const pool = process.env.DATABASE_URL
       database: process.env.DB_NAME || 'zionx_dev',
       password: process.env.DB_PASSWORD || '',
       port: process.env.DB_PORT || 5432,
+      ...poolResilience,
     });
+
+// CRITICAL: handle errors on idle pool clients. node-postgres emits 'error' on
+// the pool when a backend/network error hits an idle client. With no listener,
+// Node throws it as an uncaught exception. We log and let the pool discard the
+// dead client — the next query transparently opens a fresh connection.
+pool.on('error', (err) => {
+  console.error('⚠️ Idle Postgres client error (pool will recover):', err.message);
+});
 
 console.log('🌐 Database:', process.env.DATABASE_URL ? 'Connected via DATABASE_URL' : 'Using local connection');
 
@@ -148,10 +172,27 @@ const withPool = (req, res, next) => { req.pool = pool; next(); };
 // ROUTE MOUNTING
 // =====================================================
 
+// Run createTables with retry/backoff. A transient DB blip during boot must not
+// permanently crash-loop the backend — retry a few times before giving up.
+async function initSchemaWithRetry(attempts = 5) {
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      await createTables(pool);
+      return;
+    } catch (err) {
+      const wait = Math.min(2000 * 2 ** (i - 1), 30000);
+      console.error(`❌ createTables failed (attempt ${i}/${attempts}): ${err.message}`);
+      if (i === attempts) throw err;
+      console.log(`⏳ Retrying schema init in ${wait}ms...`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
 async function start() {
   try {
     console.log('🚀 Starting server...');
-    await createTables(pool);
+    await initSchemaWithRetry();
     console.log('✅ Database tables created/verified');
 
     // Warn (do NOT auto-create) when there are no users. Seeding a known

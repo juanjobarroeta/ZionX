@@ -69,17 +69,23 @@ const createTables = async (pool) => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
   `);
-  // Same for team_members: PUT /team-members/:id writes updated_at.
-  await pool.query(`
-    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
-  `);
-  // Defensive: every table whose routes write updated_at must have the column,
-  // or the update 500s ("column updated_at does not exist"). No-op where present.
-  await pool.query(`
-    ALTER TABLE content_calendar ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
-    ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
-    ALTER TABLE creative_briefs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
-  `);
+  // Defensive updated_at columns for tables whose routes write updated_at (else
+  // the update 500s with "column updated_at does not exist"). These tables are
+  // CREATEd later in this function (team_members at ~L700), so on a fresh DB the
+  // ALTER would run before the table exists and throw — aborting boot. Guard each
+  // one: it's a harmless no-op where the table/column already exists, and a
+  // missing table here is fixed by the CREATE further down. Never fail boot.
+  const ensureUpdatedAt = async (table) => {
+    try {
+      await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;`);
+    } catch (e) {
+      console.log(`ℹ️ Deferred updated_at on ${table} (created later): ${e.message}`);
+    }
+  };
+  await ensureUpdatedAt('team_members');
+  await ensureUpdatedAt('content_calendar');
+  await ensureUpdatedAt('customers');
+  await ensureUpdatedAt('creative_briefs');
   // Add permissions column for RBAC
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
