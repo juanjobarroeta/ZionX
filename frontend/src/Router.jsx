@@ -42,6 +42,7 @@ const LeadsAnalytics = lazy(() => import("./pages/LeadsAnalytics"));
 const IncomeDashboard = lazy(() => import("./pages/IncomeDashboard"));
 const SubscriptionsManager = lazy(() => import("./pages/SubscriptionsManager"));
 const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
+const CobrosTracker = lazy(() => import("./pages/CobrosTracker"));
 const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
 const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
 const BancosManager = lazy(() => import("./pages/BancosManager"));
@@ -153,6 +154,7 @@ const AppRouter = () => (
         {/* Income Management */}
         <Route path="/income" element={<FinanceRoute><IncomeDashboard /></FinanceRoute>} />
         <Route path="/income/subscriptions" element={<FinanceRoute><SubscriptionsManager /></FinanceRoute>} />
+        <Route path="/income/cobros" element={<FinanceRoute><CobrosTracker /></FinanceRoute>} />
         <Route path="/income/payments" element={<FinanceRoute><PaymentManagement /></FinanceRoute>} />
         <Route path="/income/invoice-generator" element={<FinanceRoute><InvoiceGenerator /></FinanceRoute>} />
         <Route path="/income/invoices" element={<FinanceRoute><InvoicesManager /></FinanceRoute>} />
