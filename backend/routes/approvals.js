@@ -327,7 +327,7 @@ router.get('/queue', async (req, res) => {
       SELECT
         cc.id,
         cc.customer_id,
-        c.business_name as customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') as customer_name,
         cc.campaign,
         cc.platform,
         cc.content_type,

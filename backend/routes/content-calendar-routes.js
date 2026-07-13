@@ -110,7 +110,7 @@ router.get("/content-calendar-range", async (req, res) => {
         cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_in, cc.copy_out, cc.arte,
         cc.priority, cc.client_status, cc.scheduled_post_id,
         cc.assigned_designer, cc.assigned_community_manager,
-        c.business_name AS customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
         designer.name AS designer_name,
         cm.name AS cm_name,
         sp.status AS publish_status,
