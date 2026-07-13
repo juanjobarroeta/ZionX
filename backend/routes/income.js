@@ -512,7 +512,9 @@ router.post('/subscriptions', async (req, res) => {
       custom_monthly_price, // Legacy field - kept for compatibility
       billing_cycle = 'monthly',
       description,
-      notes
+      notes,
+      requires_invoice = true, // some clients don't need a CFDI
+      billing_day             // day of month to bill (defaults to start day / 1)
     } = req.body;
     
     // Require customer_id and either monthly_amount or a package
@@ -558,27 +560,33 @@ router.post('/subscriptions', async (req, res) => {
       }
     }
     
-    // Calculate next billing date
+    // We charge by calendar month, not by incorporation date. A monthly sub is
+    // due in the CURRENT month (on its billing day), so a client added mid-month
+    // still bills this month instead of "a month from now".
     const startDateObj = new Date(start_date);
-    let nextBillingDate = new Date(startDateObj);
-    
+    const bday = Math.min(Math.max(parseInt(billing_day, 10) || startDateObj.getDate() || 1, 1), 28);
+    const now = new Date();
+    let nextBillingDate;
     if (billing_cycle === 'monthly') {
-      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      nextBillingDate = new Date(now.getFullYear(), now.getMonth(), bday);
     } else if (billing_cycle === 'quarterly') {
-      nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
+      nextBillingDate = new Date(startDateObj); nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
     } else if (billing_cycle === 'annual') {
-      nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+      nextBillingDate = new Date(startDateObj); nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    } else {
+      nextBillingDate = new Date(now.getFullYear(), now.getMonth(), bday);
     }
-    
+
     const result = await req.pool.query(`
       INSERT INTO customer_subscriptions (
         customer_id, service_package_id, start_date, next_billing_date,
-        custom_monthly_price, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        custom_monthly_price, notes, created_by, requires_invoice, billing_day
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       customer_id, packageId, start_date, nextBillingDate,
-      effectiveMonthlyPrice, notes || description, req.user.id
+      effectiveMonthlyPrice, notes || description, req.user.id,
+      requires_invoice !== false, bday
     ]);
     
     console.log(`✅ Created subscription ${result.rows[0].id} for customer ${customer_id} at ${effectiveMonthlyPrice}/month`);
@@ -629,9 +637,11 @@ router.put('/subscriptions/:id', async (req, res) => {
       custom_features,
       notes,
       end_date,
-      next_billing_date
+      next_billing_date,
+      requires_invoice,
+      billing_day
     } = req.body;
-    
+
     const result = await req.pool.query(`
       UPDATE customer_subscriptions SET
         status = COALESCE($1, status),
@@ -643,6 +653,8 @@ router.put('/subscriptions/:id', async (req, res) => {
         notes = COALESCE($7, notes),
         end_date = COALESCE($8, end_date),
         next_billing_date = COALESCE($10, next_billing_date),
+        requires_invoice = COALESCE($11, requires_invoice),
+        billing_day = COALESCE($12, billing_day),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $9
       RETURNING *
@@ -650,7 +662,9 @@ router.put('/subscriptions/:id', async (req, res) => {
       status, custom_monthly_price, discount_percentage,
       custom_posts_per_month, custom_platforms,
       custom_features ? JSON.stringify(custom_features) : null,
-      notes, end_date, id, next_billing_date
+      notes, end_date, id, next_billing_date,
+      typeof requires_invoice === 'boolean' ? requires_invoice : null,
+      billing_day ?? null
     ]);
     
     if (!result.rows.length) {
@@ -661,6 +675,135 @@ router.put('/subscriptions/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating subscription:', error);
     res.status(500).json({ error: 'Failed to update subscription' });
+  }
+});
+
+// =====================================================
+// COBROS (monthly charges) — payment tracking, separate from invoicing
+// =====================================================
+
+const monthStart = (m) => {
+  // Accepts 'YYYY-MM' or falls back to the current month; returns 'YYYY-MM-01'.
+  if (typeof m === 'string' && /^\d{4}-\d{2}$/.test(m)) return `${m}-01`;
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+/**
+ * POST /api/income/subscriptions/generate-charges
+ * Idempotently create a monthly charge (cobro) for every active subscription for
+ * the given month (default: current). Safe to run repeatedly — UNIQUE(sub, month).
+ */
+router.post('/subscriptions/generate-charges', async (req, res) => {
+  try {
+    const period = monthStart(req.body?.month);
+    const { rows } = await req.pool.query(`
+      INSERT INTO subscription_charges (subscription_id, customer_id, period_month, amount, requires_invoice)
+      SELECT cs.id, cs.customer_id, $1::date,
+             COALESCE(cs.custom_monthly_price, sp.base_price, 0),
+             COALESCE(cs.requires_invoice, true)
+        FROM customer_subscriptions cs
+        LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
+       WHERE cs.status = 'active'
+      ON CONFLICT (subscription_id, period_month) DO NOTHING
+      RETURNING id
+    `, [period]);
+    res.json({ success: true, period, created: rows.length });
+  } catch (error) {
+    console.error('Error generating charges:', error);
+    res.status(500).json({ error: 'Failed to generate charges' });
+  }
+});
+
+/**
+ * GET /api/income/charges?month=YYYY-MM
+ * The cobros tracker for a month: one row per subscription charge with client
+ * name, paid/pending status, whether it needs a factura, and any linked invoice.
+ */
+router.get('/charges', async (req, res) => {
+  try {
+    const period = monthStart(req.query?.month);
+    const { rows } = await req.pool.query(`
+      SELECT ch.*,
+             COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
+             c.business_name, c.commercial_name,
+             sp.name AS package_name,
+             inv.invoice_number, inv.status AS invoice_status
+        FROM subscription_charges ch
+        JOIN customers c ON ch.customer_id = c.id
+        LEFT JOIN customer_subscriptions cs ON ch.subscription_id = cs.id
+        LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
+        LEFT JOIN invoices inv ON ch.invoice_id = inv.id
+       WHERE ch.period_month = $1::date
+       ORDER BY ch.status DESC, customer_name ASC
+    `, [period]);
+    const totals = rows.reduce((a, r) => {
+      const amt = Number(r.amount) || 0;
+      a.total += amt;
+      if (r.status === 'cobrado') a.cobrado += amt; else a.pendiente += amt;
+      return a;
+    }, { total: 0, cobrado: 0, pendiente: 0, count: rows.length });
+    res.json({ period, totals, charges: rows });
+  } catch (error) {
+    console.error('Error fetching charges:', error);
+    res.status(500).json({ error: 'Failed to fetch charges' });
+  }
+});
+
+/**
+ * PATCH /api/income/charges/:id
+ * Update a charge: mark cobrado/pendiente (sets paid_at), payment_method,
+ * requires_invoice, notes. This is "cobrar" — independent of "facturar".
+ */
+router.patch('/charges/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, payment_method, requires_invoice, notes } = req.body;
+    const paidExpr = status === 'cobrado' ? 'NOW()' : (status === 'pendiente' ? 'NULL' : 'paid_at');
+    const { rows } = await req.pool.query(`
+      UPDATE subscription_charges SET
+        status = COALESCE($1, status),
+        payment_method = COALESCE($2, payment_method),
+        requires_invoice = COALESCE($3, requires_invoice),
+        notes = COALESCE($4, notes),
+        paid_at = ${paidExpr},
+        updated_at = NOW()
+      WHERE id = $5
+      RETURNING *
+    `, [status || null, payment_method || null,
+        typeof requires_invoice === 'boolean' ? requires_invoice : null,
+        notes ?? null, id]);
+    if (!rows.length) return res.status(404).json({ error: 'Charge not found' });
+    res.json({ success: true, charge: rows[0] });
+  } catch (error) {
+    console.error('Error updating charge:', error);
+    res.status(500).json({ error: 'Failed to update charge' });
+  }
+});
+
+/**
+ * POST /api/income/subscriptions/align-current-month
+ * Realign every active subscription's next_billing_date to the current calendar
+ * month (on its billing day). Opt-in — fixes subs that were set to bill next
+ * month by the old incorporation-date logic.
+ */
+router.post('/subscriptions/align-current-month', async (req, res) => {
+  try {
+    const { rows } = await req.pool.query(`
+      UPDATE customer_subscriptions
+         SET next_billing_date = make_date(
+               EXTRACT(YEAR FROM CURRENT_DATE)::int,
+               EXTRACT(MONTH FROM CURRENT_DATE)::int,
+               LEAST(GREATEST(COALESCE(billing_day, 1), 1), 28)
+             ),
+             updated_at = NOW()
+       WHERE status = 'active'
+      RETURNING id
+    `);
+    res.json({ success: true, updated: rows.length });
+  } catch (error) {
+    console.error('Error aligning subscriptions:', error);
+    res.status(500).json({ error: 'Failed to align subscriptions' });
   }
 });
 

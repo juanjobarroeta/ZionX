@@ -1182,6 +1182,37 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Invoice payments table created");
 
+    // Per-subscription monthly flags: some clients don't need a CFDI (factura),
+    // and billing is by calendar month (a billing day), not incorporation date.
+    await pool.query(`
+      ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS requires_invoice BOOLEAN DEFAULT true;
+      ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS billing_day INTEGER DEFAULT 1;
+    `);
+
+    // Subscription charges = the monthly "cobro" tracker, SEPARATE from invoices.
+    // A charge is what a client owes for a calendar month; cobrar (mark paid) is
+    // independent of facturar (issuing a CFDI, only for clients that need one).
+    // UNIQUE(subscription_id, period_month) makes generation idempotent.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscription_charges (
+        id SERIAL PRIMARY KEY,
+        subscription_id INTEGER REFERENCES customer_subscriptions(id) ON DELETE CASCADE,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        period_month DATE NOT NULL,
+        amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'pendiente',
+        paid_at TIMESTAMP,
+        payment_method VARCHAR(50),
+        requires_invoice BOOLEAN DEFAULT true,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (subscription_id, period_month)
+      );
+    `);
+    console.log("✅ Subscription charges (cobros) table created");
+
     // Billable time entries table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS billable_time_entries (
