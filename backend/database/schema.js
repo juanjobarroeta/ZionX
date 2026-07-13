@@ -69,6 +69,17 @@ const createTables = async (pool) => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
   `);
+  // Same for team_members: PUT /team-members/:id writes updated_at.
+  await pool.query(`
+    ALTER TABLE team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+  `);
+  // Defensive: every table whose routes write updated_at must have the column,
+  // or the update 500s ("column updated_at does not exist"). No-op where present.
+  await pool.query(`
+    ALTER TABLE content_calendar ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+    ALTER TABLE creative_briefs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+  `);
   // Add permissions column for RBAC
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '{}';
