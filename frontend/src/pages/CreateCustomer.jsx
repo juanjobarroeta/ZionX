@@ -244,11 +244,14 @@ const CreateCustomer = () => {
 
   // Calculate completion percentage
   const completionPercentage = useMemo(() => {
+    // Must match the required fields enforced by validateStep — this is a
+    // business-client wizard, so these are the business fields (the old loan-app
+    // field names left this stuck at 0%).
     const requiredFields = {
-      1: ['first_name', 'last_name', 'phone', 'curp'],
-      2: ['address', 'postal_code'],
-      3: ['employment_status', 'income'],
-      4: [],
+      1: ['business_name', 'rfc', 'industry'],
+      2: ['fiscal_address', 'fiscal_postal_code', 'fiscal_city', 'fiscal_state'],
+      3: ['contact_first_name', 'contact_last_name', 'contact_email', 'contact_phone'],
+      4: ['business_size', 'target_market'],
       5: []
     };
     
