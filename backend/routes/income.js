@@ -402,7 +402,7 @@ router.get('/subscriptions', async (req, res) => {
         cs.*,
         sp.name as package_name,
         sp.base_price as package_base_price,
-        COALESCE(c.business_name, c.first_name || ' ' || c.last_name) as customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') as customer_name,
         c.email as customer_email,
         c.phone as customer_phone,
         COALESCE(cs.custom_monthly_price, sp.base_price) as effective_monthly_price
@@ -442,7 +442,7 @@ router.get('/subscriptions/active', async (req, res) => {
     const result = await req.pool.query(`
       SELECT 
         cs.*,
-        c.first_name || ' ' || c.last_name as customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') as customer_name,
         c.email as customer_email,
         c.phone as customer_phone,
         sp.name as package_name,
@@ -477,7 +477,7 @@ router.get('/subscriptions/:id', async (req, res) => {
         sp.posts_per_month,
         sp.platforms_included,
         sp.features as package_features,
-        c.first_name || ' ' || c.last_name as customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') as customer_name,
         c.email as customer_email,
         c.phone as customer_phone,
         COALESCE(cs.custom_monthly_price, sp.base_price) as effective_monthly_price

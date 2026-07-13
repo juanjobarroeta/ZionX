@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import { customerName } from "../utils/customerName";
 import "./Subscriptions.css";
 
 const SubscriptionsManager = () => {
@@ -189,12 +190,9 @@ const SubscriptionsManager = () => {
     return <span className={`zxsub-pill ${badge.color}`}>{badge.label}</span>;
   };
 
-  // Get customer name for display
-  const getCustomerName = (customer) => {
-    if (!customer) return 'Cliente';
-    return customer.business_name || customer.commercial_name || 
-           `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'Cliente';
-  };
+  // Get customer name for display — use the shared helper so the dropdown shows
+  // the nombre comercial (like every other list), not razón social.
+  const getCustomerName = (customer) => customerName(customer);
 
   if (loading) {
     return (

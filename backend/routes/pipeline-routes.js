@@ -294,7 +294,7 @@ router.get('/pipeline/my-queue', async (req, res) => {
               s.optional, s.position,
               cc.customer_id, cc.campaign, cc.idea_tema, cc.title, cc.platform,
               cc.content_type, cc.scheduled_date, cc.status AS post_status,
-              c.business_name AS customer_name,
+              COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
               NOT EXISTS (
                 SELECT 1 FROM post_pipeline_stages p
                  WHERE p.content_calendar_id = s.content_calendar_id
@@ -335,7 +335,7 @@ router.get('/pipeline/supervision', async (req, res) => {
               cc.id AS post_id, cc.customer_id, cc.campaign, cc.idea_tema,
               cc.title, cc.platform, cc.content_type, cc.scheduled_date,
               cc.status AS post_status,
-              c.business_name AS customer_name,
+              COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
               s.stage_key AS current_stage, s.status AS current_status,
               s.owner_id AS current_owner_id, tm.name AS current_owner_name
          FROM customers c
