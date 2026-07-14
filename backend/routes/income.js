@@ -670,7 +670,27 @@ router.put('/subscriptions/:id', async (req, res) => {
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Subscription not found' });
     }
-    
+
+    // Keep this month's UNPAID cobro in sync with the edited price / factura flag
+    // so a modified subscription reflects immediately in the Cobros tracker.
+    // Best-effort: never fail the update if the charges table isn't there yet.
+    try {
+      await req.pool.query(`
+        UPDATE subscription_charges ch
+           SET amount = COALESCE(cs.custom_monthly_price, sp.base_price, ch.amount),
+               requires_invoice = COALESCE(cs.requires_invoice, ch.requires_invoice),
+               updated_at = NOW()
+          FROM customer_subscriptions cs
+          LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
+         WHERE ch.subscription_id = cs.id
+           AND cs.id = $1
+           AND ch.period_month = date_trunc('month', CURRENT_DATE)::date
+           AND ch.status <> 'cobrado'
+      `, [id]);
+    } catch (syncErr) {
+      console.error('Cobro sync after subscription update skipped:', syncErr.message);
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating subscription:', error);
@@ -697,6 +717,9 @@ const monthStart = (m) => {
 router.post('/subscriptions/generate-charges', async (req, res) => {
   try {
     const period = monthStart(req.body?.month);
+    // Refresh pending charges too, so re-running this after editing a
+    // subscription updates its amount / requires_invoice. Charges already marked
+    // 'cobrado' are settled and never touched (the WHERE guard on DO UPDATE).
     const { rows } = await req.pool.query(`
       INSERT INTO subscription_charges (subscription_id, customer_id, period_month, amount, requires_invoice)
       SELECT cs.id, cs.customer_id, $1::date,
@@ -705,10 +728,14 @@ router.post('/subscriptions/generate-charges', async (req, res) => {
         FROM customer_subscriptions cs
         LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
        WHERE cs.status = 'active'
-      ON CONFLICT (subscription_id, period_month) DO NOTHING
+      ON CONFLICT (subscription_id, period_month) DO UPDATE
+         SET amount = EXCLUDED.amount,
+             requires_invoice = EXCLUDED.requires_invoice,
+             updated_at = NOW()
+       WHERE subscription_charges.status <> 'cobrado'
       RETURNING id
     `, [period]);
-    res.json({ success: true, period, created: rows.length });
+    res.json({ success: true, period, synced: rows.length });
   } catch (error) {
     console.error('Error generating charges:', error);
     res.status(500).json({ error: 'Failed to generate charges' });

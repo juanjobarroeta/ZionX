@@ -49,7 +49,8 @@ const CobrosTracker = () => {
     setWorking(true); setMsg("");
     try {
       const res = await axios.post(`${API_BASE_URL}/api/income/subscriptions/generate-charges`, { month }, { headers });
-      setMsg(res.data?.created ? `${res.data.created} cobro(s) generado(s) para ${monthLabel(month)}.` : `Sin cobros nuevos — ya estaban generados.`);
+      const n = res.data?.synced ?? res.data?.created ?? 0;
+      setMsg(n ? `${n} cobro(s) generado(s)/actualizado(s) para ${monthLabel(month)}.` : `Sin cambios — los cobros ya están al día.`);
       await fetchCharges(month);
     } catch (err) {
       console.error(err);
@@ -116,8 +117,8 @@ const CobrosTracker = () => {
                 value={month}
                 onChange={(e) => setMonth(e.target.value || currentMonth())}
               />
-              <button className="zxcob-btn" onClick={generate} disabled={working}>
-                {working ? "…" : "Generar cobros del mes"}
+              <button className="zxcob-btn" onClick={generate} disabled={working} title="Crea los cobros del mes y actualiza los pendientes si cambió una suscripción (no toca los ya cobrados)">
+                {working ? "…" : "Generar / actualizar cobros"}
               </button>
               <button className="zxcob-btn ghost" onClick={align} disabled={working} title="Ajusta la próxima facturación de todas las suscripciones activas al mes actual">
                 Alinear al mes actual
