@@ -1,0 +1,140 @@
+/* ===== ZIONX — Budget Management / Presupuestos ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxbud {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --ok: #235B44; --warn: #9A6B1E; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 48px 72px;
+}
+.zxbud *, .zxbud { box-sizing: border-box; }
+.zxbud-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.zxbud-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+/* header */
+.zxbud-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxbud-eyebrow { font-size: 13px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.5; font-weight: 500; }
+.zxbud-h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxbud-sub { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.zxbud-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* buttons */
+.zxbud-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.zxbud-btn:hover { background: var(--chip); }
+.zxbud-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxbud-btn.solid:hover { opacity: 0.9; background: var(--ink); }
+.zxbud-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.zxbud-btn.grow { flex: 1; text-align: center; }
+.zxbud-linkbtn { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: none; border: none; cursor: pointer; padding: 4px 6px; }
+.zxbud-linkbtn:hover { text-decoration: underline; }
+.zxbud-linkbtn.danger { color: var(--bad); }
+
+/* monogram chip (brand identity treatment) */
+.zxbud-mono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex: 0 0 auto;
+  background: var(--ink); color: var(--paper);
+  border-radius: 3px; font-weight: 700; font-size: 13px;
+  letter-spacing: 0.04em; line-height: 1;
+}
+.zxbud-mono.sm { width: 28px; height: 28px; font-size: 11px; }
+
+/* tabs */
+.zxbud-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.zxbud-tab { font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 3px; cursor: pointer; }
+.zxbud-tab:hover { color: var(--ink); }
+.zxbud-tab.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.zxbud-section { display: flex; flex-direction: column; gap: 18px; }
+
+/* stat tiles */
+.zxbud-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxbud-tile { background: var(--paper); padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.zxbud-tile.lead { background: var(--ink); color: var(--paper); }
+.zxbud-tile .k { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; font-weight: 600; }
+.zxbud-tile .v { font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.zxbud-tile .v.bad { color: var(--bad); }
+.zxbud-tile .v.ok { color: var(--ok); }
+.zxbud-tile.lead .v.bad, .zxbud-tile.lead .v.ok { color: var(--paper); }
+
+/* overview cards */
+.zxbud-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.zxbud-ocard { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.zxbud-ochead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.zxbud-ochead .who { display: flex; align-items: center; gap: 12px; }
+.zxbud-ochead .nm { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.zxbud-ochead .pr { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.zxbud-orows { display: flex; flex-direction: column; gap: 8px; }
+.zxbud-orows .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.zxbud-orows .num { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.zxbud-orows .num.over { color: var(--bad); }
+.zxbud-orows .num.left { color: var(--ok); }
+
+.zxbud-progress { display: flex; flex-direction: column; gap: 6px; }
+.zxbud-plabel { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.zxbud-track { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+.zxbud-fill { height: 100%; border-radius: 3px; background: var(--ok); transition: width 0.4s ease; }
+.zxbud-fill.warn { background: var(--warn); }
+.zxbud-fill.bad { background: var(--bad); }
+
+/* pills */
+.zxbud-pill { display: inline-block; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap; }
+.zxbud-pill.safe { background: rgba(35,91,68,0.14); color: var(--ok); }
+.zxbud-pill.warning { background: rgba(154,107,30,0.15); color: var(--warn); }
+.zxbud-pill.danger { background: rgba(138,28,28,0.13); color: var(--bad); }
+
+/* card / table */
+.zxbud-card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.zxbud-cardhead { display: flex; align-items: baseline; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.zxbud-cardhead .count { font-size: 12px; color: var(--muted); font-weight: 500; }
+.zxbud-tablewrap { overflow-x: auto; }
+.zxbud-table { width: 100%; border-collapse: collapse; min-width: 780px; }
+.zxbud-table th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 14px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.zxbud-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); font-size: 14px; vertical-align: middle; }
+.zxbud-table tr:last-child td { border-bottom: none; }
+.zxbud-table tbody tr:hover { background: var(--chip); }
+.zxbud-table .r { text-align: right; }
+.zxbud-table .c { text-align: center; }
+.zxbud-table .mono { font-variant-numeric: tabular-nums; }
+.zxbud-table .over { color: var(--bad); font-weight: 700; }
+.zxbud-table .left { color: var(--ok); }
+.zxbud-cellcat { display: flex; align-items: center; gap: 10px; }
+.zxbud-cellcat .nm { font-size: 14px; font-weight: 600; }
+.zxbud-cellcat .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.zxbud-rowact { display: inline-flex; gap: 6px; align-items: center; justify-content: center; }
+
+.zxbud-empty { padding: 54px 20px; text-align: center; color: var(--muted); }
+.zxbud-empty .lead { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.zxbud-empty .small { font-size: 12px; margin-top: 4px; }
+
+/* modal */
+.zxbud-overlay { position: fixed; inset: 0; background: rgba(4,17,26,0.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.zxbud-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 60px rgba(4,17,26,0.25); }
+.zxbud-mhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.zxbud-mhead h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.zxbud-close { font-family: inherit; font-size: 22px; line-height: 1; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0 4px; }
+.zxbud-close:hover { color: var(--ink); }
+
+/* form */
+.zxbud-form { display: flex; flex-direction: column; gap: 18px; }
+.zxbud-field { display: flex; flex-direction: column; gap: 8px; }
+.zxbud-label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.zxbud-input, .zxbud-select, .zxbud-textarea {
+  font-family: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 4px; padding: 11px 14px; width: 100%;
+}
+.zxbud-textarea { resize: vertical; min-height: 78px; }
+.zxbud-input:focus, .zxbud-select:focus, .zxbud-textarea:focus { outline: none; border-color: var(--ink); }
+.zxbud-input::placeholder, .zxbud-textarea::placeholder { color: var(--muted); }
+.zxbud-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.zxbud-check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.zxbud-check input { width: 16px; height: 16px; accent-color: var(--ink); }
+.zxbud-mactions { display: flex; gap: 10px; margin-top: 6px; }
+
+@media (max-width: 900px) {
+  .zxbud { padding: 72px 16px 56px; }
+  .zxbud-tiles { grid-template-columns: repeat(2, 1fr); }
+  .zxbud-grid2 { grid-template-columns: 1fr; }
+}

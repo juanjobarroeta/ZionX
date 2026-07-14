@@ -69,12 +69,23 @@
 .zxexp-money .zxexp-input { padding-left: 26px; }
 .zxexp-hint { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
 
+/* monogram chip (brand identity treatment) */
+.zxexp-mono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex: 0 0 auto;
+  background: var(--ink); color: var(--paper);
+  border-radius: 3px; font-weight: 700; font-size: 12px;
+  letter-spacing: 0.04em; line-height: 1;
+}
+.zxexp-mono.sm { width: 28px; height: 28px; font-size: 11px; }
+
 /* category grid (visual selection) */
 .zxexp-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
-.zxexp-cat { font-family: inherit; background: var(--surface); border: none; padding: 14px; display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer; color: var(--ink); }
+.zxexp-cat { font-family: inherit; background: var(--surface); border: none; padding: 14px; display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer; color: var(--ink); transition: background 0.14s; }
 .zxexp-cat:hover { background: var(--chip); }
 .zxexp-cat.active { background: var(--ink); color: var(--paper); }
-.zxexp-cat .ic { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.zxexp-cat .zxexp-mono { margin-bottom: 6px; }
+.zxexp-cat.active .zxexp-mono { background: var(--paper); color: var(--ink); }
 .zxexp-cat .nm { font-size: 13px; font-weight: 600; }
 .zxexp-cat .bd { font-size: 11px; opacity: 0.6; font-variant-numeric: tabular-nums; }
 
@@ -85,7 +96,6 @@
 .zxexp-brow:last-child { padding-bottom: 0; }
 .zxexp-btop { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .zxexp-btop .nm { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-.zxexp-btop .nm .ic { font-size: 16px; }
 .zxexp-btop .cnt { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .zxexp-bnums { font-size: 13px; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
 .zxexp-track { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
@@ -112,8 +122,7 @@
 .zxexp-table tbody tr:hover { background: var(--chip); }
 .zxexp-table .r { text-align: right; font-variant-numeric: tabular-nums; }
 .zxexp-table .c { text-align: center; }
-.zxexp-cellcat { display: flex; align-items: center; gap: 8px; }
-.zxexp-cellcat .ic { font-size: 18px; }
+.zxexp-cellcat { display: flex; align-items: center; gap: 10px; }
 .zxexp-cellcat .nm { font-size: 14px; font-weight: 600; }
 .zxexp-desc { font-weight: 600; }
 .zxexp-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
@@ -126,7 +135,7 @@
 .zxexp-pill.pending { background: rgba(154,107,30,0.15); color: var(--warn); }
 
 .zxexp-empty { padding: 48px 20px; text-align: center; color: var(--muted); }
-.zxexp-empty .big { font-size: 32px; display: block; margin-bottom: 8px; }
+.zxexp-empty .lead { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 .zxexp-empty .small { font-size: 12px; margin-top: 4px; }
 
 /* modal */

@@ -32,110 +32,98 @@ const AdminExpenses = () => {
 
   // Marketing Agency Expense Categories (mapped to chart of accounts)
   const expenseCategories = [
-    { 
-      id: "payroll", 
-      name: "Nómina", 
-      icon: "👥", 
-      color: "from-red-500 to-pink-600", 
+    {
+      id: "payroll",
+      name: "Nómina",
+      code: "NÓ",
       budget: 110000,
       account_code: "6000",
       description: "Sueldos y salarios del equipo"
     },
-    { 
-      id: "meta_ads", 
-      name: "Meta Ads", 
-      icon: "📱", 
-      color: "from-blue-500 to-cyan-600", 
+    {
+      id: "meta_ads",
+      name: "Meta Ads",
+      code: "MA",
       budget: 20000,
       account_code: "6001",
       description: "Facebook e Instagram Ads"
     },
-    { 
-      id: "google_ads", 
-      name: "Google Ads", 
-      icon: "🔍", 
-      color: "from-yellow-500 to-orange-600", 
+    {
+      id: "google_ads",
+      name: "Google Ads",
+      code: "GA",
       budget: 15000,
       account_code: "6002",
       description: "Google Search y Display"
     },
-    { 
-      id: "tiktok_ads", 
-      name: "TikTok Ads", 
-      icon: "🎵", 
-      color: "from-pink-500 to-rose-600", 
+    {
+      id: "tiktok_ads",
+      name: "TikTok Ads",
+      code: "TT",
       budget: 10000,
       account_code: "6003",
       description: "TikTok Advertising"
     },
-    { 
-      id: "tools", 
-      name: "Herramientas", 
-      icon: "🛠️", 
-      color: "from-purple-500 to-violet-600", 
+    {
+      id: "tools",
+      name: "Herramientas",
+      code: "HE",
       budget: 8000,
       account_code: "6004",
       description: "Canva, Adobe, Hootsuite, etc."
     },
-    { 
-      id: "assets", 
-      name: "Assets/Stock", 
-      icon: "📸", 
-      color: "from-green-500 to-emerald-600", 
+    {
+      id: "assets",
+      name: "Assets/Stock",
+      code: "AS",
       budget: 3000,
       account_code: "6005",
       description: "Fotos, videos, música stock"
     },
-    { 
-      id: "freelancers", 
-      name: "Freelancers", 
-      icon: "✍️", 
-      color: "from-indigo-500 to-blue-600", 
+    {
+      id: "freelancers",
+      name: "Freelancers",
+      code: "FR",
       budget: 15000,
       account_code: "6006",
       description: "Contratistas y colaboradores"
     },
-    { 
-      id: "marketing_own", 
-      name: "Marketing Propio", 
-      icon: "📢", 
-      color: "from-orange-500 to-red-600", 
+    {
+      id: "marketing_own",
+      name: "Marketing Propio",
+      code: "MP",
       budget: 5000,
       account_code: "6100",
       description: "Marketing de la agencia"
     },
-    { 
-      id: "rent", 
-      name: "Renta Oficina", 
-      icon: "🏢", 
-      color: "from-teal-500 to-cyan-600", 
+    {
+      id: "rent",
+      name: "Renta Oficina",
+      code: "RO",
       budget: 15000,
       account_code: "6200",
       description: "Renta de espacio"
     },
-    { 
-      id: "internet", 
-      name: "Internet", 
-      icon: "📡", 
-      color: "from-blue-500 to-indigo-600", 
+    {
+      id: "internet",
+      name: "Internet",
+      code: "IN",
       budget: 1500,
       account_code: "6230",
       description: "Internet y telefonía"
     },
-    { 
-      id: "software_subscriptions", 
-      name: "Software/SaaS", 
-      icon: "💻", 
-      color: "from-purple-500 to-pink-600", 
+    {
+      id: "software_subscriptions",
+      name: "Software/SaaS",
+      code: "SW",
       budget: 5000,
       account_code: "6240",
       description: "Suscripciones de software"
     },
-    { 
-      id: "other", 
-      name: "Otros Gastos", 
-      icon: "📦", 
-      color: "from-gray-500 to-slate-600", 
+    {
+      id: "other",
+      name: "Otros Gastos",
+      code: "OT",
       budget: 8000,
       account_code: "6999",
       description: "Gastos varios"
@@ -186,7 +174,7 @@ const AdminExpenses = () => {
         }
       });
 
-      alert("✅ Gasto registrado exitosamente");
+      alert("Gasto registrado exitosamente");
       
       setForm({
         category: "",
@@ -203,7 +191,7 @@ const AdminExpenses = () => {
       fetchExpenses();
     } catch (err) {
       console.error("Error saving expense:", err);
-      alert("❌ Error al registrar el gasto: " + (err.response?.data?.error || err.message));
+      alert("Error al registrar el gasto: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -229,13 +217,13 @@ const AdminExpenses = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      alert(`✅ Pago de ${formatCurrency(selectedExpense.amount)} registrado correctamente`);
+      alert(`Pago de ${formatCurrency(selectedExpense.amount)} registrado correctamente`);
       setShowPaymentModal(false);
       setSelectedExpense(null);
       fetchExpenses();
     } catch (err) {
       console.error("Error recording payment:", err);
-      alert("❌ Error al registrar pago: " + (err.response?.data?.error || err.message));
+      alert("Error al registrar pago: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
@@ -330,7 +318,7 @@ const AdminExpenses = () => {
                           onClick={() => handleCategorySelect(cat)}
                           className={`zxexp-cat${form.category === cat.id ? " active" : ""}`}
                         >
-                          <div className="ic">{cat.icon}</div>
+                          <span className="zxexp-mono">{cat.code}</span>
                           <div className="nm">{cat.name}</div>
                           <div className="bd">{formatCurrency(cat.budget)}</div>
                         </button>
@@ -412,13 +400,13 @@ const AdminExpenses = () => {
                       className="zxexp-select"
                     >
                       <option value="">Por pagar</option>
-                      <option value="transferencia">🏦 Transferencia</option>
-                      <option value="efectivo">💵 Efectivo</option>
-                      <option value="tarjeta">💳 Tarjeta</option>
-                      <option value="cheque">📝 Cheque</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="cheque">Cheque</option>
                     </select>
                     <p className="zxexp-hint">
-                      {form.payment_method ? '✅ Se registrará como pagado' : '⏳ Se registrará como por pagar'}
+                      {form.payment_method ? 'Se registrará como pagado' : 'Se registrará como por pagar'}
                     </p>
                   </div>
 
@@ -460,7 +448,7 @@ const AdminExpenses = () => {
                       <div key={category.id} className="zxexp-brow">
                         <div className="zxexp-btop">
                           <div className="nm">
-                            <span className="ic">{category.icon}</span>
+                            <span className="zxexp-mono sm">{category.code}</span>
                             <span>{category.name}</span>
                           </div>
                           <span className="cnt">{data.count} gastos</span>
@@ -545,7 +533,7 @@ const AdminExpenses = () => {
                       </td>
                       <td>
                         <div className="zxexp-cellcat">
-                          <span className="ic">{category?.icon || '📦'}</span>
+                          <span className="zxexp-mono sm">{category?.code || 'OT'}</span>
                           <span className="nm">{category?.name || expense.category}</span>
                         </div>
                       </td>
@@ -598,8 +586,7 @@ const AdminExpenses = () => {
                   <tr>
                     <td colSpan="6">
                       <div className="zxexp-empty">
-                        <span className="big">📋</span>
-                        <p>No hay gastos registrados</p>
+                        <p className="lead">No hay gastos registrados</p>
                         <p className="small">Registra tu primer gasto arriba</p>
                       </div>
                     </td>
@@ -643,10 +630,10 @@ const AdminExpenses = () => {
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
                     className="zxexp-select"
                   >
-                    <option value="transferencia">🏦 Transferencia Bancaria</option>
-                    <option value="efectivo">💵 Efectivo</option>
-                    <option value="tarjeta">💳 Tarjeta</option>
-                    <option value="cheque">📝 Cheque</option>
+                    <option value="transferencia">Transferencia Bancaria</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="cheque">Cheque</option>
                   </select>
                 </div>
 
@@ -673,7 +660,7 @@ const AdminExpenses = () => {
 
                 <div className="zxexp-ledger">
                   <p className="t">
-                    📒 <strong>Asientos Contables:</strong> Al pagar, se crearán automáticamente:
+                    <strong>Asientos Contables:</strong> Al pagar, se crearán automáticamente:
                   </p>
                   <div className="lines">
                     <div>• Debe: {selectedExpense.category ? expenseCategories.find(c => c.id === selectedExpense.category)?.account_code : '6999'} (Gasto) - {formatCurrency(selectedExpense.amount)}</div>

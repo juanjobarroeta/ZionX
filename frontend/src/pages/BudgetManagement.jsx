@@ -2,6 +2,7 @@ import { API_BASE_URL } from "../utils/constants";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
+import "./BudgetManagement.css";
 
 const BudgetManagement = () => {
   const token = localStorage.getItem("token");
@@ -22,24 +23,24 @@ const BudgetManagement = () => {
     is_active: true
   });
 
-  // Budget categories with icons and colors
+  // Budget categories with monogram codes
   const budgetCategories = [
-    { id: "payroll", name: "Nómina", icon: "👥", color: "from-red-500 to-pink-600" },
-    { id: "rent", name: "Renta", icon: "🏢", color: "from-blue-500 to-cyan-600" },
-    { id: "utilities", name: "Servicios", icon: "⚡", color: "from-yellow-500 to-orange-600" },
-    { id: "marketing", name: "Marketing", icon: "📢", color: "from-purple-500 to-violet-600" },
-    { id: "software", name: "Software", icon: "💻", color: "from-green-500 to-emerald-600" },
-    { id: "maintenance", name: "Mantenimiento", icon: "🔧", color: "from-gray-500 to-slate-600" },
-    { id: "security", name: "Seguridad", icon: "🔒", color: "from-indigo-500 to-blue-600" },
-    { id: "office", name: "Oficina", icon: "📁", color: "from-teal-500 to-green-600" },
-    { id: "other", name: "Otros", icon: "📦", color: "from-pink-500 to-rose-600" }
+    { id: "payroll", name: "Nómina", code: "NÓ" },
+    { id: "rent", name: "Renta", code: "RE" },
+    { id: "utilities", name: "Servicios", code: "SE" },
+    { id: "marketing", name: "Marketing", code: "MK" },
+    { id: "software", name: "Software", code: "SW" },
+    { id: "maintenance", name: "Mantenimiento", code: "MN" },
+    { id: "security", name: "Seguridad", code: "SG" },
+    { id: "office", name: "Oficina", code: "OF" },
+    { id: "other", name: "Otros", code: "OT" }
   ];
 
   const periods = [
-    { id: "weekly", name: "Semanal", icon: "📅" },
-    { id: "monthly", name: "Mensual", icon: "📆" },
-    { id: "quarterly", name: "Trimestral", icon: "📊" },
-    { id: "yearly", name: "Anual", icon: "📈" }
+    { id: "weekly", name: "Semanal" },
+    { id: "monthly", name: "Mensual" },
+    { id: "quarterly", name: "Trimestral" },
+    { id: "yearly", name: "Anual" }
   ];
 
   const fetchBudgets = async () => {
@@ -78,7 +79,7 @@ const BudgetManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const budgetData = {
         ...form,
@@ -96,17 +97,17 @@ const BudgetManagement = () => {
       }
 
       setForm({
-        category: "", amount: "", period: "monthly", start_date: "", 
+        category: "", amount: "", period: "monthly", start_date: "",
         end_date: "", description: "", store_id: "", is_active: true
       });
       setSelectedBudget(null);
       setShowBudgetModal(false);
       fetchBudgets();
-      
-      alert(selectedBudget ? "✅ Presupuesto actualizado" : "✅ Presupuesto creado");
+
+      alert(selectedBudget ? "Presupuesto actualizado" : "Presupuesto creado");
     } catch (err) {
       console.error("Error saving budget:", err);
-      alert("❌ Error al guardar el presupuesto");
+      alert("Error al guardar el presupuesto");
     } finally {
       setLoading(false);
     }
@@ -134,28 +135,28 @@ const BudgetManagement = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         fetchBudgets();
-        alert("✅ Presupuesto eliminado");
+        alert("Presupuesto eliminado");
       } catch (err) {
         console.error("Error deleting budget:", err);
-        alert("❌ Error al eliminar el presupuesto");
+        alert("Error al eliminar el presupuesto");
       }
     }
   };
 
   const budgetAnalytics = useMemo(() => {
     const analytics = {};
-    
+
     budgets.forEach(budget => {
-      const categoryExpenses = expenses.filter(exp => 
-        exp.category === budget.category && 
+      const categoryExpenses = expenses.filter(exp =>
+        exp.category === budget.category &&
         new Date(exp.created_at) >= new Date(budget.start_date) &&
         new Date(exp.created_at) <= new Date(budget.end_date)
       );
-      
+
       const spent = categoryExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
       const remaining = budget.amount - spent;
       const percentage = (spent / budget.amount) * 100;
-      
+
       analytics[budget.category] = {
         budget: budget.amount,
         spent,
@@ -164,7 +165,7 @@ const BudgetManagement = () => {
         status: percentage > 90 ? 'danger' : percentage > 75 ? 'warning' : 'safe'
       };
     });
-    
+
     return analytics;
   }, [budgets, expenses]);
 
@@ -173,402 +174,387 @@ const BudgetManagement = () => {
     fetchExpenses();
   }, []);
 
+  const openNewBudget = () => {
+    setSelectedBudget(null);
+    setForm({
+      category: "", amount: "", period: "monthly", start_date: "",
+      end_date: "", description: "", store_id: "", is_active: true
+    });
+    setShowBudgetModal(true);
+  };
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 0
+    }).format(amount || 0);
+
+  const statusLabel = (status) =>
+    status === 'danger' ? 'Excedido' : status === 'warning' ? 'Cerca del límite' : 'En límite';
+
+  const totalBudget = Object.values(budgetAnalytics).reduce((sum, a) => sum + a.budget, 0);
+  const totalSpent = Object.values(budgetAnalytics).reduce((sum, a) => sum + a.spent, 0);
+  const totalRemaining = Object.values(budgetAnalytics).reduce((sum, a) => sum + a.remaining, 0);
+
   return (
     <Layout>
-      <div className="p-6 bg-white text-neutral-800 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-primary-500">Gestión de Presupuestos</h1>
-            <button
-              onClick={() => {
-                setSelectedBudget(null);
-                setForm({
-                  category: "", amount: "", period: "monthly", start_date: "", 
-                  end_date: "", description: "", store_id: "", is_active: true
-                });
-                setShowBudgetModal(true);
-              }}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-neutral-800 font-bold py-2 px-4 rounded-lg transition-all duration-200"
-            >
-              ➕ Nuevo Presupuesto
-            </button>
+      <div className="zxbud">
+        <div className="zxbud-inner">
+          {/* Header */}
+          <div className="zxbud-head">
+            <div>
+              <div className="zxbud-eyebrow">Finanzas</div>
+              <h1 className="zxbud-h1">Gestión de <span className="zxbud-serif">presupuestos</span></h1>
+              <p className="zxbud-sub">Planeación y control de gasto por categoría</p>
+            </div>
+            <div className="zxbud-actions">
+              <button onClick={openNewBudget} className="zxbud-btn solid">Nuevo presupuesto</button>
+            </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-4 mb-6">
+          <div className="zxbud-tabs">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                activeTab === "overview" 
-                  ? "bg-primary-500 text-neutral-800" 
-                  : "bg-white text-neutral-800 hover:bg-gray-700"
-              }`}
+              className={`zxbud-tab${activeTab === "overview" ? " active" : ""}`}
             >
-              📊 Resumen
+              Resumen
             </button>
             <button
               onClick={() => setActiveTab("budgets")}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                activeTab === "budgets" 
-                  ? "bg-primary-500 text-neutral-800" 
-                  : "bg-white text-neutral-800 hover:bg-gray-700"
-              }`}
+              className={`zxbud-tab${activeTab === "budgets" ? " active" : ""}`}
             >
-              📋 Presupuestos
+              Presupuestos
             </button>
             <button
               onClick={() => setActiveTab("forecasting")}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                activeTab === "forecasting" 
-                  ? "bg-primary-500 text-neutral-800" 
-                  : "bg-white text-neutral-800 hover:bg-gray-700"
-              }`}
+              className={`zxbud-tab${activeTab === "forecasting" ? " active" : ""}`}
             >
-              🔮 Pronósticos
+              Pronósticos
             </button>
           </div>
-        </div>
 
-        {/* Main Content */}
-        {activeTab === "overview" && (
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 rounded-lg">
-                <div className="text-2xl font-bold">
-                  ${Object.values(budgetAnalytics).reduce((sum, a) => sum + a.budget, 0).toLocaleString()}
+          {/* Overview */}
+          {activeTab === "overview" && (
+            <div className="zxbud-section">
+              <div className="zxbud-tiles">
+                <div className="zxbud-tile lead">
+                  <span className="k">Presupuesto Total</span>
+                  <span className="v">{formatCurrency(totalBudget)}</span>
                 </div>
-                <div className="text-sm opacity-90">Presupuesto Total</div>
-              </div>
-              <div className="bg-gradient-to-r from-blue-500 to-cyan-600 p-4 rounded-lg">
-                <div className="text-2xl font-bold">
-                  ${Object.values(budgetAnalytics).reduce((sum, a) => sum + a.spent, 0).toLocaleString()}
+                <div className="zxbud-tile">
+                  <span className="k">Gastado</span>
+                  <span className="v">{formatCurrency(totalSpent)}</span>
                 </div>
-                <div className="text-sm opacity-90">Gastado</div>
-              </div>
-              <div className="bg-gradient-to-r from-purple-500 to-violet-600 p-4 rounded-lg">
-                <div className="text-2xl font-bold">
-                  ${Object.values(budgetAnalytics).reduce((sum, a) => sum + a.remaining, 0).toLocaleString()}
+                <div className="zxbud-tile">
+                  <span className="k">Restante</span>
+                  <span className={`v ${totalRemaining < 0 ? "bad" : "ok"}`}>{formatCurrency(totalRemaining)}</span>
                 </div>
-                <div className="text-sm opacity-90">Restante</div>
-              </div>
-              <div className="bg-gradient-to-r from-orange-500 to-red-600 p-4 rounded-lg">
-                <div className="text-2xl font-bold">
-                  {budgets.filter(b => b.is_active).length}
+                <div className="zxbud-tile">
+                  <span className="k">Activos</span>
+                  <span className="v">{budgets.filter(b => b.is_active).length}</span>
                 </div>
-                <div className="text-sm opacity-90">Presupuestos Activos</div>
               </div>
-            </div>
 
-            {/* Budget Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(budgetAnalytics).map(([category, analytics]) => {
-                const categoryInfo = budgetCategories.find(c => c.id === category);
-                return (
-                  <div key={category} className="bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl p-6 border border-neutral-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{categoryInfo?.icon}</span>
-                        <div>
-                          <h3 className="font-semibold">{categoryInfo?.name}</h3>
-                          <p className="text-sm text-neutral-600">{periods.find(p => p.id === budgets.find(b => b.category === category)?.period)?.name}</p>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        analytics.status === 'danger' ? 'bg-red-900 text-red-200' :
-                        analytics.status === 'warning' ? 'bg-yellow-900 text-yellow-200' :
-                        'bg-green-900 text-green-200'
-                      }`}>
-                        {analytics.status === 'danger' ? '🚨' : analytics.status === 'warning' ? '⚠️' : '✅'}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span>Presupuesto:</span>
-                        <span className="font-semibold">${analytics.budget.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Gastado:</span>
-                        <span className="font-semibold">${analytics.spent.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Restante:</span>
-                        <span className={`font-semibold ${
-                          analytics.remaining < 0 ? 'text-neutral-600' : 'text-primary-500'
-                        }`}>
-                          ${analytics.remaining.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span>Progreso</span>
-                        <span>{analytics.percentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full bg-gradient-to-r ${categoryInfo?.color} ${
-                            analytics.percentage > 90 ? 'animate-pulse' : ''
-                          }`}
-                          style={{ width: `${Math.min(analytics.percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
+              {Object.keys(budgetAnalytics).length === 0 ? (
+                <div className="zxbud-card">
+                  <div className="zxbud-empty">
+                    <p className="lead">No hay presupuestos configurados</p>
+                    <p className="small">Crea tu primer presupuesto para ver el resumen</p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "budgets" && (
-          <div className="bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl p-6 border border-neutral-200">
-            <h2 className="text-xl font-bold text-primary-500 mb-6">📋 Presupuestos Configurados</h2>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-white">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Categoría</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Período</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Presupuesto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Gastado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Restante</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {budgets.map((budget) => {
-                    const analytics = budgetAnalytics[budget.category];
-                    const categoryInfo = budgetCategories.find(c => c.id === budget.category);
-                    const periodInfo = periods.find(p => p.id === budget.period);
-                    
+                </div>
+              ) : (
+                <div className="zxbud-grid">
+                  {Object.entries(budgetAnalytics).map(([category, analytics]) => {
+                    const categoryInfo = budgetCategories.find(c => c.id === category);
+                    const periodId = budgets.find(b => b.category === category)?.period;
+                    const periodName = periods.find(p => p.id === periodId)?.name;
                     return (
-                      <tr key={budget.id} className="hover:bg-white transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">{categoryInfo?.icon}</span>
+                      <div key={category} className="zxbud-ocard">
+                        <div className="zxbud-ochead">
+                          <div className="who">
+                            <span className="zxbud-mono">{categoryInfo?.code || 'OT'}</span>
                             <div>
-                              <div className="font-medium">{categoryInfo?.name}</div>
-                              <div className="text-sm text-neutral-600">{budget.description}</div>
+                              <div className="nm">{categoryInfo?.name || category}</div>
+                              <div className="pr">{periodName}</div>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {periodInfo?.icon} {periodInfo?.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
-                          ${budget.amount.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          ${analytics?.spent.toLocaleString() || '0'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={analytics?.remaining < 0 ? 'text-neutral-600' : 'text-primary-500'}>
-                            ${analytics?.remaining.toLocaleString() || budget.amount.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            analytics?.status === 'danger' ? 'bg-red-900 text-red-200' :
-                            analytics?.status === 'warning' ? 'bg-yellow-900 text-yellow-200' :
-                            'bg-green-900 text-green-200'
-                          }`}>
-                            {analytics?.status === 'danger' ? '🚨 Excedido' : 
-                             analytics?.status === 'warning' ? '⚠️ Cerca' : '✅ En Límite'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => handleEditBudget(budget)}
-                            className="text-primary-500 hover:text-blue-300 mr-2"
-                          >
-                            ✏️ Editar
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBudget(budget.id)}
-                            className="text-neutral-600 hover:text-red-300"
-                          >
-                            🗑️ Eliminar
-                          </button>
-                        </td>
-                      </tr>
+                          <span className={`zxbud-pill ${analytics.status}`}>{statusLabel(analytics.status)}</span>
+                        </div>
+
+                        <div className="zxbud-orows">
+                          <div className="row">
+                            <span>Presupuesto</span>
+                            <span className="num">{formatCurrency(analytics.budget)}</span>
+                          </div>
+                          <div className="row">
+                            <span>Gastado</span>
+                            <span className="num">{formatCurrency(analytics.spent)}</span>
+                          </div>
+                          <div className="row">
+                            <span>Restante</span>
+                            <span className={`num ${analytics.remaining < 0 ? "over" : "left"}`}>{formatCurrency(analytics.remaining)}</span>
+                          </div>
+                        </div>
+
+                        <div className="zxbud-progress">
+                          <div className="zxbud-plabel">
+                            <span>Progreso</span>
+                            <span>{analytics.percentage.toFixed(1)}%</span>
+                          </div>
+                          <div className="zxbud-track">
+                            <div
+                              className={`zxbud-fill ${
+                                analytics.percentage > 90 ? 'bad' :
+                                analytics.percentage > 75 ? 'warn' : ''
+                              }`}
+                              style={{ width: `${Math.min(analytics.percentage, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === "forecasting" && (
-          <div className="bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl p-6 border border-neutral-200">
-            <h2 className="text-xl font-bold text-primary-500 mb-6">🔮 Pronósticos de Gastos</h2>
-            <div className="text-center text-neutral-600 py-8">
-              <div className="text-4xl mb-4">📊</div>
-              <p>Análisis predictivo de gastos próximos</p>
-              <p className="text-sm mt-2">Basado en tendencias históricas y patrones de gasto</p>
+          {/* Budgets table */}
+          {activeTab === "budgets" && (
+            <div className="zxbud-card">
+              <div className="zxbud-cardhead">
+                <span>Presupuestos configurados</span>
+                <span className="count">{budgets.length} registros</span>
+              </div>
+              <div className="zxbud-tablewrap">
+                <table className="zxbud-table">
+                  <thead>
+                    <tr>
+                      <th>Categoría</th>
+                      <th>Período</th>
+                      <th className="r">Presupuesto</th>
+                      <th className="r">Gastado</th>
+                      <th className="r">Restante</th>
+                      <th className="c">Estado</th>
+                      <th className="c">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {budgets.map((budget) => {
+                      const analytics = budgetAnalytics[budget.category];
+                      const categoryInfo = budgetCategories.find(c => c.id === budget.category);
+                      const periodInfo = periods.find(p => p.id === budget.period);
+
+                      return (
+                        <tr key={budget.id}>
+                          <td>
+                            <div className="zxbud-cellcat">
+                              <span className="zxbud-mono sm">{categoryInfo?.code || 'OT'}</span>
+                              <div>
+                                <div className="nm">{categoryInfo?.name || budget.category}</div>
+                                {budget.description && <div className="sub">{budget.description}</div>}
+                              </div>
+                            </div>
+                          </td>
+                          <td>{periodInfo?.name}</td>
+                          <td className="r mono">{formatCurrency(budget.amount)}</td>
+                          <td className="r mono">{formatCurrency(analytics?.spent || 0)}</td>
+                          <td className="r mono">
+                            <span className={analytics && analytics.remaining < 0 ? 'over' : 'left'}>
+                              {formatCurrency(analytics ? analytics.remaining : budget.amount)}
+                            </span>
+                          </td>
+                          <td className="c">
+                            <span className={`zxbud-pill ${analytics?.status || 'safe'}`}>
+                              {statusLabel(analytics?.status || 'safe')}
+                            </span>
+                          </td>
+                          <td className="c">
+                            <div className="zxbud-rowact">
+                              <button onClick={() => handleEditBudget(budget)} className="zxbud-linkbtn">Editar</button>
+                              <button onClick={() => handleDeleteBudget(budget.id)} className="zxbud-linkbtn danger">Eliminar</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {budgets.length === 0 && (
+                      <tr>
+                        <td colSpan="7">
+                          <div className="zxbud-empty">
+                            <p className="lead">No hay presupuestos configurados</p>
+                            <p className="small">Crea tu primer presupuesto con el botón de arriba</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Forecasting */}
+          {activeTab === "forecasting" && (
+            <div className="zxbud-card">
+              <div className="zxbud-cardhead">
+                <span>Pronósticos de gastos</span>
+              </div>
+              <div className="zxbud-empty">
+                <p className="lead">Análisis predictivo de gastos próximos</p>
+                <p className="small">Basado en tendencias históricas y patrones de gasto</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Budget Modal */}
+        {showBudgetModal && (
+          <div className="zxbud-overlay">
+            <div className="zxbud-modal">
+              <div className="zxbud-mhead">
+                <h3>{selectedBudget ? "Editar presupuesto" : "Nuevo presupuesto"}</h3>
+                <button onClick={() => setShowBudgetModal(false)} className="zxbud-close">×</button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="zxbud-form">
+                <div className="zxbud-grid2">
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Categoría</label>
+                    <select
+                      className="zxbud-select"
+                      name="category"
+                      value={form.category}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Selecciona Categoría</option>
+                      {budgetCategories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Período</label>
+                    <select
+                      className="zxbud-select"
+                      name="period"
+                      value={form.period}
+                      onChange={handleChange}
+                      required
+                    >
+                      {periods.map(period => (
+                        <option key={period.id} value={period.id}>{period.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="zxbud-grid2">
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Monto del Presupuesto</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="zxbud-input"
+                      placeholder="0.00"
+                      name="amount"
+                      value={form.amount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Sucursal</label>
+                    <select
+                      className="zxbud-select"
+                      name="store_id"
+                      value={form.store_id}
+                      onChange={handleChange}
+                    >
+                      <option value="">Todas las Sucursales</option>
+                      <option value="1">Atlixco</option>
+                      <option value="2">Cholula</option>
+                      <option value="3">Chipilo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="zxbud-grid2">
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Fecha de Inicio</label>
+                    <input
+                      type="date"
+                      className="zxbud-input"
+                      name="start_date"
+                      value={form.start_date}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="zxbud-field">
+                    <label className="zxbud-label">Fecha de Fin</label>
+                    <input
+                      type="date"
+                      className="zxbud-input"
+                      name="end_date"
+                      value={form.end_date}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="zxbud-field">
+                  <label className="zxbud-label">Descripción</label>
+                  <textarea
+                    className="zxbud-textarea"
+                    placeholder="Describe el presupuesto..."
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    rows="3"
+                  />
+                </div>
+
+                <label className="zxbud-check">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={form.is_active}
+                    onChange={handleChange}
+                  />
+                  <span>Presupuesto Activo</span>
+                </label>
+
+                <div className="zxbud-mactions">
+                  <button
+                    type="button"
+                    onClick={() => setShowBudgetModal(false)}
+                    className="zxbud-btn grow"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="zxbud-btn solid grow"
+                  >
+                    {loading ? "Guardando…" : (selectedBudget ? "Actualizar" : "Crear Presupuesto")}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
       </div>
-
-      {/* Budget Modal */}
-      {showBudgetModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-[999999]">
-          <div className="bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-primary-500">
-                {selectedBudget ? "✏️ Editar Presupuesto" : "➕ Nuevo Presupuesto"}
-              </h3>
-              <button
-                onClick={() => setShowBudgetModal(false)}
-                className="text-neutral-600 hover:text-neutral-800"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Categoría</label>
-                  <select
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Selecciona Categoría</option>
-                    {budgetCategories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Período</label>
-                  <select
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    name="period"
-                    value={form.period}
-                    onChange={handleChange}
-                    required
-                  >
-                    {periods.map(period => (
-                      <option key={period.id} value={period.id}>{period.icon} {period.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Monto del Presupuesto</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    placeholder="0.00"
-                    name="amount"
-                    value={form.amount}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Sucursal</label>
-                  <select
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    name="store_id"
-                    value={form.store_id}
-                    onChange={handleChange}
-                  >
-                    <option value="">Todas las Sucursales</option>
-                    <option value="1">Atlixco</option>
-                    <option value="2">Cholula</option>
-                    <option value="3">Chipilo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fecha de Inicio</label>
-                  <input
-                    type="date"
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    name="start_date"
-                    value={form.start_date}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fecha de Fin</label>
-                  <input
-                    type="date"
-                    className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                    name="end_date"
-                    value={form.end_date}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Descripción</label>
-                <textarea
-                  className="w-full p-3 bg-white text-neutral-800 border border-neutral-300 rounded-lg focus:border-primary-500 focus:outline-none"
-                  placeholder="Describe el presupuesto..."
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  rows="3"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={form.is_active}
-                  onChange={handleChange}
-                  className="mr-2"
-                />
-                <label className="text-sm">Presupuesto Activo</label>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-neutral-800 font-bold py-3 px-6 rounded-lg transition-all duration-200 disabled:opacity-50"
-                >
-                  {loading ? "⏳ Guardando..." : (selectedBudget ? "💾 Actualizar" : "💾 Crear Presupuesto")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowBudgetModal(false)}
-                  className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-neutral-800 font-bold rounded-lg transition-all duration-200"
-                >
-                  ❌ Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };
 
-export default BudgetManagement; 
+export default BudgetManagement;
