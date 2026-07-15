@@ -146,6 +146,18 @@ const PeopleManagement = () => {
     }
   };
 
+  const handleActivate = async (id) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API_BASE_URL}/api/hr/employees/${id}`, { is_active: true }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchEmployees();
+    } catch (error) {
+      alert("Error: " + (error.response?.data?.error || error.message));
+    }
+  };
+
   const resetForm = () => {
     setEditingEmployee(null);
     setFormData({
@@ -357,12 +369,21 @@ const PeopleManagement = () => {
                     >
                       ✏️ Editar
                     </button>
-                    <button
-                      onClick={() => handleDeactivate(emp.id)}
-                      className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg"
-                    >
-                      🗑️
-                    </button>
+                    {emp.is_active === false ? (
+                      <button
+                        onClick={() => handleActivate(emp.id)}
+                        className="px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium"
+                      >
+                        Activar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDeactivate(emp.id)}
+                        className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -410,9 +431,13 @@ const PeopleManagement = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <button onClick={() => handleEdit(emp)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                          <button onClick={() => handleDeactivate(emp.id)} className="text-red-500 hover:text-red-700">🗑️</button>
+                          {emp.is_active === false ? (
+                            <button onClick={() => handleActivate(emp.id)} className="text-green-600 hover:text-green-800 text-sm font-medium">Activar</button>
+                          ) : (
+                            <button onClick={() => handleDeactivate(emp.id)} className="text-red-500 hover:text-red-700">🗑️</button>
+                          )}
                         </div>
                       </td>
                     </tr>
