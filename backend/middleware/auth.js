@@ -11,11 +11,10 @@ if (!JWT_SECRET) {
 
 const generateToken = (user) => {
   const role = user.role || (user.is_admin ? "admin" : "user");
-  return jwt.sign(
-    { id: user.id, email: user.email, role },
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+  const payload = { id: user.id, email: user.email, role };
+  // Client-portal users carry their tenant so the server can scope every query.
+  if (user.customer_id != null) payload.customer_id = user.customer_id;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 };
 
 const authenticateToken = (req, res, next) => {

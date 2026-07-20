@@ -281,6 +281,8 @@ router.post("/customers/upload", async (req, res) => {
 // Get all customers (archived customers are hidden by default).
 router.get("/customers", async (req, res) => {
   try {
+    // Client-portal users must never see the roster of other clients.
+    if (req.user?.role === "client") return res.status(403).json({ message: "No autorizado" });
     const pool = req.pool;
     const includeArchived = req.query.include_archived === "true";
     const result = await pool.query(
