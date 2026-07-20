@@ -41,10 +41,10 @@ const authenticateToken = (req, res, next) => {
  */
 router.get('/leads', authenticateToken, async (req, res) => {
   try {
-    const { status, assigned_to, source, limit = 100, offset = 0 } = req.query;
+    const { status, assigned_to, source, customer_id, limit = 500, offset = 0 } = req.query;
 
     let query = `
-      SELECT 
+      SELECT
         l.*,
         wc.phone_number,
         wc.whatsapp_name,
@@ -52,8 +52,10 @@ router.get('/leads', authenticateToken, async (req, res) => {
         wc.unread_count,
         wc.is_subscribed,
         tm.name as assigned_to_name,
-        (SELECT content FROM whatsapp_messages 
-         WHERE contact_id = wc.id 
+        COALESCE(NULLIF(l.name,''), wc.whatsapp_name, 'Lead') as display_name,
+        COALESCE(NULLIF(l.phone,''), wc.phone_number) as display_phone,
+        (SELECT content FROM whatsapp_messages
+         WHERE contact_id = wc.id
          ORDER BY sent_at DESC LIMIT 1) as last_message
       FROM leads l
       LEFT JOIN whatsapp_contacts wc ON l.whatsapp_contact_id = wc.id
@@ -77,6 +79,12 @@ router.get('/leads', authenticateToken, async (req, res) => {
     if (source) {
       query += ` AND l.source = $${++paramCount}`;
       params.push(source);
+    }
+
+    // Multi-tenant: scope the funnel to one client (customer).
+    if (customer_id) {
+      query += ` AND l.customer_id = $${++paramCount}`;
+      params.push(customer_id);
     }
 
     query += ` ORDER BY l.created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
@@ -245,12 +253,37 @@ router.post('/leads/create', authenticateToken, async (req, res) => {
 router.put('/leads/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, service_interest, status, budget_range, notes, assigned_to, lead_score } = req.body;
+    const { email, service_interest, status, budget_range, notes, assigned_to, lead_score,
+            name, phone, estimated_value, expected_close_date, lost_reason, customer_id } = req.body;
 
     const updates = [];
     const values = [];
     let paramCount = 0;
 
+    if (name !== undefined) {
+      updates.push(`name = $${++paramCount}`);
+      values.push(name);
+    }
+    if (phone !== undefined) {
+      updates.push(`phone = $${++paramCount}`);
+      values.push(phone);
+    }
+    if (customer_id !== undefined) {
+      updates.push(`customer_id = $${++paramCount}`);
+      values.push(customer_id || null);
+    }
+    if (estimated_value !== undefined) {
+      updates.push(`estimated_value = $${++paramCount}`);
+      values.push(estimated_value === '' ? null : estimated_value);
+    }
+    if (expected_close_date !== undefined) {
+      updates.push(`expected_close_date = $${++paramCount}`);
+      values.push(expected_close_date || null);
+    }
+    if (lost_reason !== undefined) {
+      updates.push(`lost_reason = $${++paramCount}`);
+      values.push(lost_reason);
+    }
     if (email !== undefined) {
       updates.push(`email = $${++paramCount}`);
       values.push(email);
@@ -316,6 +349,43 @@ router.put('/leads/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error updating lead:', error);
     res.status(500).json({ error: 'Error al actualizar lead' });
+  }
+});
+
+/**
+ * POST /leads/quick
+ * Create a lead directly in a client's funnel — no WhatsApp contact required.
+ * Backs the branded Funnel board (manual + bulk entry).
+ */
+router.post('/leads/quick', authenticateToken, async (req, res) => {
+  try {
+    const { customer_id, name, phone, email, source, service_interest,
+            estimated_value, expected_close_date, status, assigned_to, notes } = req.body;
+    if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
+    if (!name && !phone) return res.status(400).json({ error: 'Nombre o teléfono es requerido' });
+
+    const result = await pool.query(`
+      INSERT INTO leads (customer_id, name, phone, email, source, service_interest,
+                         estimated_value, expected_close_date, status, assigned_to, notes,
+                         created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,'new'),$10,$11, NOW(), NOW())
+      RETURNING *
+    `, [customer_id, name || null, phone || null, email || null, source || 'manual',
+        service_interest || null, estimated_value === '' ? null : (estimated_value || null),
+        expected_close_date || null, status || null, assigned_to || null, notes || null]);
+
+    const lead = result.rows[0];
+    try {
+      await pool.query(`
+        INSERT INTO lead_activities (lead_id, activity_type, description, performed_by, created_at)
+        VALUES ($1, 'created', 'Lead creado en el funnel', $2, NOW())
+      `, [lead.id, req.user.id]);
+    } catch (_) { /* activity log is best-effort */ }
+
+    res.status(201).json({ success: true, lead });
+  } catch (error) {
+    console.error('Error creating quick lead:', error);
+    res.status(500).json({ error: 'Error al crear lead' });
   }
 });
 
@@ -442,12 +512,18 @@ router.post('/leads/:id/convert', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Lead no encontrado' });
     }
 
-    // Create customer (you'll need to adjust this based on your customers table structure)
+    // Fall back to the lead's own data so the funnel's one-click "convertir"
+    // works without a separate form.
+    const l = lead.rows[0];
+    const bizName = customerData.business_name || l.name || 'Cliente';
+    const commName = customerData.commercial_name || l.name || null;
+    const phone = customerData.phone || l.phone || null;
+
     const customer = await pool.query(`
-      INSERT INTO customers (business_name, email, phone, created_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO customers (business_name, commercial_name, email, phone, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
       RETURNING id
-    `, [customerData.business_name, lead.rows[0].email, customerData.phone]);
+    `, [bizName, commName, l.email, phone]);
 
     const customerId = customer.rows[0].id;
 
@@ -502,8 +578,9 @@ router.get('/leads/:id/activities', authenticateToken, async (req, res) => {
  */
 router.get('/leads/stats', authenticateToken, async (req, res) => {
   try {
+    const { customer_id } = req.query;
     const stats = await pool.query(`
-      SELECT 
+      SELECT
         COUNT(*) as total_leads,
         COUNT(*) FILTER (WHERE status = 'new') as new_leads,
         COUNT(*) FILTER (WHERE status = 'contacted') as contacted_leads,
@@ -511,9 +588,12 @@ router.get('/leads/stats', authenticateToken, async (req, res) => {
         COUNT(*) FILTER (WHERE status = 'converted') as converted_leads,
         COUNT(*) FILTER (WHERE status = 'lost') as lost_leads,
         COUNT(*) FILTER (WHERE assigned_to = $1) as my_leads,
+        COALESCE(SUM(estimated_value) FILTER (WHERE status NOT IN ('converted','lost')), 0) as pipeline_value,
+        COALESCE(SUM(estimated_value) FILTER (WHERE status = 'converted'), 0) as won_value,
         ROUND(AVG(lead_score)) as avg_lead_score
       FROM leads
-    `, [req.user.id]);
+      WHERE ($2::int IS NULL OR customer_id = $2)
+    `, [req.user.id, customer_id || null]);
 
     res.json(stats.rows[0]);
   } catch (error) {

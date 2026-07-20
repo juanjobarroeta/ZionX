@@ -1,0 +1,67 @@
+/* ===== ZIONX — Funnel board (CRM) ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxfn {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --wait: #9A6B1E; --sched: #1F4E6B; --done: #235B44; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 40px 72px;
+}
+.zxfn *, .zxfn { box-sizing: border-box; }
+.zxfn-inner { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.zxfn-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+.zxfn-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxfn-head .eyebrow { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.5; font-weight: 600; }
+.zxfn-head h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxfn-head .sub { margin-top: 6px; color: var(--muted); font-size: 14px; }
+.zxfn-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.zxfn-select { font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); min-width: 200px; }
+.zxfn-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 15px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.zxfn-btn:hover:not(:disabled) { border-color: var(--ink); }
+.zxfn-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxfn-btn:disabled { opacity: 0.5; cursor: default; }
+
+.zxfn-addbar { display: flex; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 14px 16px; }
+.zxfn-input { font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); flex: 1; min-width: 130px; }
+.zxfn-input:focus { outline: none; border-color: var(--ink); }
+
+.zxfn-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxfn-tile { background: var(--paper); padding: 16px 20px; display: flex; flex-direction: column; gap: 5px; }
+.zxfn-tile .k { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+.zxfn-tile .v { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.zxfn-tile.ok .v { color: var(--done); }
+.zxfn-tile.sched .v { color: var(--sched); }
+
+.zxfn-loading { padding: 60px; text-align: center; color: var(--muted); }
+
+/* Board */
+.zxfn-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.zxfn-col { background: rgba(4,17,26,0.03); border: 1px solid var(--line-soft); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; transition: background 0.12s, border-color 0.12s; }
+.zxfn-col.over { background: rgba(31,78,107,0.08); border-color: var(--sched); }
+.zxfn-colhead { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+.zxfn-colhead .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.zxfn-colhead .lbl { flex: 1; }
+.zxfn-colhead .cnt { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.zxfn-colhead.t-wait .dot { background: var(--wait); }
+.zxfn-colhead.t-sched .dot { background: var(--sched); }
+.zxfn-colhead.t-done .dot { background: var(--done); }
+.zxfn-colhead.t-bad .dot { background: var(--bad); }
+.zxfn-colval { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -2px; }
+.zxfn-collist { display: flex; flex-direction: column; gap: 8px; }
+
+.zxfn-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 11px 12px; cursor: grab; display: flex; flex-direction: column; gap: 5px; }
+.zxfn-card:hover { border-color: var(--ink); }
+.zxfn-card.dragging { opacity: 0.5; }
+.zxfn-card-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.zxfn-card-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); align-items: center; }
+.zxfn-src { text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; font-weight: 700; background: var(--chip); padding: 2px 6px; border-radius: 2px; }
+.zxfn-card-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.zxfn-colempty { text-align: center; color: var(--muted); opacity: 0.4; padding: 10px; font-size: 13px; }
+
+@media (max-width: 900px) {
+  .zxfn { padding: 72px 14px 56px; }
+  .zxfn-tiles { grid-template-columns: repeat(2, 1fr); }
+}
