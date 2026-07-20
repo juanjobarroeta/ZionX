@@ -466,6 +466,25 @@ router.post('/leads/bulk', authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /leads/triage
+ * AI-analyze a client's open funnel: temperature, score, where each lead stands,
+ * and the suggested next action. Writes results back and returns suggestions.
+ */
+router.post('/leads/triage', authenticateToken, async (req, res) => {
+  try {
+    const customer_id = req.user.role === 'client' ? req.user.customer_id : req.body.customer_id;
+    if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
+    const { triageLeads } = require('../services/ai-lead-triage');
+    const result = await triageLeads(pool, customer_id, { limit: 40 });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (error) {
+    console.error('Error triaging leads:', error);
+    res.status(500).json({ error: 'Error al analizar leads con IA' });
+  }
+});
+
+/**
  * GET /leads/:id/messages
  * Get conversation history for a lead
  */
