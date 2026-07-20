@@ -24,6 +24,10 @@ const FunnelBoard = () => {
   const [activeLead, setActiveLead] = useState(null);
   const [ef, setEf] = useState({});
   const [savingLead, setSavingLead] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
 
@@ -157,6 +161,67 @@ const FunnelBoard = () => {
   const efSet = (k, v) => setEf((f) => ({ ...f, [k]: v }));
   const F = FUNNEL_STAGES;
 
+  // Map a CSV/TSV header cell to a lead field (tolerant of Spanish variants).
+  const HEADER_MAP = [
+    { f: "name", keys: ["nombre", "name", "cliente", "prospecto", "contacto"] },
+    { f: "phone", keys: ["telefono", "teléfono", "phone", "celular", "whatsapp", "tel", "movil", "móvil"] },
+    { f: "email", keys: ["email", "correo", "mail", "e-mail"] },
+    { f: "city", keys: ["ciudad", "city", "zona", "colonia", "municipio"] },
+    { f: "address", keys: ["direccion", "dirección", "address", "domicilio", "calle"] },
+    { f: "service_interest", keys: ["interes", "interés", "producto", "plan", "servicio", "paquete"] },
+    { f: "estimated_value", keys: ["valor", "value", "monto", "importe", "precio"] },
+    { f: "source", keys: ["fuente", "source", "origen", "campaña", "campana", "campaign"] },
+  ];
+  const mapHeader = (h) => {
+    const k = (h || "").trim().toLowerCase();
+    return HEADER_MAP.find((m) => m.keys.includes(k))?.f || null;
+  };
+
+  const parseLeads = (text) => {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 1) return [];
+    const delim = lines[0].includes("\t") ? "\t" : ",";
+    const headers = lines[0].split(delim).map((h) => mapHeader(h));
+    const hasHeader = headers.some(Boolean);
+    const start = hasHeader ? 1 : 0;
+    // No header row → assume: name, phone, email, city
+    const fallback = ["name", "phone", "email", "city"];
+    const cols = hasHeader ? headers : fallback;
+    const out = [];
+    for (let i = start; i < lines.length; i++) {
+      const cells = lines[i].split(delim);
+      const lead = {};
+      cols.forEach((f, idx) => { if (f && cells[idx] != null) lead[f] = cells[idx].trim(); });
+      if (lead.name || lead.phone) out.push(lead);
+    }
+    return out;
+  };
+
+  const previewCount = useMemo(() => parseLeads(csvText).length, [csvText]);
+
+  const runImport = async () => {
+    if (!customerId) return;
+    const parsed = parseLeads(csvText);
+    if (!parsed.length) { setImportResult({ error: "No se detectaron leads. Revisa el formato." }); return; }
+    setImportBusy(true); setImportResult(null);
+    try {
+      const r = await axios.post(`${API_BASE_URL}/leads/bulk`, { customer_id: Number(customerId), leads: parsed }, { headers });
+      setImportResult(r.data);
+      await fetchLeads(customerId);
+    } catch (err) {
+      setImportResult({ error: err.response?.data?.error || "No se pudo importar." });
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const onCsvFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setCsvText(String(e.target.result || ""));
+    reader.readAsText(file);
+  };
+
   return (
     <Layout>
       <div className="zxfn">
@@ -176,6 +241,9 @@ const FunnelBoard = () => {
               </select>
               <button className="zxfn-btn" onClick={() => setAdding((a) => !a)} disabled={!customerId}>
                 {adding ? "Cerrar" : "+ Agregar lead"}
+              </button>
+              <button className="zxfn-btn" onClick={() => { setImporting(true); setImportResult(null); }} disabled={!customerId}>
+                Importar
               </button>
             </div>
           </div>
@@ -253,6 +321,49 @@ const FunnelBoard = () => {
             </div>
           )}
         </div>
+
+        {importing && (
+          <div className="zxfn-overlay center" onClick={() => !importBusy && setImporting(false)}>
+            <div className="zxfn-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="zxfn-drawer-head">
+                <div>
+                  <div className="eyebrow">Importar leads</div>
+                  <h2>Carga masiva</h2>
+                </div>
+                <button className="zxfn-x" onClick={() => !importBusy && setImporting(false)} aria-label="Cerrar">×</button>
+              </div>
+              <div className="zxfn-drawer-body">
+                <p className="zxfn-hint">
+                  Pega desde Excel/Sheets o sube un CSV. Primera fila = encabezados
+                  (nombre, teléfono, email, ciudad, interés, valor, fuente). Se omiten
+                  duplicados por teléfono.
+                </p>
+                <input type="file" accept=".csv,text/csv,text/plain" onChange={(e) => onCsvFile(e.target.files?.[0])} />
+                <textarea
+                  className="zxfn-csv"
+                  rows={9}
+                  placeholder={"nombre,telefono,ciudad,valor\nJuan Pérez,2281234567,Xalapa,499\nAna López,2287654321,Coatepec,699"}
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                />
+                <div className="zxfn-importfoot">
+                  <span className="zxfn-preview">{previewCount} lead{previewCount === 1 ? "" : "s"} detectado{previewCount === 1 ? "" : "s"}</span>
+                  {importResult && (
+                    importResult.error
+                      ? <span className="zxfn-badbadge">{importResult.error}</span>
+                      : <span className="zxfn-okbadge">{importResult.created} importados · {importResult.skipped} omitidos</span>
+                  )}
+                </div>
+              </div>
+              <div className="zxfn-drawer-foot">
+                <button className="zxfn-btn" onClick={() => setImporting(false)} disabled={importBusy}>Cerrar</button>
+                <button className="zxfn-btn solid" onClick={runImport} disabled={importBusy || previewCount === 0}>
+                  {importBusy ? "Importando…" : `Importar ${previewCount || ""}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeLead && (
           <div className="zxfn-overlay" onClick={() => !savingLead && setActiveLead(null)}>
