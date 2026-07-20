@@ -61,7 +61,35 @@
 .zxfn-card-val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .zxfn-colempty { text-align: center; color: var(--muted); opacity: 0.4; padding: 10px; font-size: 13px; }
 
+/* Lead detail drawer */
+.zxfn-overlay { position: fixed; inset: 0; background: rgba(4,17,26,0.42); display: flex; justify-content: flex-end; z-index: 1000; }
+.zxfn-drawer { width: 100%; max-width: 560px; height: 100%; background: var(--surface); display: flex; flex-direction: column; box-shadow: -16px 0 48px rgba(4,17,26,0.2); overflow: hidden; }
+.zxfn-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+.zxfn-drawer-head .eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.zxfn-drawer-head h2 { margin: 4px 0 0; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.zxfn-x { background: none; border: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; }
+.zxfn-x:hover { color: var(--ink); }
+.zxfn-drawer-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.zxfn-stagerow { display: flex; flex-wrap: wrap; gap: 6px; }
+.zxfn-stagechip { font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 11px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.zxfn-stagechip:hover { border-color: var(--ink); color: var(--ink); }
+.zxfn-stagechip.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxfn-stagechip.active.t-done { background: var(--done); border-color: var(--done); }
+.zxfn-stagechip.active.t-bad { background: var(--bad); border-color: var(--bad); }
+.zxfn-stagechip.active.t-wait { background: var(--wait); border-color: var(--wait); }
+.zxfn-stagechip.active.t-sched { background: var(--sched); border-color: var(--sched); }
+.zxfn-fieldgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.zxfn-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.zxfn-field.full { grid-column: 1 / -1; }
+.zxfn-field input, .zxfn-field select, .zxfn-field textarea {
+  font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; width: 100%; font-weight: 400;
+}
+.zxfn-field input:focus, .zxfn-field select:focus, .zxfn-field textarea:focus { border-color: var(--ink); }
+.zxfn-drawer-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
+
 @media (max-width: 900px) {
   .zxfn { padding: 72px 14px 56px; }
   .zxfn-tiles { grid-template-columns: repeat(2, 1fr); }
+  .zxfn-fieldgrid { grid-template-columns: 1fr; }
 }
