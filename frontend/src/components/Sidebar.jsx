@@ -152,23 +152,26 @@ const Sidebar = () => {
     return null;
   };
 
-  const visibleGroups = NAV_GROUPS.map((group) => {
-    const links = [];
-    let pendingSub = null;
-    for (const item of group.links) {
-      if (item.sub) {
-        pendingSub = item;
-        continue;
-      }
-      if (!canSee(item.section)) continue;
-      if (pendingSub) {
-        links.push(pendingSub);
-        pendingSub = null;
-      }
-      links.push(item);
-    }
-    return { ...group, links };
-  }).filter((group) => group.links.some((l) => !l.sub));
+  // Client-portal users see only their funnel — nothing else from the internal app.
+  const visibleGroups = userRole === "client"
+    ? [{ label: "CRM", links: [{ href: "/funnel", label: "Funnel" }] }]
+    : NAV_GROUPS.map((group) => {
+        const links = [];
+        let pendingSub = null;
+        for (const item of group.links) {
+          if (item.sub) {
+            pendingSub = item;
+            continue;
+          }
+          if (!canSee(item.section)) continue;
+          if (pendingSub) {
+            links.push(pendingSub);
+            pendingSub = null;
+          }
+          links.push(item);
+        }
+        return { ...group, links };
+      }).filter((group) => group.links.some((l) => !l.sub));
 
   const logout = () => {
     localStorage.clear();

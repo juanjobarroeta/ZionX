@@ -20,7 +20,7 @@ const Auth = () => {
         if (payload && payload.id && payload.exp && payload.exp > Date.now() / 1000) {
           const role = localStorage.getItem("userRole");
           const creatorHome = ["designer", "community_manager", "copywriter"].includes(role);
-          window.location.href = creatorHome ? "/my-work" : "/dashboard";
+          window.location.href = role === "client" ? "/funnel" : creatorHome ? "/my-work" : "/dashboard";
         } else {
           console.log("Token expired or invalid, clearing and staying on auth page");
           localStorage.removeItem("token");
@@ -58,7 +58,7 @@ const Auth = () => {
       // else on the dashboard.
       const role = res.data.user?.role;
       const creatorHome = ["designer", "community_manager", "copywriter"].includes(role);
-      window.location.href = creatorHome ? "/my-work" : "/dashboard";
+      window.location.href = role === "client" ? "/funnel" : creatorHome ? "/my-work" : "/dashboard";
     } catch (error) {
       if (error.response) {
         setMessage("Error: " + error.response.data.message);

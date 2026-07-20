@@ -72,6 +72,11 @@ const ProtectedRoute = ({ children }) => {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (!payload || !payload.id) throw new Error("Invalid token payload");
+    // Client-portal users only ever get the funnel — no other internal screen.
+    const role = payload.role || localStorage.getItem("userRole");
+    if (role === "client" && window.location.pathname !== "/funnel") {
+      return <Navigate to="/funnel" replace />;
+    }
     return children;
   } catch {
     return <Navigate to="/auth" replace />;

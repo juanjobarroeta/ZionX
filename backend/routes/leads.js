@@ -81,10 +81,13 @@ router.get('/leads', authenticateToken, async (req, res) => {
       params.push(source);
     }
 
-    // Multi-tenant: scope the funnel to one client (customer).
-    if (customer_id) {
+    // Multi-tenant: scope the funnel to one client (customer). A client-portal
+    // user is ALWAYS locked to their own tenant — any customer_id they pass is
+    // ignored.
+    const cid = req.user.role === 'client' ? (req.user.customer_id || -1) : customer_id;
+    if (cid) {
       query += ` AND l.customer_id = $${++paramCount}`;
-      params.push(customer_id);
+      params.push(cid);
     }
 
     query += ` ORDER BY l.created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
@@ -257,6 +260,14 @@ router.put('/leads/:id', authenticateToken, async (req, res) => {
             name, phone, estimated_value, expected_close_date, lost_reason, customer_id,
             company, address, city, priority, next_follow_up, tags, custom_fields } = req.body;
 
+    // Tenant isolation: a client-portal user can only touch leads in their funnel.
+    if (req.user.role === 'client') {
+      const own = await pool.query('SELECT customer_id FROM leads WHERE id = $1', [id]);
+      if (!own.rows.length || own.rows[0].customer_id !== req.user.customer_id) {
+        return res.status(404).json({ error: 'Lead no encontrado' });
+      }
+    }
+
     const updates = [];
     const values = [];
     let paramCount = 0;
@@ -373,9 +384,11 @@ router.put('/leads/:id', authenticateToken, async (req, res) => {
  */
 router.post('/leads/quick', authenticateToken, async (req, res) => {
   try {
-    const { customer_id, name, phone, email, source, service_interest,
+    const { name, phone, email, source, service_interest,
             estimated_value, expected_close_date, status, assigned_to, notes,
             company, address, city, priority } = req.body;
+    // Client-portal users can only create in their own funnel.
+    const customer_id = req.user.role === 'client' ? req.user.customer_id : req.body.customer_id;
     if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
     if (!name && !phone) return res.status(400).json({ error: 'Nombre o teléfono es requerido' });
 
@@ -411,7 +424,8 @@ router.post('/leads/quick', authenticateToken, async (req, res) => {
  * same client. Runs in one transaction; returns created / skipped counts.
  */
 router.post('/leads/bulk', authenticateToken, async (req, res) => {
-  const { customer_id, leads } = req.body;
+  const { leads } = req.body;
+  const customer_id = req.user.role === 'client' ? req.user.customer_id : req.body.customer_id;
   if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
   if (!Array.isArray(leads) || leads.length === 0) return res.status(400).json({ error: 'No hay leads para importar' });
   if (leads.length > 5000) return res.status(400).json({ error: 'Máximo 5000 leads por importación' });
@@ -640,7 +654,7 @@ router.get('/leads/:id/activities', authenticateToken, async (req, res) => {
  */
 router.get('/leads/stats', authenticateToken, async (req, res) => {
   try {
-    const { customer_id } = req.query;
+    const cid = req.user.role === 'client' ? (req.user.customer_id || -1) : (req.query.customer_id || null);
     const stats = await pool.query(`
       SELECT
         COUNT(*) as total_leads,
@@ -655,7 +669,7 @@ router.get('/leads/stats', authenticateToken, async (req, res) => {
         ROUND(AVG(lead_score)) as avg_lead_score
       FROM leads
       WHERE ($2::int IS NULL OR customer_id = $2)
-    `, [req.user.id, customer_id || null]);
+    `, [req.user.id, cid]);
 
     res.json(stats.rows[0]);
   } catch (error) {

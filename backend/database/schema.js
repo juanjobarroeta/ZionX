@@ -69,6 +69,11 @@ const createTables = async (pool) => {
   await pool.query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
   `);
+  // customer_id links a client-portal user (role='client') to the client whose
+  // funnel they can see. NULL for internal/staff users.
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_id INTEGER;
+  `);
   // Defensive updated_at columns for tables whose routes write updated_at (else
   // the update 500s with "column updated_at does not exist"). These tables are
   // CREATEd later in this function (team_members at ~L700), so on a fresh DB the

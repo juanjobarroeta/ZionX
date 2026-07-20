@@ -183,6 +183,20 @@ const CustomerProfile = () => {
     ] },
   ];
 
+  const invitePortal = async () => {
+    const email = window.prompt("Email para el acceso del cliente al portal:", customer.contact_email || customer.email || "");
+    if (!email) return;
+    const password = window.prompt("Contraseña temporal (compártela con el cliente):");
+    if (!password) return;
+    try {
+      await axios.post(`${API_BASE_URL}/admin/customers/${id}/client-user`,
+        { email, password, name: customerName(customer) }, { headers });
+      alert(`Acceso creado. El cliente entra con ${email} y verá solo su funnel.`);
+    } catch (err) {
+      alert(err.response?.data?.message || "No se pudo crear el acceso de cliente");
+    }
+  };
+
   const openEdit = () => {
     const seed = {};
     EDIT_FIELDS.forEach((g) => g.fields.forEach(({ k }) => { seed[k] = customer[k] || ""; }));
@@ -245,6 +259,7 @@ const CustomerProfile = () => {
               <div className="zxp-actions">
                 <Link to="/crm" className="zxp-btn">← Volver</Link>
                 <button className="zxp-btn" onClick={openEdit}>Editar</button>
+                <button className="zxp-btn" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
                 <Link to="/messages" className="zxp-btn">Mensajes</Link>
                 <button className="zxp-btn solid" onClick={() => { setActiveTab("recursos"); }}>Subir archivos</button>
               </div>

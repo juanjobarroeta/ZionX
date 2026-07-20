@@ -50,6 +50,44 @@ router.post("/users/:id/team-member", async (req, res) => {
   }
 });
 
+// POST /admin/customers/:id/client-user
+// Create (or re-point) a client-portal login for a customer. The user gets
+// role='client' scoped to that customer_id, so they only ever see their own
+// funnel. Idempotent by email.
+router.post("/customers/:id/client-user", async (req, res) => {
+  try {
+    const pool = req.pool;
+    const { id } = req.params;
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.status(400).json({ message: "Email y contraseña son requeridos" });
+
+    const cust = await pool.query("SELECT id FROM customers WHERE id = $1", [id]);
+    if (!cust.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const existing = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER($1)", [email]);
+    if (existing.rows.length) {
+      const { rows } = await pool.query(
+        `UPDATE users SET password = $1, role = 'client', customer_id = $2, is_active = true,
+                          name = COALESCE($3, name), updated_at = NOW()
+         WHERE id = $4 RETURNING id, name, email, role, customer_id`,
+        [hashed, id, name || null, existing.rows[0].id]
+      );
+      return res.json({ success: true, linked: true, user: rows[0] });
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO users (name, email, password, role, customer_id, is_active)
+       VALUES ($1, $2, $3, 'client', $4, true)
+       RETURNING id, name, email, role, customer_id`,
+      [name || email, email, hashed, id]
+    );
+    res.status(201).json({ success: true, created: true, user: rows[0] });
+  } catch (err) {
+    console.error("Error creating client-portal user:", err);
+    res.status(500).json({ message: "Error al crear el acceso de cliente" });
+  }
+});
+
 // Get all stores
 router.get("/stores", async (req, res) => {
   try {

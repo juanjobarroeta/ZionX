@@ -162,7 +162,7 @@ app.post('/login', async (req, res) => {
     } catch (e) { /* employees table may not exist yet */ }
 
     res.json({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, store_id: user.store_id },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, store_id: user.store_id, customer_id: user.customer_id },
       employee,
       token
     });

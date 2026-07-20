@@ -30,8 +30,10 @@ const FunnelBoard = () => {
   const [importResult, setImportResult] = useState(null);
 
   const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+  const isClient = localStorage.getItem("userRole") === "client";
 
   useEffect(() => {
+    if (isClient) return; // clients don't pick a customer — the server scopes them
     axios.get(`${API_BASE_URL}/customers`, { headers })
       .then((r) => {
         const list = Array.isArray(r.data) ? r.data : [];
@@ -43,10 +45,12 @@ const FunnelBoard = () => {
   }, []);
 
   const fetchLeads = useCallback(async (cid) => {
-    if (!cid) { setLeads([]); return; }
+    if (!isClient && !cid) { setLeads([]); return; }
     setLoading(true);
     try {
-      const r = await axios.get(`${API_BASE_URL}/leads`, { headers, params: { customer_id: cid } });
+      // Client role is scoped server-side, so no customer_id is sent.
+      const params = isClient ? {} : { customer_id: cid };
+      const r = await axios.get(`${API_BASE_URL}/leads`, { headers, params });
       setLeads(Array.isArray(r.data) ? r.data : []);
     } catch {
       setLeads([]);
@@ -95,7 +99,7 @@ const FunnelBoard = () => {
 
   const addLead = async (e) => {
     e.preventDefault();
-    if (!customerId) return;
+    if (!isClient && !customerId) return;
     if (!form.name && !form.phone) return;
     setSaving(true);
     try {
@@ -200,7 +204,7 @@ const FunnelBoard = () => {
   const previewCount = useMemo(() => parseLeads(csvText).length, [csvText]);
 
   const runImport = async () => {
-    if (!customerId) return;
+    if (!isClient && !customerId) return;
     const parsed = parseLeads(csvText);
     if (!parsed.length) { setImportResult({ error: "No se detectaron leads. Revisa el formato." }); return; }
     setImportBusy(true); setImportResult(null);
@@ -233,16 +237,18 @@ const FunnelBoard = () => {
               <div className="sub">Pipeline de leads por cliente — arrastra una tarjeta para cambiar de etapa.</div>
             </div>
             <div className="zxfn-tools">
-              <select className="zxfn-select" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                {customers.length === 0 && <option value="">Sin clientes</option>}
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{nameOf(c)}</option>
-                ))}
-              </select>
-              <button className="zxfn-btn" onClick={() => setAdding((a) => !a)} disabled={!customerId}>
+              {!isClient && (
+                <select className="zxfn-select" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+                  {customers.length === 0 && <option value="">Sin clientes</option>}
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{nameOf(c)}</option>
+                  ))}
+                </select>
+              )}
+              <button className="zxfn-btn" onClick={() => setAdding((a) => !a)} disabled={!isClient && !customerId}>
                 {adding ? "Cerrar" : "+ Agregar lead"}
               </button>
-              <button className="zxfn-btn" onClick={() => { setImporting(true); setImportResult(null); }} disabled={!customerId}>
+              <button className="zxfn-btn" onClick={() => { setImporting(true); setImportResult(null); }} disabled={!isClient && !customerId}>
                 Importar
               </button>
             </div>
