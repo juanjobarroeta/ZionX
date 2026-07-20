@@ -604,6 +604,14 @@ const createTables = async (pool) => {
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS estimated_value NUMERIC(12,2);
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_close_date DATE;
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS lost_reason TEXT;
+        -- "Information is wealth": richer lead record.
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS company VARCHAR(150);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS address TEXT;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'media';
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS next_follow_up DATE;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_fields JSONB DEFAULT '{}';
         CREATE INDEX IF NOT EXISTS idx_leads_customer ON leads(customer_id);
       `);
       console.log("✅ Leads funnel columns ensured");

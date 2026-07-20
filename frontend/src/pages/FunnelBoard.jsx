@@ -21,6 +21,9 @@ const FunnelBoard = () => {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(emptyLead);
   const [saving, setSaving] = useState(false);
+  const [activeLead, setActiveLead] = useState(null);
+  const [ef, setEf] = useState({});
+  const [savingLead, setSavingLead] = useState(false);
 
   const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
 
@@ -109,6 +112,51 @@ const FunnelBoard = () => {
 
   const nameOf = (c) => customerName(c);
 
+  const openLead = (lead) => {
+    setActiveLead(lead);
+    setEf({
+      name: lead.name || lead.display_name || "",
+      company: lead.company || "",
+      phone: lead.phone || lead.display_phone || "",
+      email: lead.email || "",
+      address: lead.address || "",
+      city: lead.city || "",
+      source: lead.source || "manual",
+      service_interest: lead.service_interest || "",
+      estimated_value: lead.estimated_value ?? "",
+      expected_close_date: lead.expected_close_date ? String(lead.expected_close_date).slice(0, 10) : "",
+      next_follow_up: lead.next_follow_up ? String(lead.next_follow_up).slice(0, 10) : "",
+      priority: lead.priority || "media",
+      status: lead.status || "new",
+      lost_reason: lead.lost_reason || "",
+      notes: lead.notes || "",
+      tags: Array.isArray(lead.tags) ? lead.tags.join(", ") : "",
+    });
+  };
+
+  const saveLead = async () => {
+    if (!activeLead) return;
+    setSavingLead(true);
+    try {
+      const payload = {
+        ...ef,
+        estimated_value: ef.estimated_value === "" ? null : ef.estimated_value,
+        tags: ef.tags ? ef.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      };
+      const r = await axios.put(`${API_BASE_URL}/leads/${activeLead.id}`, payload, { headers });
+      const updated = r.data?.lead || { ...activeLead, ...payload };
+      setLeads((prev) => prev.map((l) => (l.id === activeLead.id ? { ...l, ...updated, display_name: updated.name, display_phone: updated.phone } : l)));
+      setActiveLead(null);
+    } catch (err) {
+      alert(err.response?.data?.error || "No se pudo guardar el lead");
+    } finally {
+      setSavingLead(false);
+    }
+  };
+
+  const efSet = (k, v) => setEf((f) => ({ ...f, [k]: v }));
+  const F = FUNNEL_STAGES;
+
   return (
     <Layout>
       <div className="zxfn">
@@ -184,6 +232,8 @@ const FunnelBoard = () => {
                           draggable
                           onDragStart={() => setDragId(l.id)}
                           onDragEnd={() => { setDragId(null); setOverStage(null); }}
+                          onClick={() => openLead(l)}
+                          title="Ver / editar lead"
                         >
                           <div className="zxfn-card-name">{l.display_name || l.name || "Lead"}</div>
                           <div className="zxfn-card-meta">
@@ -203,6 +253,72 @@ const FunnelBoard = () => {
             </div>
           )}
         </div>
+
+        {activeLead && (
+          <div className="zxfn-overlay" onClick={() => !savingLead && setActiveLead(null)}>
+            <div className="zxfn-drawer" onClick={(e) => e.stopPropagation()}>
+              <div className="zxfn-drawer-head">
+                <div>
+                  <div className="eyebrow">Lead</div>
+                  <h2>{ef.name || "Lead"}</h2>
+                </div>
+                <button className="zxfn-x" onClick={() => !savingLead && setActiveLead(null)} aria-label="Cerrar">×</button>
+              </div>
+
+              <div className="zxfn-drawer-body">
+                <div className="zxfn-stagerow">
+                  {F.map((s) => (
+                    <button
+                      key={s.key}
+                      className={`zxfn-stagechip t-${s.tone} ${ef.status === s.key ? "active" : ""}`}
+                      onClick={() => efSet("status", s.key)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
+                {ef.status === "lost" && (
+                  <label className="zxfn-field full">
+                    <span>Motivo de pérdida</span>
+                    <input value={ef.lost_reason} onChange={(e) => efSet("lost_reason", e.target.value)} />
+                  </label>
+                )}
+
+                <div className="zxfn-fieldgrid">
+                  <label className="zxfn-field"><span>Nombre</span><input value={ef.name} onChange={(e) => efSet("name", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Empresa</span><input value={ef.company} onChange={(e) => efSet("company", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Teléfono</span><input value={ef.phone} onChange={(e) => efSet("phone", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Email</span><input value={ef.email} onChange={(e) => efSet("email", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Dirección</span><input value={ef.address} onChange={(e) => efSet("address", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Ciudad / Zona</span><input value={ef.city} onChange={(e) => efSet("city", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Interés / producto</span><input value={ef.service_interest} onChange={(e) => efSet("service_interest", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Fuente</span>
+                    <select value={ef.source} onChange={(e) => efSet("source", e.target.value)}>
+                      {LEAD_SOURCES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="zxfn-field"><span>Valor estimado</span><input type="number" value={ef.estimated_value} onChange={(e) => efSet("estimated_value", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Prioridad</span>
+                    <select value={ef.priority} onChange={(e) => efSet("priority", e.target.value)}>
+                      <option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option>
+                    </select>
+                  </label>
+                  <label className="zxfn-field"><span>Cierre estimado</span><input type="date" value={ef.expected_close_date} onChange={(e) => efSet("expected_close_date", e.target.value)} /></label>
+                  <label className="zxfn-field"><span>Próximo seguimiento</span><input type="date" value={ef.next_follow_up} onChange={(e) => efSet("next_follow_up", e.target.value)} /></label>
+                </div>
+
+                <label className="zxfn-field full"><span>Etiquetas (separadas por coma)</span><input value={ef.tags} onChange={(e) => efSet("tags", e.target.value)} placeholder="ej. fibra, promo, recontacto" /></label>
+                <label className="zxfn-field full"><span>Notas</span><textarea rows={3} value={ef.notes} onChange={(e) => efSet("notes", e.target.value)} /></label>
+              </div>
+
+              <div className="zxfn-drawer-foot">
+                <button className="zxfn-btn" onClick={() => setActiveLead(null)} disabled={savingLead}>Cancelar</button>
+                <button className="zxfn-btn solid" onClick={saveLead} disabled={savingLead}>{savingLead ? "Guardando…" : "Guardar"}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
