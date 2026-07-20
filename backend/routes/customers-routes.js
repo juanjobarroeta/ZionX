@@ -709,4 +709,27 @@ router.delete("/customers/:id/permanent", async (req, res) => {
   }
 });
 
+// PUT /customers/:id/whatsapp-inbound  { enabled }
+// Designate (or clear) this client's funnel as the destination for inbound
+// WhatsApp / click-to-WhatsApp leads. Single-target: enabling one clears the rest.
+router.put("/customers/:id/whatsapp-inbound", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const enabled = req.body?.enabled !== false;
+    const pool = req.pool;
+    if (enabled) {
+      await pool.query("UPDATE customers SET receives_whatsapp_leads = false WHERE id <> $1", [id]);
+    }
+    const r = await pool.query(
+      "UPDATE customers SET receives_whatsapp_leads = $1, updated_at = NOW() WHERE id = $2 RETURNING id, receives_whatsapp_leads",
+      [enabled, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, receives_whatsapp_leads: r.rows[0].receives_whatsapp_leads });
+  } catch (err) {
+    console.error("Error setting whatsapp inbound:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;

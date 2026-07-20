@@ -183,6 +183,16 @@ const CustomerProfile = () => {
     ] },
   ];
 
+  const toggleWhatsappInbound = async () => {
+    const enabled = !(customer.receives_whatsapp_leads);
+    try {
+      await axios.put(`${API_BASE_URL}/customers/${id}/whatsapp-inbound`, { enabled }, { headers });
+      setCustomer((c) => ({ ...c, receives_whatsapp_leads: enabled }));
+    } catch (err) {
+      alert(err.response?.data?.message || "No se pudo actualizar");
+    }
+  };
+
   const invitePortal = async () => {
     const email = window.prompt("Email para el acceso del cliente al portal:", customer.contact_email || customer.email || "");
     if (!email) return;
@@ -359,6 +369,26 @@ const CustomerProfile = () => {
                       <PinterestEmbed url={customer.pinterest_board_url} kind="embedBoard" />
                     </div>
                   )}
+                </div>
+
+                <div className="zxp-card">
+                  <h3>Captación de leads</h3>
+                  <div className="zxp-field">
+                    <span className="k">Leads de WhatsApp</span>
+                    <button
+                      className={`zxp-btn${customer.receives_whatsapp_leads ? " solid" : ""}`}
+                      onClick={toggleWhatsappInbound}
+                    >
+                      {customer.receives_whatsapp_leads ? "Activado — llegan a este funnel" : "Enviar leads de WhatsApp aquí"}
+                    </button>
+                    <span className="zxp-hint">
+                      Los mensajes entrantes de WhatsApp (incluidos los de anuncios click-to-WhatsApp)
+                      se convierten en leads automáticamente en el funnel de este cliente.
+                    </span>
+                  </div>
+                  <div className="zxp-field">
+                    <Link to={`/funnel`} className="zxp-btn">Abrir funnel</Link>
+                  </div>
                 </div>
               </div>
             </>

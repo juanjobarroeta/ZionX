@@ -309,17 +309,33 @@ class WhatsAppService {
         contactId = newContact.rows[0].id;
         isNewLead = true;
 
-        // Create lead entry
+        // Route the inbound WhatsApp lead straight into the client funnel that's
+        // configured to receive them, and capture the click-to-WhatsApp campaign
+        // referral (Meta ad) if present — so ad → WhatsApp → funnel needs no
+        // manual entry.
+        const ref = message.referral || null;
+        const source = ref ? 'campaign' : 'whatsapp';
+        let targetCustomerId = null;
+        try {
+          const t = await this.pool.query(
+            `SELECT id FROM customers WHERE receives_whatsapp_leads = true ORDER BY id LIMIT 1`
+          );
+          targetCustomerId = t.rows[0]?.id || null;
+        } catch (_) { /* column may not exist pre-migration */ }
+
         await this.pool.query(`
-          INSERT INTO leads (whatsapp_contact_id, source, status, created_at, last_contact_at)
-          VALUES ($1, 'whatsapp_direct', 'new', NOW(), NOW())
-        `, [contactId]);
+          INSERT INTO leads (whatsapp_contact_id, customer_id, name, phone, source, status,
+                             custom_fields, created_at, last_contact_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, 'new', $6, NOW(), NOW(), NOW())
+        `, [contactId, targetCustomerId, contactName || null, phoneNumber || null, source,
+            ref ? JSON.stringify({ referral: ref }) : '{}']);
 
         // Log activity
+        const refLabel = ref ? `Lead de campaña (WhatsApp): ${ref.headline || ref.source_id || 'anuncio'}` : 'Lead iniciado por WhatsApp';
         await this.pool.query(`
           INSERT INTO lead_activities (lead_id, activity_type, description, created_at)
-          VALUES ((SELECT id FROM leads WHERE whatsapp_contact_id = $1), 'note_added', 'Lead iniciado por WhatsApp', NOW())
-        `, [contactId]);
+          VALUES ((SELECT id FROM leads WHERE whatsapp_contact_id = $1 ORDER BY id DESC LIMIT 1), 'note_added', $2, NOW())
+        `, [contactId, refLabel]);
 
       } else {
         contactId = contactResult.rows[0].id;
