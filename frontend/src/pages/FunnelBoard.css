@@ -88,6 +88,17 @@
 .zxfn-field input:focus, .zxfn-field select:focus, .zxfn-field textarea:focus { border-color: var(--ink); }
 .zxfn-drawer-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
 
+/* Import modal (centered) */
+.zxfn-overlay.center { align-items: flex-start; justify-content: center; padding: 60px 16px; overflow-y: auto; }
+.zxfn-modal { width: 100%; max-width: 620px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(4,17,26,0.22); }
+.zxfn-hint { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+.zxfn-csv { font-family: ui-monospace, Menlo, monospace; font-size: 13px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); width: 100%; resize: vertical; outline: none; }
+.zxfn-csv:focus { border-color: var(--ink); }
+.zxfn-importfoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.zxfn-preview { font-size: 13px; font-weight: 600; color: var(--muted); }
+.zxfn-okbadge { font-size: 13px; font-weight: 700; color: var(--done); }
+.zxfn-badbadge { font-size: 13px; font-weight: 700; color: var(--bad); }
+
 @media (max-width: 900px) {
   .zxfn { padding: 72px 14px 56px; }
   .zxfn-tiles { grid-template-columns: repeat(2, 1fr); }

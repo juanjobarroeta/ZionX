@@ -406,6 +406,52 @@ router.post('/leads/quick', authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /leads/bulk
+ * Import many leads at once into a client's funnel. Dedupes by phone within the
+ * same client. Runs in one transaction; returns created / skipped counts.
+ */
+router.post('/leads/bulk', authenticateToken, async (req, res) => {
+  const { customer_id, leads } = req.body;
+  if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
+  if (!Array.isArray(leads) || leads.length === 0) return res.status(400).json({ error: 'No hay leads para importar' });
+  if (leads.length > 5000) return res.status(400).json({ error: 'Máximo 5000 leads por importación' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let created = 0, skipped = 0;
+    for (const L of leads) {
+      const name = (L.name || '').toString().trim();
+      const phone = (L.phone || '').toString().trim();
+      if (!name && !phone) { skipped++; continue; }
+      if (phone) {
+        const dup = await client.query(
+          'SELECT 1 FROM leads WHERE customer_id = $1 AND phone = $2 LIMIT 1',
+          [customer_id, phone]
+        );
+        if (dup.rows.length) { skipped++; continue; }
+      }
+      await client.query(`
+        INSERT INTO leads (customer_id, name, phone, email, city, address, service_interest,
+                           estimated_value, source, status, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,'import'),'new', NOW(), NOW())
+      `, [customer_id, name || null, phone || null, L.email || null, L.city || null,
+          L.address || null, L.service_interest || null,
+          L.estimated_value === '' ? null : (L.estimated_value || null), L.source || null]);
+      created++;
+    }
+    await client.query('COMMIT');
+    res.json({ success: true, created, skipped, total: leads.length });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error bulk-importing leads:', error);
+    res.status(500).json({ error: 'Error al importar leads' });
+  } finally {
+    client.release();
+  }
+});
+
+/**
  * GET /leads/:id/messages
  * Get conversation history for a lead
  */
