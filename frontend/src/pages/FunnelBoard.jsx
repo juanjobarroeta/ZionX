@@ -28,6 +28,8 @@ const FunnelBoard = () => {
   const [csvText, setCsvText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [triaging, setTriaging] = useState(false);
+  const [suggestions, setSuggestions] = useState(null);
 
   const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
   const isClient = localStorage.getItem("userRole") === "client";
@@ -219,6 +221,24 @@ const FunnelBoard = () => {
     }
   };
 
+  const runTriage = async () => {
+    if (!isClient && !customerId) return;
+    setTriaging(true); setSuggestions(null);
+    try {
+      const body = isClient ? {} : { customer_id: Number(customerId) };
+      const r = await axios.post(`${API_BASE_URL}/leads/triage`, body, { headers });
+      if (r.data?.error) { alert(r.data.error); }
+      else {
+        setSuggestions(r.data.suggestions || []);
+        await fetchLeads(customerId);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || "No se pudo analizar con IA");
+    } finally {
+      setTriaging(false);
+    }
+  };
+
   const onCsvFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -251,6 +271,9 @@ const FunnelBoard = () => {
               <button className="zxfn-btn" onClick={() => { setImporting(true); setImportResult(null); }} disabled={!isClient && !customerId}>
                 Importar
               </button>
+              <button className="zxfn-btn solid" onClick={runTriage} disabled={triaging || (!isClient && !customerId)} title="La IA revisa el embudo y sugiere la siguiente acción por prospecto">
+                {triaging ? "Analizando…" : "Triage IA"}
+              </button>
             </div>
           </div>
 
@@ -276,6 +299,25 @@ const FunnelBoard = () => {
             <div className="zxfn-tile ok"><span className="k">Ganados</span><span className="v">{stats.won}</span></div>
             <div className="zxfn-tile sched"><span className="k">Conversión</span><span className="v">{stats.conv}%</span></div>
           </div>
+
+          {suggestions && suggestions.length > 0 && (
+            <div className="zxfn-suggest">
+              <div className="zxfn-suggest-head">Acciones sugeridas <span>· IA</span></div>
+              <div className="zxfn-suggest-list">
+                {suggestions.slice(0, 8).map((s) => {
+                  const lead = leads.find((l) => l.id === s.id);
+                  return (
+                    <button key={s.id} className="zxfn-suggest-item" onClick={() => lead && openLead(lead)}>
+                      <span className={`zxfn-temp t-${s.temperature}`} />
+                      <span className="nm">{lead?.display_name || lead?.name || `Lead ${s.id}`}</span>
+                      <span className="act">{s.next_action}</span>
+                      <span className="sc">{s.score}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="zxfn-loading">Cargando funnel…</div>
@@ -309,11 +351,15 @@ const FunnelBoard = () => {
                           onClick={() => openLead(l)}
                           title="Ver / editar lead"
                         >
-                          <div className="zxfn-card-name">{l.display_name || l.name || "Lead"}</div>
+                          <div className="zxfn-card-name">
+                            {l.ai_temperature && <span className={`zxfn-temp t-${l.ai_temperature}`} title={`Score ${l.lead_score || 0}`} />}
+                            {l.display_name || l.name || "Lead"}
+                          </div>
                           <div className="zxfn-card-meta">
                             {(l.display_phone || l.phone) && <span>{l.display_phone || l.phone}</span>}
                             {l.source && <span className="zxfn-src">{l.source}</span>}
                           </div>
+                          {l.ai_next_action && <div className="zxfn-card-ai">→ {l.ai_next_action}</div>}
                           {Number(l.estimated_value) > 0 && (
                             <div className="zxfn-card-val">{fmtMoney(l.estimated_value)}</div>
                           )}
@@ -394,6 +440,14 @@ const FunnelBoard = () => {
                     </button>
                   ))}
                 </div>
+
+                {(activeLead.ai_summary || activeLead.ai_next_action) && (
+                  <div className="zxfn-aibox">
+                    <div className="tag">Análisis IA {activeLead.ai_temperature ? `· ${activeLead.ai_temperature}` : ""}</div>
+                    {activeLead.ai_summary && <div className="s">{activeLead.ai_summary}</div>}
+                    {activeLead.ai_next_action && <div className="a">Siguiente acción: {activeLead.ai_next_action}</div>}
+                  </div>
+                )}
 
                 {ef.status === "lost" && (
                   <label className="zxfn-field full">

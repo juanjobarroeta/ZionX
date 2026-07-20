@@ -37,6 +37,32 @@
 
 .zxfn-loading { padding: 60px; text-align: center; color: var(--muted); }
 
+/* Temperature dot */
+.zxfn-temp { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; margin-right: 6px; vertical-align: middle; }
+.zxfn-temp.t-hot { background: var(--bad); }
+.zxfn-temp.t-warm { background: var(--wait); }
+.zxfn-temp.t-cold { background: var(--sched); }
+
+/* AI suggestions panel */
+.zxfn-suggest { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 16px 18px; }
+.zxfn-suggest-head { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; opacity: 0.75; margin-bottom: 12px; }
+.zxfn-suggest-head span { opacity: 0.5; }
+.zxfn-suggest-list { display: flex; flex-direction: column; gap: 1px; }
+.zxfn-suggest-item { display: grid; grid-template-columns: auto 1fr 2fr auto; align-items: center; gap: 12px; width: 100%; text-align: left; background: rgba(242,243,241,0.04); border: none; color: var(--paper); font-family: inherit; padding: 10px 12px; cursor: pointer; border-radius: 3px; }
+.zxfn-suggest-item:hover { background: rgba(242,243,241,0.1); }
+.zxfn-suggest-item .nm { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zxfn-suggest-item .act { font-size: 13px; opacity: 0.85; }
+.zxfn-suggest-item .sc { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.7; }
+
+/* AI line on a card */
+.zxfn-card-ai { font-size: 12px; color: var(--sched); font-weight: 600; line-height: 1.35; }
+
+/* AI box in the drawer */
+.zxfn-aibox { background: rgba(31,78,107,0.07); border: 1px solid rgba(31,78,107,0.2); border-radius: 5px; padding: 12px 14px; }
+.zxfn-aibox .tag { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--sched); margin-bottom: 6px; }
+.zxfn-aibox .s { font-size: 14px; font-weight: 600; }
+.zxfn-aibox .a { font-size: 13px; color: var(--ink); margin-top: 4px; }
+
 /* Board */
 .zxfn-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
 .zxfn-col { background: rgba(4,17,26,0.03); border: 1px solid var(--line-soft); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; transition: background 0.12s, border-color 0.12s; }

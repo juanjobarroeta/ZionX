@@ -617,6 +617,11 @@ const createTables = async (pool) => {
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS next_follow_up DATE;
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
         ALTER TABLE leads ADD COLUMN IF NOT EXISTS custom_fields JSONB DEFAULT '{}';
+        -- AI triage: where the lead stands + the suggested next action.
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_temperature VARCHAR(10);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_summary TEXT;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_next_action TEXT;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_triaged_at TIMESTAMP;
         CREATE INDEX IF NOT EXISTS idx_leads_customer ON leads(customer_id);
       `);
       console.log("✅ Leads funnel columns ensured");
