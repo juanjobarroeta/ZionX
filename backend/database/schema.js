@@ -591,6 +591,26 @@ const createTables = async (pool) => {
     await runSqlFile(pool, 'payroll-schema.sql');
     await runSqlFile(pool, 'whatsapp-schema.sql');
 
+    // Sales-funnel / CRM columns on leads (leads table lives in whatsapp-schema).
+    // Makes the funnel multi-tenant (customer_id = the client whose funnel it is),
+    // decouples a lead from a WhatsApp contact (direct name/phone for manual and
+    // bulk entry), and adds the fields a real pipeline needs. Best-effort: never
+    // fail boot if the leads table isn't present yet.
+    try {
+      await pool.query(`
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS name VARCHAR(150);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS estimated_value NUMERIC(12,2);
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_close_date DATE;
+        ALTER TABLE leads ADD COLUMN IF NOT EXISTS lost_reason TEXT;
+        CREATE INDEX IF NOT EXISTS idx_leads_customer ON leads(customer_id);
+      `);
+      console.log("✅ Leads funnel columns ensured");
+    } catch (e) {
+      console.log("ℹ️ Leads funnel columns skipped:", e.message);
+    }
+
     // Add client review columns to content_calendar
     await pool.query(`
       DO $$

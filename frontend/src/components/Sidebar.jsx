@@ -32,6 +32,7 @@ const NAV_GROUPS = [
   {
     label: "Clientes",
     links: [
+      { href: "/funnel", label: "Funnel", section: "leads" },
       { href: "/leads-inbox", label: "Leads", section: "leads", badge: "leads" },
       { href: "/crm", label: "Directorio", section: "clients" },
       { href: "/briefs", label: "Creative Briefs", section: "clients" },

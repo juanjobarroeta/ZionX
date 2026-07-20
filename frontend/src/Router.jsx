@@ -35,6 +35,7 @@ const MyWork = lazy(() => import("./pages/MyWork"));
 const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
 const ProjectDetails = lazy(() => import("./pages/ProjectDetails"));
 const CreateProject = lazy(() => import("./pages/CreateProject"));
+const FunnelBoard = lazy(() => import("./pages/FunnelBoard"));
 const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
 const LeadsCapture = lazy(() => import("./pages/LeadsCapture"));
 const LeadsManage = lazy(() => import("./pages/LeadsManage"));
@@ -145,7 +146,8 @@ const AppRouter = () => (
         <Route path="/social/accounts" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
         <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
 
-        {/* Leads */}
+        {/* Leads / CRM */}
+        <Route path="/funnel" element={<ProtectedRoute><FunnelBoard /></ProtectedRoute>} />
         <Route path="/leads-inbox" element={<ProtectedRoute><LeadsInbox /></ProtectedRoute>} />
         <Route path="/leads-capture" element={<ProtectedRoute><LeadsCapture /></ProtectedRoute>} />
         <Route path="/leads-manage" element={<ProtectedRoute><LeadsManage /></ProtectedRoute>} />
