@@ -418,6 +418,61 @@ router.post('/leads/quick', authenticateToken, async (req, res) => {
   }
 });
 
+// =====================================================
+// PUBLIC CAPTURE (no auth) — a shareable link/form feeds a client's funnel.
+// =====================================================
+
+/**
+ * GET /public/leads/:token/info
+ * Public: minimal info so a capture form can show whose funnel it feeds.
+ */
+router.get('/public/leads/:token/info', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const r = await pool.query(
+      `SELECT COALESCE(NULLIF(commercial_name,''), NULLIF(business_name,''), 'Nuestra empresa') AS name
+         FROM customers WHERE public_lead_token = $1`,
+      [token]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Enlace no válido' });
+    res.json({ name: r.rows[0].name });
+  } catch (error) {
+    console.error('Error public info:', error);
+    res.status(500).json({ error: 'Error' });
+  }
+});
+
+/**
+ * POST /public/leads/:token
+ * Public: create a lead in the client's funnel from a landing/ad form. Honeypot
+ * ("website") drops bots. Dedupes by phone within the client.
+ */
+router.post('/public/leads/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { name, phone, email, city, service_interest, message, website } = req.body;
+    if (website) return res.json({ success: true }); // honeypot: silently drop bots
+    if (!name && !phone) return res.status(400).json({ error: 'Ingresa tu nombre o teléfono' });
+
+    const c = await pool.query('SELECT id FROM customers WHERE public_lead_token = $1', [token]);
+    if (!c.rows.length) return res.status(404).json({ error: 'Enlace no válido' });
+    const customerId = c.rows[0].id;
+
+    if (phone) {
+      const dup = await pool.query('SELECT id FROM leads WHERE customer_id = $1 AND phone = $2 LIMIT 1', [customerId, phone]);
+      if (dup.rows.length) return res.json({ success: true, deduped: true });
+    }
+    await pool.query(`
+      INSERT INTO leads (customer_id, name, phone, email, city, service_interest, notes, source, status, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,'form','new', NOW(), NOW())
+    `, [customerId, name || null, phone || null, email || null, city || null, service_interest || null, message || null]);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Error public capture:', error);
+    res.status(500).json({ error: 'No se pudo enviar. Intenta de nuevo.' });
+  }
+});
+
 /**
  * POST /leads/bulk
  * Import many leads at once into a client's funnel. Dedupes by phone within the

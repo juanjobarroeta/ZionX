@@ -183,6 +183,17 @@ const CustomerProfile = () => {
     ] },
   ];
 
+  const copyCaptureLink = async () => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/customers/${id}/capture-link`, {}, { headers });
+      const url = `${window.location.origin}/capturar/${res.data.token}`;
+      try { await navigator.clipboard.writeText(url); alert(`Enlace copiado:\n${url}`); }
+      catch { window.prompt("Copia el enlace de captación:", url); }
+    } catch (err) {
+      alert(err.response?.data?.message || "No se pudo generar el enlace");
+    }
+  };
+
   const toggleWhatsappInbound = async () => {
     const enabled = !(customer.receives_whatsapp_leads);
     try {
@@ -384,6 +395,14 @@ const CustomerProfile = () => {
                     <span className="zxp-hint">
                       Los mensajes entrantes de WhatsApp (incluidos los de anuncios click-to-WhatsApp)
                       se convierten en leads automáticamente en el funnel de este cliente.
+                    </span>
+                  </div>
+                  <div className="zxp-field">
+                    <span className="k">Enlace de captación</span>
+                    <button className="zxp-btn" onClick={copyCaptureLink}>Copiar enlace público</button>
+                    <span className="zxp-hint">
+                      Compártelo en anuncios o link-in-bio. Cada formulario enviado entra
+                      como lead en el funnel de este cliente — sin verificación de Meta.
                     </span>
                   </div>
                   <div className="zxp-field">

@@ -732,4 +732,25 @@ router.put("/customers/:id/whatsapp-inbound", async (req, res) => {
   }
 });
 
+// POST /customers/:id/capture-link
+// Ensure this client has a public capture token and return it. The frontend
+// builds the shareable /capturar/:token URL from it.
+router.post("/customers/:id/capture-link", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = req.pool;
+    const existing = await pool.query("SELECT public_lead_token FROM customers WHERE id = $1", [id]);
+    if (!existing.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    let token = existing.rows[0].public_lead_token;
+    if (!token) {
+      token = require("crypto").randomBytes(12).toString("hex");
+      await pool.query("UPDATE customers SET public_lead_token = $1, updated_at = NOW() WHERE id = $2", [token, id]);
+    }
+    res.json({ success: true, token });
+  } catch (err) {
+    console.error("Error creating capture link:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;
