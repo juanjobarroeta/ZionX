@@ -386,7 +386,7 @@ router.post('/leads/quick', authenticateToken, async (req, res) => {
   try {
     const { name, phone, email, source, service_interest,
             estimated_value, expected_close_date, status, assigned_to, notes,
-            company, address, city, priority } = req.body;
+            company, address, city, priority, next_follow_up, tags } = req.body;
     // Client-portal users can only create in their own funnel.
     const customer_id = req.user.role === 'client' ? req.user.customer_id : req.body.customer_id;
     if (!customer_id) return res.status(400).json({ error: 'customer_id es requerido' });
@@ -395,13 +395,14 @@ router.post('/leads/quick', authenticateToken, async (req, res) => {
     const result = await pool.query(`
       INSERT INTO leads (customer_id, name, phone, email, source, service_interest,
                          estimated_value, expected_close_date, status, assigned_to, notes,
-                         company, address, city, priority, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,'new'),$10,$11,$12,$13,$14,COALESCE($15,'media'), NOW(), NOW())
+                         company, address, city, priority, next_follow_up, tags, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,'new'),$10,$11,$12,$13,$14,COALESCE($15,'media'),$16,$17, NOW(), NOW())
       RETURNING *
     `, [customer_id, name || null, phone || null, email || null, source || 'manual',
         service_interest || null, estimated_value === '' ? null : (estimated_value || null),
         expected_close_date || null, status || null, assigned_to || null, notes || null,
-        company || null, address || null, city || null, priority || null]);
+        company || null, address || null, city || null, priority || null,
+        next_follow_up || null, Array.isArray(tags) ? tags : []]);
 
     const lead = result.rows[0];
     try {
