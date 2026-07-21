@@ -131,6 +131,10 @@ const createTables = async (pool) => {
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP;
     -- Which client's funnel receives inbound WhatsApp (click-to-WhatsApp) leads.
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS receives_whatsapp_leads BOOLEAN DEFAULT false;
+    -- Public capture link token: lets an ad/landing page write straight into a
+    -- client's funnel with no login (identifies the tenant without exposing id).
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS public_lead_token VARCHAR(40);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_public_token ON customers(public_lead_token) WHERE public_lead_token IS NOT NULL;
   `);
   console.log("✅ Customers table created");
 
