@@ -8,14 +8,42 @@ class WhatsAppService {
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     this.verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'your-verify-token-here';
     
-    // Database connection
-    this.pool = new Pool({
-      user: process.env.DB_USER || 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      database: process.env.DB_NAME || 'crediya',
-      password: process.env.DB_PASSWORD,
-      port: process.env.DB_PORT || 5432,
-    });
+    // Database connection — use Railway's DATABASE_URL when present, else local.
+    // (Previously hardcoded to localhost, so inbound WhatsApp writes failed on
+    // Railway with ECONNREFUSED and no lead was ever created.)
+    this.pool = process.env.DATABASE_URL
+      ? new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false,
+        })
+      : new Pool({
+          user: process.env.DB_USER || 'postgres',
+          host: process.env.DB_HOST || 'localhost',
+          database: process.env.DB_NAME || 'crediya',
+          password: process.env.DB_PASSWORD,
+          port: process.env.DB_PORT || 5432,
+        });
+    this.pool.on('error', (err) => console.error('⚠️ WhatsApp pool idle error:', err.message));
+  }
+
+  // Lightweight connection status for the linking check. Reports which env vars
+  // are set and, if possible, validates the number against the Graph API.
+  async getStatus() {
+    const configured = { phone_number_id: !!this.phoneNumberId, access_token: !!this.accessToken, verify_token: !!process.env.WHATSAPP_VERIFY_TOKEN };
+    const ready = configured.phone_number_id && configured.access_token;
+    let graph = null;
+    if (ready) {
+      try {
+        const r = await axios.get(`${this.apiUrl}/${this.phoneNumberId}`, {
+          params: { fields: 'display_phone_number,verified_name,quality_rating' },
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+        });
+        graph = { ok: true, ...r.data };
+      } catch (e) {
+        graph = { ok: false, error: e.response?.data?.error?.message || e.message };
+      }
+    }
+    return { configured, ready, graph };
   }
 
   /**
