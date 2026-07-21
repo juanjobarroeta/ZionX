@@ -122,6 +122,14 @@ const FunnelBoard = () => {
 
   const nameOf = (c) => customerName(c);
 
+  const NEW_LEAD = {
+    name: "", company: "", phone: "", email: "", address: "", city: "",
+    source: "campaign", service_interest: "", estimated_value: "",
+    expected_close_date: "", next_follow_up: "", priority: "media",
+    status: "new", lost_reason: "", notes: "", tags: "",
+  };
+  const openNew = () => { setActiveLead({ __new: true }); setEf({ ...NEW_LEAD }); };
+
   const openLead = (lead) => {
     setActiveLead(lead);
     setEf({
@@ -146,6 +154,7 @@ const FunnelBoard = () => {
 
   const saveLead = async () => {
     if (!activeLead) return;
+    if (activeLead.__new && !ef.name && !ef.phone) { alert("Ingresa al menos nombre o teléfono."); return; }
     setSavingLead(true);
     try {
       const payload = {
@@ -153,9 +162,15 @@ const FunnelBoard = () => {
         estimated_value: ef.estimated_value === "" ? null : ef.estimated_value,
         tags: ef.tags ? ef.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
       };
-      const r = await axios.put(`${API_BASE_URL}/leads/${activeLead.id}`, payload, { headers });
-      const updated = r.data?.lead || { ...activeLead, ...payload };
-      setLeads((prev) => prev.map((l) => (l.id === activeLead.id ? { ...l, ...updated, display_name: updated.name, display_phone: updated.phone } : l)));
+      if (activeLead.__new) {
+        const body = isClient ? payload : { ...payload, customer_id: Number(customerId) };
+        const r = await axios.post(`${API_BASE_URL}/leads/quick`, body, { headers });
+        if (r.data?.lead) setLeads((prev) => [{ ...r.data.lead, display_name: r.data.lead.name, display_phone: r.data.lead.phone }, ...prev]);
+      } else {
+        const r = await axios.put(`${API_BASE_URL}/leads/${activeLead.id}`, payload, { headers });
+        const updated = r.data?.lead || { ...activeLead, ...payload };
+        setLeads((prev) => prev.map((l) => (l.id === activeLead.id ? { ...l, ...updated, display_name: updated.name, display_phone: updated.phone } : l)));
+      }
       setActiveLead(null);
     } catch (err) {
       alert(err.response?.data?.error || "No se pudo guardar el lead");
@@ -265,8 +280,8 @@ const FunnelBoard = () => {
                   ))}
                 </select>
               )}
-              <button className="zxfn-btn" onClick={() => setAdding((a) => !a)} disabled={!isClient && !customerId}>
-                {adding ? "Cerrar" : "+ Agregar lead"}
+              <button className="zxfn-btn" onClick={openNew} disabled={!isClient && !customerId}>
+                + Agregar lead
               </button>
               <button className="zxfn-btn" onClick={() => { setImporting(true); setImportResult(null); }} disabled={!isClient && !customerId}>
                 Importar
@@ -276,22 +291,6 @@ const FunnelBoard = () => {
               </button>
             </div>
           </div>
-
-          {adding && (
-            <form className="zxfn-addbar" onSubmit={addLead}>
-              <input className="zxfn-input" placeholder="Nombre" value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-              <input className="zxfn-input" placeholder="Teléfono" value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
-              <input className="zxfn-input" placeholder="Valor estimado" type="number" value={form.estimated_value}
-                onChange={(e) => setForm((f) => ({ ...f, estimated_value: e.target.value }))} />
-              <select className="zxfn-input" value={form.source}
-                onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}>
-                {LEAD_SOURCES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-              <button className="zxfn-btn solid" type="submit" disabled={saving}>{saving ? "…" : "Guardar"}</button>
-            </form>
-          )}
 
           <div className="zxfn-tiles">
             <div className="zxfn-tile"><span className="k">Leads</span><span className="v">{stats.total}</span></div>
@@ -422,8 +421,8 @@ const FunnelBoard = () => {
             <div className="zxfn-drawer" onClick={(e) => e.stopPropagation()}>
               <div className="zxfn-drawer-head">
                 <div>
-                  <div className="eyebrow">Lead</div>
-                  <h2>{ef.name || "Lead"}</h2>
+                  <div className="eyebrow">{activeLead.__new ? "Nuevo lead" : "Lead"}</div>
+                  <h2>{ef.name || (activeLead.__new ? "Nuevo lead" : "Lead")}</h2>
                 </div>
                 <button className="zxfn-x" onClick={() => !savingLead && setActiveLead(null)} aria-label="Cerrar">×</button>
               </div>
