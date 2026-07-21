@@ -63,6 +63,21 @@ router.post('/webhooks/whatsapp', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/whatsapp/status
+ * Admin: confirm the WhatsApp link — which credentials are set and whether the
+ * number validates against the Graph API. Used to check "linking" worked.
+ */
+const { authenticateToken, isAdmin } = require('../middleware/auth');
+router.get('/api/whatsapp/status', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    res.json(await whatsappService.getStatus());
+  } catch (err) {
+    console.error('Error getting whatsapp status:', err);
+    res.status(500).json({ error: 'Error al obtener el estado de WhatsApp' });
+  }
+});
+
 module.exports = router;
 
 
