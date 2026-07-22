@@ -41,10 +41,20 @@ const ClientDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewId]);
 
+  const markTask = async (task, done) => {
+    setData((d) => ({ ...d, tasks: (d.tasks || []).map((t) => (t.id === task.id ? { ...t, status: done ? "completed" : "todo" } : t)) }));
+    try {
+      await axios.patch(`${API_BASE_URL}/api/tasks/${task.id}`, { status: done ? "completed" : "todo" }, { headers });
+    } catch {
+      /* keep UI responsive; failed write no-ops until refresh */
+    }
+  };
+
   if (loading) return <Layout><div className="zxpt"><div className="zxpt-loading">Cargando tu panel…</div></div></Layout>;
   if (!data) return <Layout><div className="zxpt"><div className="zxpt-loading">No se pudo cargar el panel.</div></div></Layout>;
 
-  const { funnel, content, billing, spend = {}, social = {} } = data;
+  const { funnel, content, billing, spend = {}, social = {}, tasks = [] } = data;
+  const openTasks = tasks.filter((t) => t.status !== "completed");
   const maxStage = Math.max(1, ...funnel.stages.map((s) => s.n));
   const stageMap = Object.fromEntries(funnel.stages.map((s) => [s.status, s.n]));
 
@@ -121,6 +131,25 @@ const ClientDashboard = () => {
             <div className="zxpt-tile"><span className="k">Cuentas en redes</span><span className="v">{social.accounts || 0}</span></div>
             <div className="zxpt-tile"><span className="k">Seguidores</span><span className="v">{(social.followers || 0).toLocaleString("es-MX")}</span></div>
           </div>
+
+          {tasks.length > 0 && (
+            <div className="zxpt-card">
+              <div className="zxpt-card-head">Tus pendientes <span className="zxpt-taskcount">{openTasks.length} por hacer</span></div>
+              <div className="zxpt-tasklist">
+                {tasks.map((t) => (
+                  <div className={`zxpt-task${t.status === "completed" ? " done" : ""}`} key={t.id}>
+                    <button className={`zxpt-taskcheck${t.status === "completed" ? " on" : ""}`} title="Marcar hecho"
+                      onClick={() => markTask(t, t.status !== "completed")}>✓</button>
+                    <div className="zxpt-taskmain">
+                      <div className="zxpt-tasktitle">{t.title}</div>
+                      {t.description && <div className="zxpt-taskdesc">{t.description}</div>}
+                    </div>
+                    {t.due_date && <div className="zxpt-taskdue">{new Date(t.due_date).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

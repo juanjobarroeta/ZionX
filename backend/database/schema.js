@@ -1031,6 +1031,14 @@ const createTables = async (pool) => {
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='custom_fields') THEN
           ALTER TABLE tasks ADD COLUMN custom_fields JSONB;
         END IF;
+        -- Standalone tasks: not tied to a project or a post. Assignable to a
+        -- team member (via task_assignments) or directly to a client.
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='customer_id') THEN
+          ALTER TABLE tasks ADD COLUMN customer_id INTEGER;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='assignee_kind') THEN
+          ALTER TABLE tasks ADD COLUMN assignee_kind VARCHAR(10) DEFAULT 'team';
+        END IF;
       END $$;
     `);
     console.log("✅ Tasks columns added/verified");

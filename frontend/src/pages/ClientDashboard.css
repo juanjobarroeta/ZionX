@@ -62,3 +62,18 @@
   .zxpt { padding: 72px 16px 56px; }
   .zxpt-tiles { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Client to-dos */
+.zxpt-taskcount { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--chip); padding: 3px 9px; border-radius: 999px; }
+.zxpt-tasklist { display: flex; flex-direction: column; margin-top: 12px; }
+.zxpt-task { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.zxpt-task:first-child { border-top: none; }
+.zxpt-task.done { opacity: 0.55; }
+.zxpt-task.done .zxpt-tasktitle { text-decoration: line-through; }
+.zxpt-taskcheck { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: transparent; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 1px; }
+.zxpt-taskcheck:hover { border-color: var(--done); }
+.zxpt-taskcheck.on { background: var(--done); border-color: var(--done); color: #fff; }
+.zxpt-taskmain { flex: 1; min-width: 0; }
+.zxpt-tasktitle { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.zxpt-taskdesc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.zxpt-taskdue { flex: 0 0 auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
