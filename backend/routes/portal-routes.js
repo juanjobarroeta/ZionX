@@ -65,20 +65,55 @@ router.get('/portal/summary', async (req, res) => {
       if (ch.rows.length) billing.charge_status = ch.rows[0].status;
     } catch (_) { /* tables may not exist yet */ }
 
-    // Attributed spend this month (ad spend + anything tagged to this client).
-    let spend = { total: 0, ad: 0, cost_per_lead: 0 };
+    // Attributed spend this month. Prefer spend pulled from the connected ad
+    // platforms (Meta/Google via ad_accounts → ad_spend_monthly); fall back to
+    // expenses tagged to the client only when no connected data exists.
+    let spend = { total: 0, ad: 0, meta: 0, google: 0, impressions: 0, clicks: 0, cost_per_lead: 0, source: 'none' };
     try {
-      const sp = await pool.query(`
+      const ads = await pool.query(`
         SELECT
-          COALESCE(SUM(amount), 0) AS total,
-          COALESCE(SUM(amount) FILTER (WHERE category IN ('meta_ads','google_ads','tiktok_ads')), 0) AS ad
-        FROM expenses
-        WHERE customer_id = $1 AND COALESCE(expense_date, created_at::date) >= $2::date
+          COALESCE(SUM(s.spend) FILTER (WHERE a.platform = 'meta'), 0) AS meta,
+          COALESCE(SUM(s.spend) FILTER (WHERE a.platform = 'google'), 0) AS google,
+          COALESCE(SUM(s.spend), 0) AS total,
+          COALESCE(SUM(s.impressions), 0) AS impressions,
+          COALESCE(SUM(s.clicks), 0) AS clicks
+        FROM ad_spend_monthly s
+        JOIN ad_accounts a ON a.id = s.ad_account_id
+        WHERE a.customer_id = $1 AND s.period_month = $2::date
       `, [customerId, monthStart]);
-      spend.total = Number(sp.rows[0].total) || 0;
-      spend.ad = Number(sp.rows[0].ad) || 0;
-      spend.cost_per_lead = fr.new_this_month ? Math.round(spend.total / fr.new_this_month) : 0;
-    } catch (_) { /* expenses.customer_id may not exist pre-migration */ }
+      const row = ads.rows[0];
+      if (row && Number(row.total) > 0) {
+        spend.meta = Number(row.meta) || 0;
+        spend.google = Number(row.google) || 0;
+        spend.total = Number(row.total) || 0;
+        spend.ad = spend.total;
+        spend.impressions = Number(row.impressions) || 0;
+        spend.clicks = Number(row.clicks) || 0;
+        spend.source = 'connected';
+      }
+    } catch (_) { /* ad tables may not exist pre-migration */ }
+
+    // Fallback to manually-logged expenses if nothing came from the platforms.
+    if (spend.source === 'none') {
+      try {
+        const sp = await pool.query(`
+          SELECT
+            COALESCE(SUM(amount), 0) AS total,
+            COALESCE(SUM(amount) FILTER (WHERE category = 'meta_ads'), 0) AS meta,
+            COALESCE(SUM(amount) FILTER (WHERE category = 'google_ads'), 0) AS google,
+            COALESCE(SUM(amount) FILTER (WHERE category IN ('meta_ads','google_ads','tiktok_ads')), 0) AS ad
+          FROM expenses
+          WHERE customer_id = $1 AND COALESCE(expense_date, created_at::date) >= $2::date
+        `, [customerId, monthStart]);
+        spend.total = Number(sp.rows[0].total) || 0;
+        spend.meta = Number(sp.rows[0].meta) || 0;
+        spend.google = Number(sp.rows[0].google) || 0;
+        spend.ad = Number(sp.rows[0].ad) || 0;
+        if (spend.total > 0) spend.source = 'manual';
+      } catch (_) { /* expenses.customer_id may not exist pre-migration */ }
+    }
+
+    spend.cost_per_lead = fr.new_this_month ? Math.round(spend.total / fr.new_this_month) : 0;
 
     // Social reach: accounts assigned to this client + total followers.
     let social = { accounts: 0, followers: 0 };

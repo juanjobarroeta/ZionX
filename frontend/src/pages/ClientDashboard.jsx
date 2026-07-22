@@ -103,9 +103,21 @@ const ClientDashboard = () => {
             </div>
           </div>
 
+          <div className="zxpt-section-head">
+            Rendimiento del mes
+            {spend.source === "connected" && <span className="zxpt-badge">En vivo desde Meta</span>}
+            {spend.source === "manual" && <span className="zxpt-badge muted">Registrado manualmente</span>}
+          </div>
           <div className="zxpt-tiles">
             <div className="zxpt-tile"><span className="k">Inversión del mes</span><span className="v">{fmtMoney(spend.total)}</span></div>
             <div className="zxpt-tile"><span className="k">Costo por lead</span><span className="v">{spend.cost_per_lead ? fmtMoney(spend.cost_per_lead) : "—"}</span></div>
+            <div className="zxpt-tile"><span className="k">Impresiones</span><span className="v">{(spend.impressions || 0).toLocaleString("es-MX")}</span></div>
+            <div className="zxpt-tile"><span className="k">Clics</span><span className="v">{(spend.clicks || 0).toLocaleString("es-MX")}</span></div>
+          </div>
+
+          <div className="zxpt-tiles">
+            <div className="zxpt-tile"><span className="k">Inversión Meta</span><span className="v">{fmtMoney(spend.meta)}</span></div>
+            <div className="zxpt-tile"><span className="k">Inversión Google</span><span className="v">{fmtMoney(spend.google)}</span></div>
             <div className="zxpt-tile"><span className="k">Cuentas en redes</span><span className="v">{social.accounts || 0}</span></div>
             <div className="zxpt-tile"><span className="k">Seguidores</span><span className="v">{(social.followers || 0).toLocaleString("es-MX")}</span></div>
           </div>

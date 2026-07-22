@@ -23,6 +23,10 @@
 .zxpt-head h1 { margin: 6px 0 0; font-size: clamp(30px, 4.6vw, 48px); font-weight: 700; letter-spacing: -0.02em; text-transform: capitalize; }
 .zxpt-head .sub { margin-top: 6px; color: var(--muted); font-size: 15px; }
 
+.zxpt-section-head { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.zxpt-badge { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; padding: 3px 9px; border-radius: 999px; background: rgba(35,91,68,0.12); color: var(--done); }
+.zxpt-badge.muted { background: var(--chip); color: var(--muted); }
+
 .zxpt-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .zxpt-tile { background: var(--paper); padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; }
 .zxpt-tile .k { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }

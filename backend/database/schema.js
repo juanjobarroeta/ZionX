@@ -559,6 +559,41 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Social media tables created");
 
+    // Advertising accounts (Meta Marketing API, Google Ads) connected by the
+    // agency and assigned to a client. Spend/performance are pulled from the
+    // platform, not typed in by hand.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ad_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        platform VARCHAR(20) NOT NULL DEFAULT 'meta',
+        platform_account_id VARCHAR(255) NOT NULL,
+        account_name VARCHAR(255),
+        currency VARCHAR(10),
+        access_token TEXT,
+        token_expires_at TIMESTAMP,
+        customer_id INTEGER,
+        is_active BOOLEAN DEFAULT true,
+        last_synced_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(platform, platform_account_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS ad_spend_monthly (
+        id SERIAL PRIMARY KEY,
+        ad_account_id INTEGER REFERENCES ad_accounts(id) ON DELETE CASCADE,
+        period_month DATE NOT NULL,
+        spend NUMERIC(14,2) DEFAULT 0,
+        impressions BIGINT DEFAULT 0,
+        clicks BIGINT DEFAULT 0,
+        currency VARCHAR(10),
+        fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(ad_account_id, period_month)
+      );
+    `);
+    console.log("✅ Advertising tables created");
+
     // Client approval tokens for public content review links
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_approval_tokens (
