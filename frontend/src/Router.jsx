@@ -21,6 +21,7 @@ const PublicCreativeBrief = lazy(() => import("./pages/PublicCreativeBrief"));
 const PublicBriefStart = lazy(() => import("./pages/PublicBriefStart"));
 const PublicClientApproval = lazy(() => import("./pages/PublicClientApproval"));
 const PublicCapture = lazy(() => import("./pages/PublicCapture"));
+const PublicLegal = lazy(() => import("./pages/PublicLegal"));
 const InventoryRequest = lazy(() => import("./pages/InventoryRequest"));
 const AdminInventoryViewer = lazy(() => import("./pages/AdminInventoryViewer"));
 const ProductProfile = lazy(() => import("./pages/ProductProfile"));
@@ -135,6 +136,8 @@ const AppRouter = () => (
         <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
         <Route path="/client-approval/:token" element={<PublicClientApproval />} />
         <Route path="/capturar/:token" element={<PublicCapture />} />
+        <Route path="/privacy" element={<PublicLegal kind="privacy" />} />
+        <Route path="/data-deletion" element={<PublicLegal kind="deletion" />} />
 
         {/* Core */}
         <Route path="/dashboard" element={<ProtectedRoute><MarketingDashboard /></ProtectedRoute>} />
