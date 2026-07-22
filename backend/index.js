@@ -239,6 +239,7 @@ async function start() {
     const inventoryRoutes = require('./routes/inventory-routes');
     const budgetsRoutes = require('./routes/budgets-routes');
     const adminRoutes = require('./routes/admin-routes');
+    const portalRoutes = require('./routes/portal-routes');
 
     // WhatsApp & Leads (mounted at root, have their own auth)
     app.use(whatsappRoutes);
@@ -313,6 +314,9 @@ async function start() {
 
     // Admin (stores, users)
     app.use('/admin', withPool, authenticateToken, isAdmin, adminRoutes);
+
+    // Client portal summary (client-scoped; staff may pass ?customer_id=)
+    app.use('/', withPool, authenticateToken, portalRoutes);
 
     // Start the post scheduler
     const PostScheduler = require('./services/postScheduler');

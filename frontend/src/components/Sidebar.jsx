@@ -154,7 +154,7 @@ const Sidebar = () => {
 
   // Client-portal users see only their funnel — nothing else from the internal app.
   const visibleGroups = userRole === "client"
-    ? [{ label: "CRM", links: [{ href: "/funnel", label: "Funnel" }] }]
+    ? [{ label: "Mi cuenta", links: [{ href: "/portal", label: "Panel" }, { href: "/funnel", label: "Funnel" }] }]
     : NAV_GROUPS.map((group) => {
         const links = [];
         let pendingSub = null;
