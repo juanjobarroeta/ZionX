@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
@@ -10,18 +10,36 @@ const fmtMoney = (n) =>
   `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const monthName = () => new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
+const readRole = () => {
+  try {
+    const t = localStorage.getItem("token");
+    const role = t ? JSON.parse(atob(t.split(".")[1])).role : null;
+    return role || localStorage.getItem("userRole") || null;
+  } catch {
+    return localStorage.getItem("userRole") || null;
+  }
+};
+
 const ClientDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
   const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
 
+  // Owners/staff can preview any client's portal via ?customer_id=. Real
+  // client users are always scoped to their own tenant server-side.
+  const role = readRole();
+  const previewId = role !== "client" ? searchParams.get("customer_id") : null;
+  const isPreview = Boolean(previewId);
+
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/portal/summary`, { headers })
+    const params = previewId ? { customer_id: previewId } : {};
+    axios.get(`${API_BASE_URL}/portal/summary`, { headers, params })
       .then((r) => setData(r.data))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [previewId]);
 
   if (loading) return <Layout><div className="zxpt"><div className="zxpt-loading">Cargando tu panel…</div></div></Layout>;
   if (!data) return <Layout><div className="zxpt"><div className="zxpt-loading">No se pudo cargar el panel.</div></div></Layout>;
@@ -37,10 +55,17 @@ const ClientDashboard = () => {
     <Layout>
       <div className="zxpt">
         <div className="zxpt-inner">
+          {isPreview && (
+            <div className="zxpt-preview">
+              <span>Vista de dueño — estás viendo el portal de <b>{data.customer_name}</b> como lo vería el cliente.</span>
+              <Link to={`/customer/${previewId}`} className="zxpt-preview-back">← Volver al perfil</Link>
+            </div>
+          )}
+
           <div className="zxpt-head">
-            <div className="eyebrow">Tu panel · {monthName()}</div>
-            <h1>Hola, <span className="zxpt-serif">{data.customer_name}</span></h1>
-            <div className="sub">Así va tu embudo de prospectos este mes.</div>
+            <div className="eyebrow">{isPreview ? "Portal del cliente" : "Tu panel"} · {monthName()}</div>
+            <h1>{isPreview ? <>Portal de <span className="zxpt-serif">{data.customer_name}</span></> : <>Hola, <span className="zxpt-serif">{data.customer_name}</span></>}</h1>
+            <div className="sub">Así va {isPreview ? "su" : "tu"} embudo de prospectos este mes.</div>
           </div>
 
           <div className="zxpt-tiles">
