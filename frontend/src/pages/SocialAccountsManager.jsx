@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { customerName } from '../utils/customerName';
 import './SocialAccounts.css';
 
 const platformLabel = (p) => ({ facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', linkedin: 'LinkedIn' }[p] || p || '—');
@@ -12,6 +13,7 @@ const SocialAccountsManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [accounts, setAccounts] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -33,12 +35,14 @@ const SocialAccountsManager = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [accountsRes, configRes] = await Promise.all([
+      const [accountsRes, configRes, customersRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/social/accounts`, { headers }),
-        axios.get(`${API_BASE_URL}/api/social/config`, { headers })
+        axios.get(`${API_BASE_URL}/api/social/config`, { headers }),
+        axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] }))
       ]);
       setAccounts(Array.isArray(accountsRes.data) ? accountsRes.data : []);
       setConfig(configRes.data);
+      setCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -95,6 +99,21 @@ const SocialAccountsManager = () => {
     } catch (error) {
       console.error('Error disconnecting:', error);
       alert('Error al desconectar');
+    }
+  };
+
+  const assignAccount = async (accountId, customerId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.patch(`${API_BASE_URL}/api/social/accounts/${accountId}/customer`,
+        { customer_id: customerId || null }, { headers });
+      const cust = customers.find((c) => String(c.id) === String(customerId));
+      setAccounts(prev => prev.map(a => a.id === accountId
+        ? { ...a, customer_id: customerId || null, customer_name: cust ? customerName(cust) : null } : a));
+    } catch (error) {
+      console.error('Error assigning account:', error);
+      alert('No se pudo asignar el cliente');
     }
   };
 
@@ -229,6 +248,14 @@ const SocialAccountsManager = () => {
                   )}
 
                   <div className="zxsa-date">Conectado {new Date(account.created_at).toLocaleDateString('es-MX')}</div>
+
+                  <label className="zxsa-assign">
+                    <span>Cliente</span>
+                    <select value={account.customer_id || ''} onChange={(e) => assignAccount(account.id, e.target.value)}>
+                      <option value="">Sin asignar</option>
+                      {customers.map((c) => <option key={c.id} value={c.id}>{customerName(c)}</option>)}
+                    </select>
+                  </label>
 
                   <div className="zxsa-card-actions">
                     <button className="zxsa-act primary" onClick={() => openPostModal(account)}>Publicar</button>

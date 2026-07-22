@@ -374,6 +374,8 @@ const createTables = async (pool) => {
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring BOOLEAN DEFAULT false;
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS recurring_frequency VARCHAR(50);
       ALTER TABLE expenses ADD COLUMN IF NOT EXISTS method VARCHAR(50);
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_date DATE;
+      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS customer_id INTEGER;
       ALTER TABLE inventory_requests ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
       ALTER TABLE inventory_requests ADD COLUMN IF NOT EXISTS priority VARCHAR(50) DEFAULT 'medium';
       ALTER TABLE inventory_requests ADD COLUMN IF NOT EXISTS supplier VARCHAR(100);

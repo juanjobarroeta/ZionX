@@ -23,7 +23,8 @@ router.post('/create', async (req, res) => {
       expense_date,
       vendor,
       payment_method, // If provided, mark as paid immediately
-      notes
+      notes,
+      customer_id     // optional: attribute this expense (e.g. ad spend) to a client
     } = req.body;
     
     if (!category || !amount || !description) {
@@ -58,8 +59,8 @@ router.post('/create', async (req, res) => {
     const expenseResult = await client.query(`
       INSERT INTO expenses (
         category, amount, description, due_date,
-        status, type, method
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        status, type, method, expense_date, customer_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       category,
@@ -68,7 +69,9 @@ router.post('/create', async (req, res) => {
       expense_date || new Date(),
       payment_method ? 'paid' : 'pending',
       category, // Use category as type as well
-      payment_method
+      payment_method,
+      expense_date || new Date(),
+      customer_id || null
     ]);
     
     const expense = expenseResult.rows[0];
@@ -373,6 +376,24 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting expense:', error);
     res.status(500).json({ error: 'Failed to delete expense' });
+  }
+});
+
+// PATCH /api/expenses/:id/customer  { customer_id }
+// Attribute (or clear) an existing expense to a client.
+router.patch('/:id/customer', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customer_id } = req.body;
+    const r = await req.pool.query(
+      'UPDATE expenses SET customer_id = $1 WHERE id = $2 RETURNING id, customer_id',
+      [customer_id || null, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Gasto no encontrado' });
+    res.json({ success: true, expense: r.rows[0] });
+  } catch (e) {
+    console.error('Error tagging expense to customer:', e);
+    res.status(500).json({ error: 'Error al asignar cliente al gasto' });
   }
 });
 

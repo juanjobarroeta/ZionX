@@ -2,6 +2,7 @@ import { API_BASE_URL } from "../utils/constants";
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import Layout from "../components/Layout";
+import { customerName } from "../utils/customerName";
 import "./AdminExpenses.css";
 
 const AdminExpenses = () => {
@@ -27,8 +28,10 @@ const AdminExpenses = () => {
     vendor: "",
     payment_method: "",
     recurring: false,
-    notes: ""
+    notes: "",
+    customer_id: ""
   });
+  const [customers, setCustomers] = useState([]);
 
   // Marketing Agency Expense Categories (mapped to chart of accounts)
   const expenseCategories = [
@@ -164,7 +167,8 @@ const AdminExpenses = () => {
         expense_date: form.expense_date,
         vendor: form.vendor || null,
         payment_method: form.payment_method || null,
-        notes: form.notes || null
+        notes: form.notes || null,
+        customer_id: form.customer_id || null
       };
 
       await axios.post(`${API_BASE_URL}/api/expenses/create`, expenseData, {
@@ -185,9 +189,10 @@ const AdminExpenses = () => {
         vendor: "",
         payment_method: "",
         recurring: false,
-        notes: ""
+        notes: "",
+        customer_id: ""
       });
-      
+
       fetchExpenses();
     } catch (err) {
       console.error("Error saving expense:", err);
@@ -259,6 +264,10 @@ const AdminExpenses = () => {
 
   useEffect(() => {
     fetchExpenses();
+    axios.get(`${API_BASE_URL}/customers`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setCustomers(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setCustomers([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const paidExpenses = expenses.filter(e => e.status === 'paid');
@@ -374,6 +383,22 @@ const AdminExpenses = () => {
                       className="zxexp-input"
                       placeholder="Nombre del proveedor"
                     />
+                  </div>
+
+                  {/* Client attribution (for ad spend / ROI per client) */}
+                  <div className="zxexp-field">
+                    <label className="zxexp-label">Cliente (opcional)</label>
+                    <select
+                      name="customer_id"
+                      value={form.customer_id}
+                      onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
+                      className="zxexp-input"
+                    >
+                      <option value="">Sin asignar</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>{customerName(c)}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Description */}

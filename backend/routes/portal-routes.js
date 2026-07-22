@@ -65,8 +65,37 @@ router.get('/portal/summary', async (req, res) => {
       if (ch.rows.length) billing.charge_status = ch.rows[0].status;
     } catch (_) { /* tables may not exist yet */ }
 
+    // Attributed spend this month (ad spend + anything tagged to this client).
+    let spend = { total: 0, ad: 0, cost_per_lead: 0 };
+    try {
+      const sp = await pool.query(`
+        SELECT
+          COALESCE(SUM(amount), 0) AS total,
+          COALESCE(SUM(amount) FILTER (WHERE category IN ('meta_ads','google_ads','tiktok_ads')), 0) AS ad
+        FROM expenses
+        WHERE customer_id = $1 AND COALESCE(expense_date, created_at::date) >= $2::date
+      `, [customerId, monthStart]);
+      spend.total = Number(sp.rows[0].total) || 0;
+      spend.ad = Number(sp.rows[0].ad) || 0;
+      spend.cost_per_lead = fr.new_this_month ? Math.round(spend.total / fr.new_this_month) : 0;
+    } catch (_) { /* expenses.customer_id may not exist pre-migration */ }
+
+    // Social reach: accounts assigned to this client + total followers.
+    let social = { accounts: 0, followers: 0 };
+    try {
+      const so = await pool.query(
+        `SELECT COUNT(*)::int AS accounts, COALESCE(SUM(followers_count), 0) AS followers
+           FROM social_accounts WHERE customer_id = $1`,
+        [customerId]
+      );
+      social.accounts = so.rows[0].accounts;
+      social.followers = Number(so.rows[0].followers) || 0;
+    } catch (_) { /* table may vary */ }
+
     res.json({
       customer_name: customerName,
+      spend,
+      social,
       funnel: {
         total: fr.total,
         new_this_month: fr.new_this_month,

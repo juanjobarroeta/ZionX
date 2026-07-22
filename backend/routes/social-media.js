@@ -275,7 +275,7 @@ router.get('/accounts', async (req, res) => {
     let query = `
       SELECT
         sa.*,
-        CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+        COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),'')) as customer_name,
         CASE WHEN sa.token_expires_at < NOW() THEN true ELSE false END as token_expired,
         CASE WHEN sa.token_expires_at < NOW() + INTERVAL '7 days' THEN true ELSE false END as token_expiring_soon
       FROM social_accounts sa
@@ -934,6 +934,25 @@ router.get('/config', (req, res) => {
       'To enable Meta integration, add META_APP_ID and META_APP_SECRET to your .env file. Get these from developers.facebook.com' :
       null
   });
+});
+
+// PATCH /api/social/accounts/:id/customer  { customer_id }
+// Assign (or clear) which client a connected page/account belongs to, so it
+// shows in that client's portal (reach/followers).
+router.patch('/accounts/:id/customer', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customer_id } = req.body;
+    const r = await req.pool.query(
+      'UPDATE social_accounts SET customer_id = $1, updated_at = NOW() WHERE id = $2 RETURNING id, customer_id',
+      [customer_id || null, id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    res.json({ success: true, account: r.rows[0] });
+  } catch (e) {
+    console.error('Error assigning account to customer:', e);
+    res.status(500).json({ error: 'Error al asignar cliente a la cuenta' });
+  }
 });
 
 module.exports = router;
