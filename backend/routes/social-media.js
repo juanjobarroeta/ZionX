@@ -253,10 +253,47 @@ router.post('/callback', async (req, res) => {
     }
 
     console.log(`✅ Connected ${connectedAccounts.length} social accounts for user ${req.user.id}`);
+
+    // Also discover ad accounts (Marketing API). Requires ads_read on the user
+    // token — silently no-ops if the permission wasn't granted.
+    let adAccountsConnected = 0;
+    try {
+      const adRes = await metaService.getAdAccounts(accessToken);
+      if (adRes.success) {
+        for (const acct of adRes.accounts) {
+          await req.pool.query(`
+            INSERT INTO ad_accounts (
+              user_id, platform, platform_account_id, account_name,
+              currency, access_token, token_expires_at, is_active
+            ) VALUES ($1, 'meta', $2, $3, $4, $5, NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds', true)
+            ON CONFLICT (platform, platform_account_id) DO UPDATE SET
+              account_name = $3,
+              currency = $4,
+              access_token = $5,
+              token_expires_at = NOW() + INTERVAL '${Math.floor(expiresInSeconds)} seconds',
+              is_active = true,
+              updated_at = NOW()
+          `, [
+            req.user.id,
+            String(acct.account_id),
+            acct.name || `Ad Account ${acct.account_id}`,
+            acct.currency || null,
+            accessToken
+          ]);
+          adAccountsConnected++;
+        }
+        console.log(`✅ Discovered ${adAccountsConnected} ad account(s) for user ${req.user.id}`);
+      }
+    } catch (adErr) {
+      console.error('Ad account discovery skipped:', adErr.message);
+    }
+
     res.json({
       success: true,
       accounts: connectedAccounts,
-      message: `Successfully connected ${connectedAccounts.length} account(s)`
+      ad_accounts: adAccountsConnected,
+      message: `Successfully connected ${connectedAccounts.length} account(s)` +
+        (adAccountsConnected ? ` and ${adAccountsConnected} ad account(s)` : '')
     });
   } catch (error) {
     console.error('Error in OAuth callback:', error);

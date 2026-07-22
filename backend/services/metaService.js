@@ -452,6 +452,67 @@ class MetaService {
   }
 
   /**
+   * List the ad accounts a user can access (Marketing API).
+   * Requires the ads_read permission on the user token.
+   * @param {string} userAccessToken - Long-lived user token
+   */
+  async getAdAccounts(userAccessToken) {
+    try {
+      const response = await axios.get(`${this.baseUrl}/me/adaccounts`, {
+        params: {
+          fields: 'account_id,name,currency,account_status',
+          limit: 200,
+          access_token: userAccessToken
+        }
+      });
+      return { success: true, accounts: response.data.data || [] };
+    } catch (error) {
+      console.error('Error fetching ad accounts:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message,
+        accounts: []
+      };
+    }
+  }
+
+  /**
+   * Pull account-level ad insights (spend, impressions, clicks) for a date range.
+   * @param {string} adAccountId - The ad account id (with or without the act_ prefix)
+   * @param {string} accessToken - User token with ads_read
+   * @param {string} since - YYYY-MM-DD (inclusive)
+   * @param {string} until - YYYY-MM-DD (inclusive)
+   */
+  async getAdAccountInsights(adAccountId, accessToken, since, until) {
+    const act = String(adAccountId).startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+    try {
+      const response = await axios.get(`${this.baseUrl}/${act}/insights`, {
+        params: {
+          fields: 'spend,impressions,clicks,cpc,ctr',
+          level: 'account',
+          time_range: JSON.stringify({ since, until }),
+          access_token: accessToken
+        }
+      });
+      const row = (response.data.data || [])[0] || {};
+      return {
+        success: true,
+        spend: Number(row.spend) || 0,
+        impressions: Number(row.impressions) || 0,
+        clicks: Number(row.clicks) || 0,
+        cpc: Number(row.cpc) || 0,
+        ctr: Number(row.ctr) || 0
+      };
+    } catch (error) {
+      console.error(`Error fetching insights for ${act}:`, error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error?.message || error.message
+      };
+    }
+  }
+
+  /**
    * Refresh a long-lived token before it expires.
    * Long-lived tokens can be refreshed as long as they haven't expired yet.
    * Returns a new long-lived token valid for another 60 days.
@@ -585,7 +646,9 @@ class MetaService {
       'instagram_basic',
       'instagram_content_publish',
       'instagram_manage_insights',
-      'business_management'
+      'business_management',
+      // Marketing API: read ad accounts + spend/performance insights.
+      'ads_read'
     ].join(',');
 
     return `https://www.facebook.com/${this.apiVersion}/dialog/oauth?` +
