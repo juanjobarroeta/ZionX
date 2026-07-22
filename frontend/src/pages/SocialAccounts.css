@@ -1,0 +1,98 @@
+/* ===== ZIONX — Cuentas de redes sociales (Meta) ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxsa {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --sched: #1F4E6B; --done: #235B44; --wait: #9A6B1E; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 40px 40px 72px;
+}
+.zxsa *, .zxsa { box-sizing: border-box; }
+.zxsa-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.zxsa-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+.zxsa-loading { min-height: 60vh; display: flex; align-items: center; justify-content: center; }
+.zxsa-spinner { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--line); border-bottom-color: var(--ink); animation: zxsa-spin 0.8s linear infinite; }
+.zxsa-spinner.sm { width: 24px; height: 24px; flex: 0 0 auto; }
+@keyframes zxsa-spin { to { transform: rotate(360deg); } }
+
+.zxsa-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.zxsa-head .eyebrow { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.5; font-weight: 600; }
+.zxsa-head h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
+.zxsa-head .sub { margin-top: 6px; color: var(--muted); font-size: 14px; }
+.zxsa-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.zxsa-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 15px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.zxsa-btn:hover:not(:disabled) { border-color: var(--ink); }
+.zxsa-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxsa-btn:disabled { opacity: 0.5; cursor: default; }
+
+.zxsa-note { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ink); border-radius: 3px; padding: 14px 16px; font-size: 14px; }
+.zxsa-note.warn { border-left-color: var(--wait); }
+.zxsa-note .muted { color: var(--muted); }
+
+.zxsa-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxsa-tile { background: var(--paper); padding: 16px 20px; display: flex; flex-direction: column; gap: 5px; }
+.zxsa-tile .k { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+.zxsa-tile .v { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+.zxsa-search { font-family: inherit; font-size: 15px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; }
+.zxsa-search:focus { border-color: var(--ink); }
+.zxsa-search::placeholder { color: var(--muted); }
+
+.zxsa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.zxsa-card { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.zxsa-card:hover { border-color: var(--ink); }
+.zxsa-card-top { display: flex; align-items: center; gap: 12px; }
+.zxsa-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; border: 1px solid var(--line); }
+.zxsa-avatar.mono { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-weight: 700; font-size: 18px; border: none; }
+.zxsa-idwrap { min-width: 0; }
+.zxsa-name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zxsa-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.zxsa-plat { font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 700; padding: 2px 7px; border-radius: 2px; background: var(--chip); color: var(--ink); }
+.zxsa-plat.facebook { background: rgba(31,78,107,0.12); color: var(--sched); }
+.zxsa-plat.instagram { background: rgba(138,28,28,0.10); color: var(--bad); }
+
+.zxsa-pill { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 2px; align-self: flex-start; }
+.zxsa-pill.bad { background: rgba(138,28,28,0.08); color: var(--bad); }
+.zxsa-pill.warn { background: rgba(154,107,30,0.10); color: var(--wait); }
+.zxsa-followers { font-size: 13px; color: var(--muted); }
+.zxsa-followers b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.zxsa-date { font-size: 12px; color: var(--muted); }
+
+.zxsa-card-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.zxsa-act { font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 13px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.zxsa-act.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); flex: 1; }
+.zxsa-act.link { border: none; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; margin-left: auto; }
+.zxsa-act.link:hover { color: var(--bad); }
+
+.zxsa-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 160px; background: transparent; border: 1px dashed var(--line); border-radius: 5px; cursor: pointer; font-family: inherit; color: var(--muted); }
+.zxsa-add:hover { border-color: var(--ink); color: var(--ink); }
+.zxsa-add .plus { font-size: 28px; font-weight: 300; }
+.zxsa-add .t { font-size: 14px; font-weight: 600; color: var(--ink); }
+.zxsa-add .s { font-size: 12px; }
+
+.zxsa-empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 60px 20px; text-align: center; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.zxsa-empty .lead { font-size: 18px; font-weight: 700; color: var(--ink); }
+
+/* Post modal */
+.zxsa-overlay { position: fixed; inset: 0; background: rgba(4,17,26,0.42); display: flex; align-items: flex-start; justify-content: center; padding: 56px 16px; z-index: 1000; overflow-y: auto; }
+.zxsa-modal { width: 100%; max-width: 540px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 60px rgba(4,17,26,0.22); }
+.zxsa-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+.zxsa-modal-head h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+.zxsa-x { background: none; border: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; }
+.zxsa-x:hover { color: var(--ink); }
+.zxsa-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.zxsa-field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.zxsa-field textarea, .zxsa-field input { font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; width: 100%; font-weight: 400; resize: vertical; }
+.zxsa-field textarea:focus, .zxsa-field input:focus { border-color: var(--ink); }
+.zxsa-hint { font-weight: 400; color: var(--muted); }
+.zxsa-preview { border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+.zxsa-preview img { max-height: 200px; max-width: 100%; border-radius: 3px; display: block; }
+.zxsa-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
+
+@media (max-width: 820px) {
+  .zxsa { padding: 72px 14px 56px; }
+  .zxsa-tiles { grid-template-columns: repeat(2, 1fr); }
+}
