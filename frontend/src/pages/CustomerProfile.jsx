@@ -280,6 +280,7 @@ const CustomerProfile = () => {
               <div className="zxp-actions">
                 <Link to="/crm" className="zxp-btn">← Volver</Link>
                 <button className="zxp-btn" onClick={openEdit}>Editar</button>
+                <Link to={`/portal?customer_id=${id}`} className="zxp-btn" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
                 <button className="zxp-btn" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
                 <Link to="/messages" className="zxp-btn">Mensajes</Link>
                 <button className="zxp-btn solid" onClick={() => { setActiveTab("recursos"); }}>Subir archivos</button>
