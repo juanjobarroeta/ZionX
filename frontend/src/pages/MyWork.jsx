@@ -58,7 +58,7 @@ const GROUPS = [
 ];
 
 const MyWork = () => {
-  const [state, setState] = useState({ loading: true, items: [], memberId: undefined, error: null });
+  const [state, setState] = useState({ loading: true, items: [], tasks: [], memberId: undefined, error: null });
   const [queue, setQueue] = useState({ loading: true, items: [] });
   const [supervision, setSupervision] = useState({ loading: true, items: [] });
   const [busyStage, setBusyStage] = useState(null);
@@ -68,8 +68,8 @@ const MyWork = () => {
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/api/team/my-work`, { headers })
-      .then((r) => setState({ loading: false, items: r.data?.items || [], memberId: r.data?.memberId ?? null, error: null }))
-      .catch((e) => setState({ loading: false, items: [], memberId: null, error: e.response?.data?.message || e.message }));
+      .then((r) => setState({ loading: false, items: r.data?.items || [], tasks: r.data?.tasks || [], memberId: r.data?.memberId ?? null, error: null }))
+      .catch((e) => setState({ loading: false, items: [], tasks: [], memberId: null, error: e.response?.data?.message || e.message }));
 
     axios.get(`${API_BASE_URL}/pipeline/my-queue`, { headers })
       .then((r) => setQueue({ loading: false, items: r.data?.items || [] }))
@@ -119,6 +119,17 @@ const MyWork = () => {
       /* keep UI responsive; a failed write just no-ops */
     } finally {
       setBusyStage(null);
+    }
+  };
+
+  // Standalone tasks assigned to me (not tied to a post).
+  const toggleTask = async (task) => {
+    const status = task.status === "completed" ? "todo" : "completed";
+    setState((s) => ({ ...s, tasks: s.tasks.map((t) => (t.id === task.id ? { ...t, status } : t)) }));
+    try {
+      await axios.patch(`${API_BASE_URL}/api/tasks/${task.id}`, { status }, { headers });
+    } catch {
+      /* keep UI responsive; failed write no-ops until refresh */
     }
   };
 
@@ -205,9 +216,11 @@ const MyWork = () => {
 
   const hasQueue = queue.items.length > 0;
   const hasSupervision = supervision.items.length > 0;
+  const openTasks = (state.tasks || []).filter((t) => t.status !== "completed");
+  const hasTasks = (state.tasks || []).length > 0;
   const nothingAtAll =
     !state.loading && !queue.loading && !supervision.loading &&
-    state.items.length === 0 && !hasQueue && !hasSupervision;
+    state.items.length === 0 && !hasQueue && !hasSupervision && !hasTasks;
 
   return (
     <Layout>
@@ -258,6 +271,32 @@ const MyWork = () => {
                       </div>
                     ) : null
                   )}
+                </section>
+              )}
+
+              {/* ---- Standalone tasks assigned to me ---- */}
+              {hasTasks && (
+                <section className="zxw-section">
+                  <div className="zxw-section-head">
+                    <h2>Mis <span className="zxw-serif">tareas</span></h2>
+                    <span className="zxw-section-sub">{openTasks.length} pendiente{openTasks.length === 1 ? "" : "s"}</span>
+                  </div>
+                  <div className="zxw-tasklist">
+                    {state.tasks.map((t) => (
+                      <div className={`zxw-task${t.status === "completed" ? " done" : ""}`} key={t.id}>
+                        <button className={`zxw-taskcheck${t.status === "completed" ? " on" : ""}`} title="Marcar hecho" onClick={() => toggleTask(t)}>✓</button>
+                        <div className="zxw-taskmain">
+                          <div className="zxw-tasktitle">{t.title}</div>
+                          <div className="zxw-taskmeta">
+                            {t.priority === "high" && <span className="zxw-taskpri">Alta</span>}
+                            {t.customer_name && <span>{t.customer_name}</span>}
+                            <span>{t.due_date ? `· ${fmtDate(t.due_date)}` : ""}</span>
+                          </div>
+                          {t.description && <div className="zxw-taskdesc">{t.description}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </section>
               )}
 

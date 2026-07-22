@@ -127,10 +127,24 @@ router.get('/portal/summary', async (req, res) => {
       social.followers = Number(so.rows[0].followers) || 0;
     } catch (_) { /* table may vary */ }
 
+    // Tasks assigned to this client (things they need to do for us).
+    let tasks = [];
+    try {
+      const t = await pool.query(
+        `SELECT id, title, description, status, priority, due_date
+           FROM tasks
+          WHERE customer_id = $1 AND assignee_kind = 'client' AND project_id IS NULL
+          ORDER BY (status='completed'), due_date ASC NULLS LAST, id DESC`,
+        [customerId]
+      );
+      tasks = t.rows;
+    } catch (_) { /* tasks columns may not exist pre-migration */ }
+
     res.json({
       customer_name: customerName,
       spend,
       social,
+      tasks,
       funnel: {
         total: fr.total,
         new_this_month: fr.new_this_month,

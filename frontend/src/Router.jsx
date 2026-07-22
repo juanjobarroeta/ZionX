@@ -63,6 +63,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const MessageHub = lazy(() => import("./pages/MessageHub"));
 const SocialAccountsManager = lazy(() => import("./pages/SocialAccountsManager"));
 const AdAccountsManager = lazy(() => import("./pages/AdAccountsManager"));
+const TasksBoard = lazy(() => import("./pages/TasksBoard"));
 
 const PageLoader = () => (
   <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#E8E8E5", color: "#04111A", fontFamily: "'Bricolage', Helvetica, Arial, sans-serif", fontSize: 15, opacity: 0.55 }}>
@@ -156,6 +157,7 @@ const AppRouter = () => (
         <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
         <Route path="/approvals" element={<SocialMediaRoute><ApprovalsHub /></SocialMediaRoute>} />
         <Route path="/my-work" element={<ProtectedRoute><MyWork /></ProtectedRoute>} />
+        <Route path="/tareas" element={<ProtectedRoute><TasksBoard /></ProtectedRoute>} />
         <Route path="/social/accounts" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
         <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
         <Route path="/ads/accounts" element={<SocialMediaRoute><AdAccountsManager /></SocialMediaRoute>} />

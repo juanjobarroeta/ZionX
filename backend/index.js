@@ -241,6 +241,7 @@ async function start() {
     const adminRoutes = require('./routes/admin-routes');
     const portalRoutes = require('./routes/portal-routes');
     const adsRoutes = require('./routes/ads');
+    const tasksRoutes = require('./routes/tasks');
 
     // WhatsApp & Leads (mounted at root, have their own auth)
     app.use(whatsappRoutes);
@@ -318,6 +319,9 @@ async function start() {
 
     // Advertising accounts + spend sync (agency-side; social_media section)
     app.use('/api/ads', withPool, authenticateToken, requireSection('social_media'), adsRoutes);
+
+    // Standalone tasks (team + client assignment)
+    app.use('/api/tasks', withPool, authenticateToken, tasksRoutes);
 
     // Client portal summary (client-scoped; staff may pass ?customer_id=)
     app.use('/', withPool, authenticateToken, portalRoutes);

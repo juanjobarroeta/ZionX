@@ -58,7 +58,26 @@ router.get("/api/team/my-work", async (req, res) => {
         r.assigned_approver === memberId && "approver",
       ].filter(Boolean),
     }));
-    res.json({ memberId, items });
+
+    // Standalone tasks assigned to this member (not tied to a post/project).
+    let tasks = [];
+    try {
+      const t = await pool.query(
+        `SELECT t.id, t.title, t.description, t.status, t.priority, t.due_date,
+                t.customer_id,
+                COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''),
+                         NULLIF(TRIM(c.first_name || ' ' || c.last_name),'')) AS customer_name
+           FROM tasks t
+           JOIN task_assignments ta ON ta.task_id = t.id AND ta.assignment_type = 'primary'
+           LEFT JOIN customers c ON c.id = t.customer_id
+          WHERE ta.assignee_id = $1 AND t.project_id IS NULL
+          ORDER BY (t.status='completed'), t.due_date ASC NULLS LAST, t.id DESC`,
+        [memberId]
+      );
+      tasks = t.rows;
+    } catch (_) { /* tasks columns may not exist pre-migration */ }
+
+    res.json({ memberId, items, tasks });
   } catch (error) {
     console.error("Error fetching my-work:", error);
     res.status(500).json({ message: "Error interno del servidor" });

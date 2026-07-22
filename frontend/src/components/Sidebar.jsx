@@ -28,6 +28,7 @@ const NAV_GROUPS = [
       { href: "/approvals", label: "Aprobaciones", section: "social_media" },
       { href: "/ads/accounts", label: "Publicidad", section: "social_media" },
       { href: "/projects", label: "Proyectos", section: "social_media" },
+      { href: "/tareas", label: "Tareas", section: "social_media" },
     ],
   },
   {
