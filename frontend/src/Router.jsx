@@ -38,6 +38,7 @@ const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
 const ProjectDetails = lazy(() => import("./pages/ProjectDetails"));
 const CreateProject = lazy(() => import("./pages/CreateProject"));
 const FunnelBoard = lazy(() => import("./pages/FunnelBoard"));
+const ClientDashboard = lazy(() => import("./pages/ClientDashboard"));
 const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
 const LeadsCapture = lazy(() => import("./pages/LeadsCapture"));
 const LeadsManage = lazy(() => import("./pages/LeadsManage"));
@@ -74,10 +75,11 @@ const ProtectedRoute = ({ children }) => {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (!payload || !payload.id) throw new Error("Invalid token payload");
-    // Client-portal users only ever get the funnel — no other internal screen.
+    // Client-portal users only ever get their portal + funnel — nothing else.
     const role = payload.role || localStorage.getItem("userRole");
-    if (role === "client" && window.location.pathname !== "/funnel") {
-      return <Navigate to="/funnel" replace />;
+    const clientAllowed = ["/portal", "/funnel"];
+    if (role === "client" && !clientAllowed.includes(window.location.pathname)) {
+      return <Navigate to="/portal" replace />;
     }
     return children;
   } catch {
@@ -157,6 +159,7 @@ const AppRouter = () => (
         <Route path="/social/callback" element={<SocialMediaRoute><SocialAccountsManager /></SocialMediaRoute>} />
 
         {/* Leads / CRM */}
+        <Route path="/portal" element={<ProtectedRoute><ClientDashboard /></ProtectedRoute>} />
         <Route path="/funnel" element={<ProtectedRoute><FunnelBoard /></ProtectedRoute>} />
         <Route path="/leads-inbox" element={<ProtectedRoute><LeadsInbox /></ProtectedRoute>} />
         <Route path="/leads-capture" element={<ProtectedRoute><LeadsCapture /></ProtectedRoute>} />

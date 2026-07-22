@@ -1,0 +1,55 @@
+/* ===== ZIONX — Client portal dashboard ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxpt {
+  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
+  --chip: rgba(4,17,26,0.05); --sched: #1F4E6B; --done: #235B44; --wait: #9A6B1E; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--bg); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 44px 44px 72px;
+}
+.zxpt *, .zxpt { box-sizing: border-box; }
+.zxpt-inner { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.zxpt-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+.zxpt-loading { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+
+.zxpt-head .eyebrow { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.5; font-weight: 600; }
+.zxpt-head h1 { margin: 6px 0 0; font-size: clamp(30px, 4.6vw, 48px); font-weight: 700; letter-spacing: -0.02em; text-transform: capitalize; }
+.zxpt-head .sub { margin-top: 6px; color: var(--muted); font-size: 15px; }
+
+.zxpt-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.zxpt-tile { background: var(--paper); padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; }
+.zxpt-tile .k { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+.zxpt-tile .v { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.zxpt-tile.ok .v { color: var(--done); }
+.zxpt-tile.sched .v { color: var(--sched); }
+
+.zxpt-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+@media (max-width: 820px) { .zxpt-grid { grid-template-columns: 1fr; } }
+.zxpt-card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 24px; }
+.zxpt-card-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 15px; font-weight: 700; margin-bottom: 18px; }
+.zxpt-link { font-size: 13px; font-weight: 600; color: var(--sched); text-decoration: none; }
+.zxpt-link:hover { text-decoration: underline; }
+
+.zxpt-stages { display: flex; flex-direction: column; gap: 11px; }
+.zxpt-stage { display: grid; grid-template-columns: 100px 1fr 32px; align-items: center; gap: 12px; }
+.zxpt-stage .lbl { font-size: 13px; color: var(--muted); }
+.zxpt-stage .track { height: 10px; background: var(--chip); border-radius: 6px; overflow: hidden; }
+.zxpt-stage .fill { height: 100%; background: var(--ink); border-radius: 6px; min-width: 2px; transition: width 0.3s; }
+.zxpt-stage .fill.t-sched { background: var(--sched); } .zxpt-stage .fill.t-wait { background: var(--wait); }
+.zxpt-stage .fill.t-done { background: var(--done); } .zxpt-stage .fill.t-bad { background: var(--bad); }
+.zxpt-stage .n { font-size: 14px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+.zxpt-stat { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; }
+.zxpt-stat .k { font-size: 13px; color: var(--muted); }
+.zxpt-stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.zxpt-stat .v.paid { color: var(--done); }
+.zxpt-divider { height: 1px; background: var(--line-soft); margin: 8px 0; }
+
+.zxpt-soon { font-size: 13px; color: var(--muted); text-align: center; padding: 8px; border: 1px dashed var(--line); border-radius: 5px; }
+
+@media (max-width: 820px) {
+  .zxpt { padding: 72px 16px 56px; }
+  .zxpt-tiles { grid-template-columns: repeat(2, 1fr); }
+}
