@@ -656,6 +656,9 @@ class MetaService {
            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
            `&scope=${scopes}` +
            `&state=${state}` +
+           // Force Facebook to re-prompt for newly-added permissions (e.g.
+           // ads_read) even when the user already connected the app before.
+           `&auth_type=rerequest` +
            `&response_type=code`;
   }
 
