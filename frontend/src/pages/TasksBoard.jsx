@@ -37,7 +37,7 @@ const TasksBoard = () => {
         axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: [] })),
         axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] })),
       ]);
-      setMembers(Array.isArray(m.data) ? m.data : m.data?.members || []);
+      setMembers(m.data?.team_members || m.data?.members || (Array.isArray(m.data) ? m.data : []));
       setCustomers(Array.isArray(c.data) ? c.data : []);
       load();
     })();
