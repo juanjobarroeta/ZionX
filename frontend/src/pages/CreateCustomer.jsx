@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { API_BASE_URL } from "../utils/constants";
+import { MEXICAN_STATES } from "../utils/mexicanStates";
 import "./CreateCustomer.css";
 
 const CreateCustomer = () => {
@@ -533,12 +534,9 @@ const CreateCustomer = () => {
                       className={`zxccu-select ${validationErrors.fiscal_state ? 'err' : ''}`}
                     >
                       <option value="">Seleccione estado</option>
-                      <option value="Puebla">Puebla</option>
-                      <option value="Ciudad de México">Ciudad de México</option>
-                      <option value="Tlaxcala">Tlaxcala</option>
-                      <option value="Morelos">Morelos</option>
-                      <option value="Hidalgo">Hidalgo</option>
-                      <option value="Estado de México">Estado de México</option>
+                      {MEXICAN_STATES.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
                     </select>
                     {validationErrors.fiscal_state && (
                       <p className="zxccu-err">{validationErrors.fiscal_state}</p>
