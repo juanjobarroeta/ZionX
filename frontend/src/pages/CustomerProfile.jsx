@@ -204,6 +204,23 @@ const CustomerProfile = () => {
     }
   };
 
+  const [waSaving, setWaSaving] = useState(false);
+  const [waSaved, setWaSaved] = useState(false);
+  const saveWhatsappConfig = async (patch) => {
+    setWaSaving(true); setWaSaved(false);
+    // Optimistic local update so the inputs stay responsive.
+    setCustomer((c) => ({ ...c, ...patch }));
+    try {
+      await axios.put(`${API_BASE_URL}/customers/${id}/whatsapp-config`, patch, { headers });
+      setWaSaved(true);
+      setTimeout(() => setWaSaved(false), 1800);
+    } catch (err) {
+      alert(err.response?.data?.message || "No se pudo guardar la configuración de WhatsApp");
+    } finally {
+      setWaSaving(false);
+    }
+  };
+
   const invitePortal = async () => {
     const email = window.prompt("Email para el acceso del cliente al portal:", customer.contact_email || customer.email || "");
     if (!email) return;
@@ -397,6 +414,41 @@ const CustomerProfile = () => {
                       Los mensajes entrantes de WhatsApp (incluidos los de anuncios click-to-WhatsApp)
                       se convierten en leads automáticamente en el funnel de este cliente.
                     </span>
+                  </div>
+
+                  <div className="zxp-field">
+                    <span className="k">Asistente de WhatsApp (IA) {waSaved && <em style={{ color: "#235B44", fontStyle: "normal" }}>· guardado</em>}</span>
+                    <button
+                      className={`zxp-btn${customer.whatsapp_ai_enabled !== false ? " solid" : ""}`}
+                      disabled={waSaving}
+                      onClick={() => saveWhatsappConfig({ whatsapp_ai_enabled: !(customer.whatsapp_ai_enabled !== false) })}
+                    >
+                      {customer.whatsapp_ai_enabled !== false ? "Activado — responde y califica solo" : "Activar respuestas con IA"}
+                    </button>
+                    <span className="zxp-hint">
+                      Al llegar un mensaje, la IA saluda, confirma el servicio de interés y pide la
+                      colonia/dirección para verificar cobertura — y guarda esos datos en el lead.
+                    </span>
+                    <textarea
+                      className="zxp-input"
+                      rows={2}
+                      placeholder="Contexto del negocio (ej. Distribuidor autorizado de TotalPlay: internet y TV por fibra en Xalapa)"
+                      defaultValue={customer.whatsapp_business_context || ""}
+                      onBlur={(e) => {
+                        if ((e.target.value || "") !== (customer.whatsapp_business_context || ""))
+                          saveWhatsappConfig({ whatsapp_business_context: e.target.value });
+                      }}
+                    />
+                    <textarea
+                      className="zxp-input"
+                      rows={2}
+                      placeholder="Saludo si la IA está apagada (opcional)"
+                      defaultValue={customer.whatsapp_greeting || ""}
+                      onBlur={(e) => {
+                        if ((e.target.value || "") !== (customer.whatsapp_greeting || ""))
+                          saveWhatsappConfig({ whatsapp_greeting: e.target.value });
+                      }}
+                    />
                   </div>
                   <div className="zxp-field">
                     <span className="k">Enlace de captación</span>
