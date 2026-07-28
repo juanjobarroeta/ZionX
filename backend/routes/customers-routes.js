@@ -732,6 +732,34 @@ router.put("/customers/:id/whatsapp-inbound", async (req, res) => {
   }
 });
 
+// PUT /customers/:id/whatsapp-config  { whatsapp_ai_enabled, whatsapp_greeting, whatsapp_business_context }
+// Per-client WhatsApp automation settings used by the AI qualifier.
+router.put("/customers/:id/whatsapp-config", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = req.pool;
+    const { whatsapp_ai_enabled, whatsapp_greeting, whatsapp_business_context } = req.body || {};
+    const sets = [];
+    const params = [];
+    if (whatsapp_ai_enabled !== undefined) { params.push(!!whatsapp_ai_enabled); sets.push(`whatsapp_ai_enabled = $${params.length}`); }
+    if (whatsapp_greeting !== undefined) { params.push(whatsapp_greeting || null); sets.push(`whatsapp_greeting = $${params.length}`); }
+    if (whatsapp_business_context !== undefined) { params.push(whatsapp_business_context || null); sets.push(`whatsapp_business_context = $${params.length}`); }
+    if (!sets.length) return res.status(400).json({ message: "Nada que actualizar" });
+    sets.push("updated_at = NOW()");
+    params.push(id);
+    const r = await pool.query(
+      `UPDATE customers SET ${sets.join(", ")} WHERE id = $${params.length}
+       RETURNING id, whatsapp_ai_enabled, whatsapp_greeting, whatsapp_business_context`,
+      params
+    );
+    if (!r.rows.length) return res.status(404).json({ message: "Cliente no encontrado" });
+    res.json({ success: true, ...r.rows[0] });
+  } catch (err) {
+    console.error("Error setting whatsapp config:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 // POST /customers/:id/capture-link
 // Ensure this client has a public capture token and return it. The frontend
 // builds the shareable /capturar/:token URL from it.

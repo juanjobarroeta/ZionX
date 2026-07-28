@@ -64,6 +64,23 @@ router.post('/webhooks/whatsapp', async (req, res) => {
 });
 
 /**
+ * POST /webhooks/whatsapp/twilio
+ * Twilio WhatsApp inbound webhook (application/x-www-form-urlencoded).
+ * Replies with empty TwiML; the actual reply is sent asynchronously via the API.
+ */
+router.post('/webhooks/whatsapp/twilio', async (req, res) => {
+  try {
+    res.set('Content-Type', 'text/xml').status(200).send('<Response></Response>');
+    if (req.body && (req.body.From || req.body.Body)) {
+      await whatsappService.handleTwilioInbound(req.body);
+    }
+  } catch (error) {
+    console.error('❌ Twilio webhook processing error:', error);
+    // Already responded 200; nothing else to do.
+  }
+});
+
+/**
  * GET /api/whatsapp/status
  * Admin: confirm the WhatsApp link — which credentials are set and whether the
  * number validates against the Graph API. Used to check "linking" worked.

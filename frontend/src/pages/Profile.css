@@ -138,3 +138,8 @@
 .zxp-modal-field input:focus { border-color: var(--ink); }
 .zxp-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); }
 @media (max-width: 560px) { .zxp-modal-grid { grid-template-columns: 1fr; } }
+
+/* Inline WhatsApp config inputs */
+.zxp-input { font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface, #fff); color: var(--ink); outline: none; width: 100%; margin-top: 8px; resize: vertical; }
+.zxp-input:focus { border-color: var(--ink); }
+.zxp-input::placeholder { color: var(--muted); }
