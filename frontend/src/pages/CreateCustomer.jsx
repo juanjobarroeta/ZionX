@@ -130,9 +130,15 @@ const CreateCustomer = () => {
         if (form.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contact_email)) {
           errors.contact_email = "Formato de email inválido";
         }
-        if (!form.contact_phone.trim()) errors.contact_phone = "Teléfono del contacto es requerido";
-        if (form.contact_phone && !/^\+?\d{10,}$/.test(form.contact_phone.replace(/\s/g, ''))) {
-          errors.contact_phone = "Formato de teléfono inválido";
+        if (!form.contact_phone.trim()) {
+          errors.contact_phone = "Teléfono del contacto es requerido";
+        } else {
+          // Count digits only — tolerate spaces, dashes, dots, parens, a leading
+          // +, and invisible autofill characters. 10 (MX local) to 15 (E.164).
+          const digits = form.contact_phone.replace(/\D/g, "");
+          if (digits.length < 10 || digits.length > 15) {
+            errors.contact_phone = "Ingresa un teléfono válido (10 dígitos)";
+          }
         }
         break;
         
