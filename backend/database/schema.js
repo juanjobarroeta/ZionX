@@ -1280,6 +1280,11 @@ const createTables = async (pool) => {
     await pool.query(`
       ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS requires_invoice BOOLEAN DEFAULT true;
       ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS billing_day INTEGER DEFAULT 1;
+      -- Whether this subscription's charge adds 16% IVA. Independent of whether a
+      -- CFDI is required. Defaults to the requires_invoice value on backfill.
+      ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS applies_iva BOOLEAN DEFAULT true;
+      UPDATE customer_subscriptions SET applies_iva = requires_invoice WHERE applies_iva IS NULL;
+      ALTER TABLE subscription_charges ADD COLUMN IF NOT EXISTS applies_iva BOOLEAN DEFAULT true;
     `);
 
     // Subscription charges = the monthly "cobro" tracker, SEPARATE from invoices.

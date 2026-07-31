@@ -171,7 +171,7 @@ const CobrosTracker = () => {
                             {c.package_name && <div className="zxcob-sub">{c.package_name}</div>}
                           </td>
                           <td className="r mono">{fmtMoney(c.amount)}</td>
-                          <td className="r mono muted">{c.requires_invoice ? fmtMoney(Number(c.amount) * (1 + IVA)) : "—"}</td>
+                          <td className="r mono muted">{c.applies_iva ? fmtMoney(Number(c.amount) * (1 + IVA)) : <span title="Sin IVA">{fmtMoney(c.amount)} <em style={{ fontStyle: "normal", opacity: 0.6 }}>· sin IVA</em></span>}</td>
                           <td>
                             <button
                               className={`zxcob-flag ${c.requires_invoice ? "on" : "off"}`}
