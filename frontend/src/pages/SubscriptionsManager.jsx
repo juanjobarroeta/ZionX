@@ -17,6 +17,7 @@ const SubscriptionsManager = () => {
   const [monthlyAmount, setMonthlyAmount] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [appliesIva, setAppliesIva] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
@@ -73,6 +74,7 @@ const SubscriptionsManager = () => {
           monthly_amount: parseFloat(monthlyAmount),
           description: description || "Suscripción mensual",
           start_date: new Date().toISOString().split('T')[0],
+          applies_iva: appliesIva,
           notes
         },
         { headers }
@@ -84,6 +86,7 @@ const SubscriptionsManager = () => {
       setMonthlyAmount("");
       setDescription("");
       setNotes("");
+      setAppliesIva(true);
       fetchData();
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -136,6 +139,7 @@ const SubscriptionsManager = () => {
     setEditingSubscription(subscription);
     setMonthlyAmount(subscription.effective_monthly_price || "");
     setNotes(subscription.notes || "");
+    setAppliesIva(subscription.applies_iva !== false);
     setShowEditModal(true);
   };
 
@@ -155,6 +159,7 @@ const SubscriptionsManager = () => {
         `${API_BASE_URL}/api/income/subscriptions/${editingSubscription.id}`,
         {
           custom_monthly_price: parseFloat(monthlyAmount),
+          applies_iva: appliesIva,
           notes
         },
         { headers }
@@ -299,7 +304,9 @@ const SubscriptionsManager = () => {
                             {formatCurrency(sub.effective_monthly_price)}
                           </div>
                           <div className="zxsub-amt-iva">
-                            Con IVA: {formatCurrency(parseFloat(sub.effective_monthly_price) * 1.16)}
+                            {sub.applies_iva !== false
+                              ? `Con IVA: ${formatCurrency(parseFloat(sub.effective_monthly_price) * 1.16)}`
+                              : "Sin IVA"}
                           </div>
                         </td>
                         <td>
@@ -407,19 +414,25 @@ const SubscriptionsManager = () => {
                       className="zxsub-input"
                     />
                   </div>
+                  <label className="zxsub-iva-toggle" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer", fontSize: 14 }}>
+                    <input type="checkbox" checked={appliesIva} onChange={(e) => setAppliesIva(e.target.checked)} />
+                    Aplicar IVA (16%)
+                  </label>
                   {monthlyAmount && parseFloat(monthlyAmount) > 0 && (
                     <div className="zxsub-breakdown">
                       <div className="zxsub-brow">
                         <span className="lbl">Subtotal:</span>
                         <span className="val">{formatCurrency(parseFloat(monthlyAmount))}</span>
                       </div>
-                      <div className="zxsub-brow">
-                        <span className="lbl">IVA (16%):</span>
-                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
-                      </div>
+                      {appliesIva && (
+                        <div className="zxsub-brow">
+                          <span className="lbl">IVA (16%):</span>
+                          <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
+                        </div>
+                      )}
                       <div className="zxsub-brow total">
                         <span>Total Mensual:</span>
-                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * (appliesIva ? 1.16 : 1))}</span>
                       </div>
                     </div>
                   )}
@@ -507,19 +520,25 @@ const SubscriptionsManager = () => {
                       className="zxsub-input"
                     />
                   </div>
+                  <label className="zxsub-iva-toggle" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer", fontSize: 14 }}>
+                    <input type="checkbox" checked={appliesIva} onChange={(e) => setAppliesIva(e.target.checked)} />
+                    Aplicar IVA (16%)
+                  </label>
                   {monthlyAmount && parseFloat(monthlyAmount) > 0 && (
                     <div className="zxsub-breakdown">
                       <div className="zxsub-brow">
                         <span className="lbl">Subtotal:</span>
                         <span className="val">{formatCurrency(parseFloat(monthlyAmount))}</span>
                       </div>
-                      <div className="zxsub-brow">
-                        <span className="lbl">IVA (16%):</span>
-                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
-                      </div>
+                      {appliesIva && (
+                        <div className="zxsub-brow">
+                          <span className="lbl">IVA (16%):</span>
+                          <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 0.16)}</span>
+                        </div>
+                      )}
                       <div className="zxsub-brow total">
                         <span>Total Mensual:</span>
-                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * 1.16)}</span>
+                        <span className="val">{formatCurrency(parseFloat(monthlyAmount) * (appliesIva ? 1.16 : 1))}</span>
                       </div>
                     </div>
                   )}

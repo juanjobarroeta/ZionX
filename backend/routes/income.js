@@ -514,6 +514,7 @@ router.post('/subscriptions', async (req, res) => {
       description,
       notes,
       requires_invoice = true, // some clients don't need a CFDI
+      applies_iva = true,      // whether the charge adds 16% IVA
       billing_day             // day of month to bill (defaults to start day / 1)
     } = req.body;
     
@@ -580,13 +581,13 @@ router.post('/subscriptions', async (req, res) => {
     const result = await req.pool.query(`
       INSERT INTO customer_subscriptions (
         customer_id, service_package_id, start_date, next_billing_date,
-        custom_monthly_price, notes, created_by, requires_invoice, billing_day
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        custom_monthly_price, notes, created_by, requires_invoice, billing_day, applies_iva
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `, [
       customer_id, packageId, start_date, nextBillingDate,
       effectiveMonthlyPrice, notes || description, req.user.id,
-      requires_invoice !== false, bday
+      requires_invoice !== false, bday, applies_iva !== false
     ]);
     
     console.log(`✅ Created subscription ${result.rows[0].id} for customer ${customer_id} at ${effectiveMonthlyPrice}/month`);
@@ -639,6 +640,7 @@ router.put('/subscriptions/:id', async (req, res) => {
       end_date,
       next_billing_date,
       requires_invoice,
+      applies_iva,
       billing_day
     } = req.body;
 
@@ -655,6 +657,7 @@ router.put('/subscriptions/:id', async (req, res) => {
         next_billing_date = COALESCE($10, next_billing_date),
         requires_invoice = COALESCE($11, requires_invoice),
         billing_day = COALESCE($12, billing_day),
+        applies_iva = COALESCE($13, applies_iva),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $9
       RETURNING *
@@ -664,7 +667,8 @@ router.put('/subscriptions/:id', async (req, res) => {
       custom_features ? JSON.stringify(custom_features) : null,
       notes, end_date, id, next_billing_date,
       typeof requires_invoice === 'boolean' ? requires_invoice : null,
-      billing_day ?? null
+      billing_day ?? null,
+      typeof applies_iva === 'boolean' ? applies_iva : null
     ]);
     
     if (!result.rows.length) {
@@ -679,6 +683,7 @@ router.put('/subscriptions/:id', async (req, res) => {
         UPDATE subscription_charges ch
            SET amount = COALESCE(cs.custom_monthly_price, sp.base_price, ch.amount),
                requires_invoice = COALESCE(cs.requires_invoice, ch.requires_invoice),
+               applies_iva = COALESCE(cs.applies_iva, ch.applies_iva),
                updated_at = NOW()
           FROM customer_subscriptions cs
           LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
@@ -721,16 +726,18 @@ router.post('/subscriptions/generate-charges', async (req, res) => {
     // subscription updates its amount / requires_invoice. Charges already marked
     // 'cobrado' are settled and never touched (the WHERE guard on DO UPDATE).
     const { rows } = await req.pool.query(`
-      INSERT INTO subscription_charges (subscription_id, customer_id, period_month, amount, requires_invoice)
+      INSERT INTO subscription_charges (subscription_id, customer_id, period_month, amount, requires_invoice, applies_iva)
       SELECT cs.id, cs.customer_id, $1::date,
              COALESCE(cs.custom_monthly_price, sp.base_price, 0),
-             COALESCE(cs.requires_invoice, true)
+             COALESCE(cs.requires_invoice, true),
+             COALESCE(cs.applies_iva, true)
         FROM customer_subscriptions cs
         LEFT JOIN service_packages sp ON cs.service_package_id = sp.id
        WHERE cs.status = 'active'
       ON CONFLICT (subscription_id, period_month) DO UPDATE
          SET amount = EXCLUDED.amount,
              requires_invoice = EXCLUDED.requires_invoice,
+             applies_iva = EXCLUDED.applies_iva,
              updated_at = NOW()
        WHERE subscription_charges.status <> 'cobrado'
       RETURNING id
