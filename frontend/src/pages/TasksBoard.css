@@ -1,69 +1,95 @@
-/* ===== ZIONX — Tareas del equipo ===== */
-@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+/* ============================================================================
+   Tareas — the team's task board, foldered by project and by client.
+   Brand tokens and primitives come from styles/zionx.css; this file owns the
+   composer, the folders, and the task rows.
+   ========================================================================== */
 
-.zxtk {
-  --ink: #04111A; --paper: #F2F3F1; --bg: #E8E8E5; --surface: #FFFFFF;
-  --line: rgba(4,17,26,0.14); --line-soft: rgba(4,17,26,0.07); --muted: rgba(4,17,26,0.55);
-  --chip: rgba(4,17,26,0.05); --sched: #1F4E6B; --done: #235B44; --wait: #9A6B1E; --bad: #8A1C1C;
-  min-height: 100vh; background: var(--bg); color: var(--ink);
-  font-family: 'Bricolage', Helvetica, Arial, sans-serif; padding: 44px 40px 72px;
+/* ---------- composer ---------- */
+.zxtk-form {
+  background: var(--zx-paper); border: 1px solid var(--zx-line);
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
 }
-.zxtk *, .zxtk { box-sizing: border-box; }
-.zxtk-inner { max-width: 940px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-.zxtk-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
-
-.zxtk-head .eyebrow { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.5; font-weight: 600; }
-.zxtk-head h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -0.02em; }
-.zxtk-head .sub { margin-top: 6px; color: var(--muted); font-size: 14px; }
-
-.zxtk-form { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .zxtk-form-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.zxtk-in { font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; }
-.zxtk-in:focus { border-color: var(--ink); }
-.zxtk-in.grow { flex: 1; min-width: 180px; }
-.zxtk-in::placeholder { color: var(--muted); }
+.zxtk-form-row .grow { flex: 1; min-width: 220px; }
+.zxtk-form-row .zx-select:not(.grow), .zxtk-form-row .zx-input[type="date"] { width: auto; }
 
-.zxtk-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
-.zxtk-toggle button { font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 14px; border: none; background: var(--surface); color: var(--muted); cursor: pointer; }
-.zxtk-toggle button.on { background: var(--ink); color: var(--paper); }
+.zxtk-toggle { display: inline-flex; border: 1px solid rgba(4, 17, 26, 0.25); border-radius: 3px; overflow: hidden; }
+.zxtk-toggle button {
+  background: transparent; color: var(--zx-ink); border: none; padding: 10px 16px;
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  opacity: 0.6; transition: opacity 0.15s ease;
+}
+.zxtk-toggle button:hover { opacity: 1; }
+.zxtk-toggle button.on { background: var(--zx-ink); color: var(--zx-paper); opacity: 1; }
 
-.zxtk-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
-.zxtk-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.zxtk-btn:disabled { opacity: 0.5; cursor: default; }
-.zxtk-err { color: var(--bad); font-size: 13px; font-weight: 600; }
+/* ---------- folders ---------- */
+.zxtk-folders { display: flex; flex-direction: column; gap: 14px; }
+.zxtk-folder { background: var(--zx-paper); border: 1px solid var(--zx-line); }
+.zxtk-folder-head {
+  width: 100%; display: flex; align-items: baseline; gap: 12px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  padding: 14px 16px; font-family: inherit; color: var(--zx-ink);
+}
+.zxtk-folder-head:hover { background: var(--zx-surface); }
+.zxtk-folder-head .chev {
+  font-family: var(--zx-mono); font-size: 11px; color: var(--zx-muted);
+  width: 14px; flex: none; transition: transform 0.15s ease;
+}
+.zxtk-folder-head .name { font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
+.zxtk-folder-head .who { font-size: 12.5px; color: var(--zx-muted); }
+.zxtk-folder-head .counts {
+  margin-left: auto; font-family: var(--zx-mono); font-size: 11px;
+  color: var(--zx-muted); white-space: nowrap;
+}
+.zxtk-folder-head .counts .open { color: var(--zx-ink); font-weight: 500; }
+.zxtk-folder-body { border-top: 1px solid var(--zx-line-soft); }
 
-.zxtk-filters { display: flex; gap: 8px; }
-.zxtk-chip { font-family: inherit; font-size: 13px; font-weight: 600; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
-.zxtk-chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+/* ---------- task row ---------- */
+.zxtk-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--zx-line-soft);
+}
+.zxtk-row:last-child { border-bottom: none; }
+.zxtk-row.done .zxtk-title { text-decoration: line-through; color: var(--zx-muted); }
 
-.zxtk-empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 44px 20px; text-align: center; color: var(--muted); }
+.zxtk-check {
+  flex: none; width: 22px; height: 22px; margin-top: 1px;
+  border: 1px solid rgba(4, 17, 26, 0.35); border-radius: 50%;
+  background: transparent; color: transparent; font-size: 12px; line-height: 1;
+  cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.zxtk-check:hover { border-color: var(--zx-ink); color: rgba(4, 17, 26, 0.35); }
+.zxtk-check.on { background: var(--zx-ink); border-color: var(--zx-ink); color: var(--zx-paper); }
 
-.zxtk-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
-.zxtk-row { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); padding: 14px 16px; }
-.zxtk-row.done { opacity: 0.6; }
-.zxtk-row.done .zxtk-title { text-decoration: line-through; }
+.zxtk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.zxtk-title { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.zxtk-desc { font-size: 13px; color: var(--zx-muted); line-height: 1.45; }
+.zxtk-meta {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--zx-muted);
+}
+.zxtk-meta .due { font-family: var(--zx-mono); font-size: 11px; }
+.zxtk-meta .due.over { color: var(--zx-crit); font-weight: 600; }
+.zxtk-meta .proj { font-weight: 600; color: rgba(4, 17, 26, 0.7); }
 
-.zxtk-check { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: transparent; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 2px; }
-.zxtk-check:hover { border-color: var(--done); }
-.zxtk-check.on { background: var(--done); border-color: var(--done); color: #fff; }
+/* Priority as a small left-anchored mark, same vocabulary as status pills. */
+.zxtk-pri {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+  padding: 1px 7px; border-radius: 2px; border: 1px solid rgba(4, 17, 26, 0.25);
+}
+.zxtk-pri.high { background: var(--zx-crit); border-color: var(--zx-crit); color: var(--zx-paper); }
+.zxtk-pri.medium { border-color: rgba(4, 17, 26, 0.35); }
+.zxtk-pri.low { color: var(--zx-muted); }
 
-.zxtk-main { flex: 1; min-width: 0; }
-.zxtk-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-.zxtk-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
-.zxtk-meta { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-.zxtk-meta .over { color: var(--bad); font-weight: 700; }
-.zxtk-pri { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; background: var(--chip); }
-.zxtk-pri.high { background: rgba(138,28,28,0.10); color: var(--bad); }
-.zxtk-pri.medium { background: rgba(154,107,30,0.12); color: var(--wait); }
-.zxtk-pri.low { background: rgba(31,78,107,0.10); color: var(--sched); }
+.zxtk-actions { flex: none; display: flex; align-items: center; gap: 8px; }
+.zxtk-actions .zx-select { width: auto; }
+.zxtk-del {
+  background: none; border: none; font-size: 18px; line-height: 1;
+  color: var(--zx-ink); opacity: 0.35; cursor: pointer; font-family: inherit; padding: 4px;
+}
+.zxtk-del:hover { opacity: 1; color: var(--zx-crit); }
 
-.zxtk-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.zxtk-status { font-family: inherit; font-size: 12.5px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); outline: none; }
-.zxtk-del { background: none; border: none; font-size: 20px; line-height: 1; color: var(--muted); cursor: pointer; }
-.zxtk-del:hover { color: var(--bad); }
-
-@media (max-width: 720px) {
-  .zxtk { padding: 72px 14px 56px; }
-  .zxtk-actions { flex-direction: column; align-items: flex-end; }
+@media (max-width: 900px) {
+  .zxtk-row { flex-wrap: wrap; }
+  .zxtk-actions { width: 100%; justify-content: flex-end; }
 }
