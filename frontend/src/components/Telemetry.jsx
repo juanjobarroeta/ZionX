@@ -1,5 +1,14 @@
 import React from "react";
 
+const grouped = new Intl.NumberFormat("es-MX");
+
+// Small counts keep the zero-padded instrument look ("04"); anything that runs
+// into the thousands gets separators, because "468523" is not a readable number.
+const fmt = (v) => {
+  const n = Number(v) || 0;
+  return n >= 1000 ? grouped.format(Math.round(n)) : String(n).padStart(2, "0");
+};
+
 /**
  * The readout strip along the bottom of a command bar. Counts are the one thing
  * a user checks before anything else, so they get the instrument treatment:
@@ -14,7 +23,7 @@ const Telemetry = ({ items }) => (
       <span className="zx-tele-item" key={k}>
         <span className="k">{k}</span>
         <span className={`v${v === 0 ? " zero" : tone ? ` ${tone}` : ""}`}>
-          {String(v ?? 0).padStart(2, "0")}
+          {fmt(v)}
         </span>
       </span>
     ))}
