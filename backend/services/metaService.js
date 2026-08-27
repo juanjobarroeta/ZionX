@@ -5,11 +5,41 @@
 
 const axios = require('axios');
 
-// Metrics Meta has rejected this process-lifetime. Meta retires metrics on its
-// own schedule and errors the *whole* request when one is unknown, which is how
-// a single deprecation used to take down an entire sync. We learn the bad ones
-// at runtime and stop asking for them.
-const rejectedMetrics = new Set();
+// Metrics Meta has rejected, with when. Meta retires metrics on its own
+// schedule and errors the *whole* request when one is unknown, which is how a
+// single deprecation used to take down an entire sync — so we learn the bad
+// ones at runtime and stop asking for them.
+//
+// The entry expires: a metric is retried once a day, so a wrong call here heals
+// itself instead of silently shrinking what we collect forever.
+const rejectedMetrics = new Map(); // metric -> epoch ms when it was rejected
+const REJECT_TTL_MS = 24 * 60 * 60 * 1000;
+
+const isRejected = (metric) => {
+  const at = rejectedMetrics.get(metric);
+  if (at === undefined) return false;
+  if (Date.now() - at < REJECT_TTL_MS) return true;
+  rejectedMetrics.delete(metric);
+  return false;
+};
+
+/**
+ * Is this error about the *metric*, or about the connection?
+ *
+ * Only a bad metric name justifies dropping a metric. An expired token, a page
+ * the user no longer administers, a rate limit — those are about the account,
+ * and treating them as metric failures poisons the metric list for every other
+ * account in the run. Meta reports an unknown metric as code 100 with the
+ * metric named in the message; auth and permission problems are 190/200/10/3.
+ */
+const isMetricError = (err) => {
+  const e = err?.response?.data?.error || {};
+  if (e.code !== 100) return false;
+  return /metric|must be one of|deprecat|unsupported|unknown field|invalid parameter/i
+    .test(String(e.message || ''));
+};
+
+const errMessage = (err) => err?.response?.data?.error?.message || err?.message || 'unknown error';
 
 class MetaService {
   constructor() {
@@ -29,15 +59,25 @@ class MetaService {
    * whole sync.
    */
   async fetchInsights(url, baseParams, metrics) {
-    const wanted = metrics.filter((m) => !rejectedMetrics.has(m));
-    if (!wanted.length) return { success: true, data: [], dropped: metrics.slice() };
+    const wanted = metrics.filter((m) => !isRejected(m));
+    // Everything we know how to ask for has been rejected. That is a failure to
+    // measure, not a measurement of zero — say so, or the caller stores zeros
+    // that look exactly like a quiet day.
+    if (!wanted.length) {
+      return { success: false, error: 'every requested metric is currently rejected by Meta', data: [], dropped: metrics.slice() };
+    }
 
     try {
       const r = await axios.get(url, { params: { ...baseParams, metric: wanted.join(',') } });
       return { success: true, data: r.data.data || [], dropped: [] };
     } catch (err) {
-      const first = err.response?.data?.error?.message || err.message;
-      // Fall back to one call per metric to isolate the offender(s).
+      // A connection problem (expired token, lost page role, rate limit) fails
+      // here and stays here: no fan-out, and no metric gets blamed for it.
+      if (!isMetricError(err)) {
+        return { success: false, error: errMessage(err), data: [], dropped: [] };
+      }
+
+      // One of the names is bad. Ask per metric to isolate which.
       const data = [];
       const dropped = [];
       for (const metric of wanted) {
@@ -45,13 +85,16 @@ class MetaService {
           const r = await axios.get(url, { params: { ...baseParams, metric } });
           data.push(...(r.data.data || []));
         } catch (e) {
+          if (!isMetricError(e)) {
+            // The connection died mid-isolation — stop and report that instead.
+            return { success: false, error: errMessage(e), data, dropped };
+          }
           dropped.push(metric);
-          rejectedMetrics.add(metric);
-          console.warn(`⚠️  Meta rejected metric "${metric}" — skipping it from now on:`,
-            e.response?.data?.error?.message || e.message);
+          rejectedMetrics.set(metric, Date.now());
+          console.warn(`⚠️  Meta rejected metric "${metric}" — skipping it for 24h:`, errMessage(e));
         }
       }
-      if (!data.length) return { success: false, error: first, data: [], dropped };
+      if (!data.length) return { success: false, error: errMessage(err), data: [], dropped };
       return { success: true, data, dropped };
     }
   }
