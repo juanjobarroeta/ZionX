@@ -3,10 +3,14 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName } from "../utils/customerName";
+import { DESTINATIONS } from "../config/destinations";
+import { canAccessPage } from "../config/roles";
 import "./GlobalSearch.css";
 
-// Command-K palette. Fetches customers + team once per open, filters locally as
-// the user types, and supports full keyboard use (arrows + Enter + Esc).
+// Command-K palette. Searches three things: the pages of the app, the client
+// list and the team. Pages come first — with ~68 routes and 31 in the sidebar,
+// this is how the rest of the product is reachable at all, and typing a name is
+// faster than hunting a nav group even for the ones that are listed.
 const GlobalSearch = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState("");
   const [data, setData] = useState({ customers: [], team: [], loaded: false });
@@ -35,9 +39,21 @@ const GlobalSearch = ({ isOpen, onClose }) => {
     return () => clearTimeout(t);
   }, [isOpen]);
 
+  // Destinations this role can actually open — offering a page that redirects
+  // to /unauthorized would be worse than not offering it.
+  const allowed = useMemo(() => {
+    const role = localStorage.getItem("userRole") || "user";
+    return DESTINATIONS.filter((d) => canAccessPage(role, d.path));
+  }, []);
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (q.length < 2) return { customers: [], team: [] };
+    if (q.length < 2) return { pages: [], customers: [], team: [] };
+    const pages = allowed
+      .filter((d) => d.label.toLowerCase().includes(q) || (d.keywords || "").includes(q) || d.group.toLowerCase().includes(q))
+      // A label match is what you meant; a keyword match is what you might have meant.
+      .sort((a, b) => Number(b.label.toLowerCase().includes(q)) - Number(a.label.toLowerCase().includes(q)))
+      .slice(0, 6);
     const customers = data.customers
       .map((c) => ({ ...c, display: customerName(c) }))
       .filter(
@@ -53,12 +69,13 @@ const GlobalSearch = ({ isOpen, onClose }) => {
     const team = data.team
       .filter((m) => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q))
       .slice(0, 4);
-    return { customers, team };
-  }, [query, data]);
+    return { pages, customers, team };
+  }, [query, data, allowed]);
 
   // Flat list drives keyboard navigation across both sections.
   const flat = useMemo(
     () => [
+      ...results.pages.map((d) => ({ type: "page", item: d })),
       ...results.customers.map((c) => ({ type: "customer", item: c })),
       ...results.team.map((m) => ({ type: "team", item: m })),
     ],
@@ -71,7 +88,11 @@ const GlobalSearch = ({ isOpen, onClose }) => {
 
   const select = (entry) => {
     if (!entry) return;
-    navigate(entry.type === "customer" ? `/customer/${entry.item.id}` : `/employee/${entry.item.id}`);
+    const to =
+      entry.type === "page" ? entry.item.path
+      : entry.type === "customer" ? `/customer/${entry.item.id}`
+      : `/employee/${entry.item.id}`;
+    navigate(to);
     setQuery("");
     onClose();
   };
@@ -84,16 +105,23 @@ const GlobalSearch = ({ isOpen, onClose }) => {
   };
 
   const Row = ({ entry, index }) => {
+    const isPage = entry.type === "page";
     const isCustomer = entry.type === "customer";
-    const label = isCustomer ? entry.item.display : entry.item.name;
-    const sub = isCustomer ? entry.item.contact_email || entry.item.phone || "" : entry.item.role || "";
+    const label = isPage ? entry.item.label : isCustomer ? entry.item.display : entry.item.name;
+    const sub = isPage
+      ? entry.item.group
+      : isCustomer
+      ? entry.item.contact_email || entry.item.phone || ""
+      : entry.item.role || "";
     return (
       <button
         className={`zxgs-row${index === active ? " active" : ""}`}
         onMouseEnter={() => setActive(index)}
         onClick={() => select(entry)}
       >
-        <span className="zxgs-avatar">{(label || "?").charAt(0).toUpperCase()}</span>
+        <span className={`zxgs-avatar${isPage ? " page" : ""}`}>
+          {isPage ? "⌘" : (label || "?").charAt(0).toUpperCase()}
+        </span>
         <span className="zxgs-rowmain">
           <span className="zxgs-rowtitle">{label}</span>
           {sub && <span className="zxgs-rowsub">{sub}</span>}
@@ -112,7 +140,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Buscar clientes, equipo…"
+            placeholder="Buscar páginas, clientes, equipo…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="zxgs-input"
@@ -128,11 +156,19 @@ const GlobalSearch = ({ isOpen, onClose }) => {
             <div className="zxgs-hint">Sin resultados para “{query.trim()}”</div>
           ) : (
             <>
+              {results.pages.length > 0 && (
+                <div className="zxgs-section">
+                  <div className="zxgs-label">Ir a</div>
+                  {results.pages.map((d, i) => (
+                    <Row key={`p${d.path}`} entry={{ type: "page", item: d }} index={i} />
+                  ))}
+                </div>
+              )}
               {results.customers.length > 0 && (
                 <div className="zxgs-section">
                   <div className="zxgs-label">Clientes</div>
                   {results.customers.map((c, i) => (
-                    <Row key={`c${c.id}`} entry={{ type: "customer", item: c }} index={i} />
+                    <Row key={`c${c.id}`} entry={{ type: "customer", item: c }} index={results.pages.length + i} />
                   ))}
                 </div>
               )}
@@ -140,7 +176,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                 <div className="zxgs-section">
                   <div className="zxgs-label">Equipo</div>
                   {results.team.map((m, i) => (
-                    <Row key={`t${m.id}`} entry={{ type: "team", item: m }} index={results.customers.length + i} />
+                    <Row key={`t${m.id}`} entry={{ type: "team", item: m }} index={results.pages.length + results.customers.length + i} />
                   ))}
                 </div>
               )}
