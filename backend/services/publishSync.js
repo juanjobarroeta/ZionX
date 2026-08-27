@@ -81,6 +81,10 @@ async function promote(pool, entryId, publicBase) {
          social_account_id = $1, customer_id = $2, content_calendar_id = $3,
          content_type = $4, message = $5, media_urls = $6, scheduled_for = $7,
          status = CASE WHEN status IN ('published','publishing') THEN status ELSE 'scheduled' END,
+         -- Re-queuing by hand is a fresh start. Without this the old retry
+         -- count survives, so a post that already exhausted its retries would
+         -- fail again on the first attempt and "Reintentar" would do nothing.
+         retry_count = CASE WHEN status IN ('published','publishing') THEN retry_count ELSE 0 END,
          error_message = NULL, updated_at = NOW()
        WHERE id = $8 RETURNING *`,
       [account.id, entry.customer_id, entryId, contentType, message, media.length ? media : null, when, entry.scheduled_post_id]

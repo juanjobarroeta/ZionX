@@ -207,6 +207,97 @@ class MetaService {
   }
 
   /**
+   * Publish a Reel to a Facebook Page.
+   *
+   * Unlike Instagram's single container call, Facebook reels are a three-step
+   * upload: start a session, hand the hosted file to rupload.facebook.com, then
+   * finish with the state we want. We pass the media as a hosted URL rather
+   * than streaming bytes — the file is already served publicly for Meta to
+   * fetch, which is what every other publish path here relies on.
+   */
+  async postReelToFacebookPage(pageId, pageAccessToken, { videoUrl, description }) {
+    try {
+      const start = await axios.post(`${this.baseUrl}/${pageId}/video_reels`, {
+        upload_phase: 'start',
+        access_token: pageAccessToken,
+      });
+      const videoId = start.data?.video_id;
+      const uploadUrl = start.data?.upload_url;
+      if (!videoId || !uploadUrl) {
+        return { success: false, error: 'Facebook no devolvió una sesión de carga para el reel' };
+      }
+
+      // Meta fetches the file itself, so the host must allow
+      // facebookexternalhit — ours does; it is the same public /uploads path
+      // the image publishes already use.
+      await axios.post(uploadUrl, null, {
+        headers: { Authorization: `OAuth ${pageAccessToken}`, file_url: videoUrl },
+      });
+
+      const finish = await axios.post(`${this.baseUrl}/${pageId}/video_reels`, {
+        upload_phase: 'finish',
+        video_id: videoId,
+        video_state: 'PUBLISHED',
+        description: description || '',
+        access_token: pageAccessToken,
+      });
+      if (finish.data?.success === false) {
+        return { success: false, error: 'Facebook rechazó la publicación del reel' };
+      }
+      console.log(`✅ Published reel to Facebook Page ${pageId}:`, videoId);
+      return { success: true, postId: videoId };
+    } catch (error) {
+      console.error('Error posting Facebook reel:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error?.message || error.message, errorObject: error };
+    }
+  }
+
+  /**
+   * Publish a Story to a Facebook Page — photo or video, no caption. Photos are
+   * uploaded unpublished to get an id and then attached to /page_stories;
+   * videos use the same upload-session dance as reels.
+   */
+  async postStoryToFacebookPage(pageId, pageAccessToken, { mediaUrl, isVideo = false }) {
+    try {
+      if (!isVideo) {
+        const photo = await axios.post(`${this.baseUrl}/${pageId}/photos`, {
+          url: mediaUrl, published: false, access_token: pageAccessToken,
+        });
+        const photoId = photo.data?.id;
+        if (!photoId) return { success: false, error: 'Facebook no devolvió la foto para la historia' };
+
+        const story = await axios.post(`${this.baseUrl}/${pageId}/page_stories`, {
+          photo_id: photoId, access_token: pageAccessToken,
+        });
+        console.log(`✅ Published photo story to Facebook Page ${pageId}:`, story.data?.post_id || photoId);
+        return { success: true, postId: story.data?.post_id || photoId };
+      }
+
+      const start = await axios.post(`${this.baseUrl}/${pageId}/video_stories`, {
+        upload_phase: 'start', access_token: pageAccessToken,
+      });
+      const videoId = start.data?.video_id;
+      const uploadUrl = start.data?.upload_url;
+      if (!videoId || !uploadUrl) {
+        return { success: false, error: 'Facebook no devolvió una sesión de carga para la historia' };
+      }
+
+      await axios.post(uploadUrl, null, {
+        headers: { Authorization: `OAuth ${pageAccessToken}`, file_url: mediaUrl },
+      });
+
+      const finish = await axios.post(`${this.baseUrl}/${pageId}/video_stories`, {
+        upload_phase: 'finish', video_id: videoId, access_token: pageAccessToken,
+      });
+      console.log(`✅ Published video story to Facebook Page ${pageId}:`, finish.data?.post_id || videoId);
+      return { success: true, postId: finish.data?.post_id || videoId };
+    } catch (error) {
+      console.error('Error posting Facebook story:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error?.message || error.message, errorObject: error };
+    }
+  }
+
+  /**
    * Facebook Page insights, one snapshot per day.
    *
    * Metric names follow Meta's post-deprecation set: `page_impressions`,
