@@ -491,7 +491,7 @@ class MetaService {
         `${this.baseUrl}/${igAccountId}/media`,
         {
           params: {
-            fields: 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
+            fields: 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count',
             limit: limit,
             access_token: accessToken
           }

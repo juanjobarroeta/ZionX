@@ -40,8 +40,9 @@ class MetricsScheduler {
         every: hours('METRICS_POSTS_INTERVAL_HOURS', 6),
         run: () => syncPostInsights(this.pool, {
           windowDays: parseInt(process.env.METRICS_POST_WINDOW_DAYS, 10) || 30,
+          mediaPerAccount: parseInt(process.env.METRICS_MEDIA_PER_ACCOUNT, 10) || 12,
         }),
-        describe: (r) => `${r.synced}/${r.total} publicaciones`,
+        describe: (r) => `${r.synced}/${r.total} programadas · ${r.organic} orgánicas`,
       },
       {
         name: 'meta_ads',

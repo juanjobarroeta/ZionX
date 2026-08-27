@@ -949,8 +949,11 @@ router.get('/analytics/posts', async (req, res) => {
     const sort = SORTS[req.query.sort] || 'views';
 
     const params = [from || defaultFrom(), to || todayIso()];
-    let where = 'sp.published_at::date BETWEEN $1::date AND $2::date';
-    if (customerId) { params.push(customerId); where += ` AND sp.customer_id = $${params.length}`; }
+    // Organic posts (published outside ZionX) have no scheduled_posts row —
+    // their display fields live on the snapshot itself, so everything reads
+    // through COALESCE and the join is LEFT.
+    let where = 'COALESCE(sp.published_at, pa.posted_at)::date BETWEEN $1::date AND $2::date';
+    if (customerId) { params.push(customerId); where += ` AND COALESCE(sp.customer_id, pa.customer_id) = $${params.length}`; }
     params.push(limit);
 
     // DISTINCT ON keeps the most recent snapshot per post; the history stays in
@@ -959,11 +962,17 @@ router.get('/analytics/posts', async (req, res) => {
       SELECT DISTINCT ON (pa.platform_post_id)
              pa.platform_post_id, pa.scheduled_post_id, pa.snapshot_date,
              pa.views, pa.reach, pa.likes, pa.comments, pa.shares, pa.saves,
+             pa.replies, pa.avg_watch_time,
              pa.total_interactions, pa.engagement_rate, pa.media_type, pa.platform,
-             sp.message, sp.published_at, sp.platform_post_url, sp.customer_id,
+             pa.thumbnail_url,
+             COALESCE(sp.message, pa.caption) AS message,
+             COALESCE(sp.published_at, pa.posted_at) AS published_at,
+             COALESCE(sp.platform_post_url, pa.permalink) AS platform_post_url,
+             COALESCE(sp.customer_id, pa.customer_id) AS customer_id,
+             (pa.scheduled_post_id IS NULL) AS organic,
              sa.account_username
         FROM post_analytics pa
-        JOIN scheduled_posts sp ON sp.id = pa.scheduled_post_id
+        LEFT JOIN scheduled_posts sp ON sp.id = pa.scheduled_post_id
         LEFT JOIN social_accounts sa ON sa.id = pa.social_account_id
        WHERE ${where}
        ORDER BY pa.platform_post_id, pa.snapshot_date DESC
