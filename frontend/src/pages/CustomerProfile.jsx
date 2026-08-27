@@ -5,6 +5,9 @@ import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName, customerContact } from "../utils/customerName";
 import PinterestEmbed from "../components/PinterestEmbed";
+import PixelMark from "../components/PixelMark";
+import Telemetry from "../components/Telemetry";
+import "../styles/zionx.css";
 import "./Profile.css";
 
 const fmtMoney = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -24,6 +27,12 @@ const FILE_SECTIONS = [
   { cat: "escaleta", label: "Documentos", accept: ".pdf,.xlsx,.docx,.pptx" },
 ];
 
+// Media types as a person says them, not as Meta spells them.
+const FORMAT_SHORT = {
+  REELS: "Reel", VIDEO: "Video", CAROUSEL_ALBUM: "Carrusel",
+  IMAGE: "Imagen", STORY: "Story", POST: "Post",
+};
+
 const INV_STATUS = {
   paid: { label: "Pagada", cls: "paid" },
   overdue: { label: "Vencida", cls: "overdue" },
@@ -38,11 +47,12 @@ const CustomerProfile = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("resumen");
   const [files, setFiles] = useState({ branding: [], media: [], designs: [], escaleta: [] });
-  const [teamMembers, setTeamMembers] = useState([]);
   const [roster, setRoster] = useState({});
   const [rosterMembers, setRosterMembers] = useState([]);
   const [invoices, setInvoices] = useState({ loading: true, list: [], denied: false });
   const [upcoming, setUpcoming] = useState(null);
+  // The cockpit layer: what the client's month actually looks like right now.
+  const [pulse, setPulse] = useState({ views: 0, prevViews: 0, posts: [], tasks: [], connections: [] });
   const [uploading, setUploading] = useState({});
   const [pinBoard, setPinBoard] = useState("");
   const [pinSaved, setPinSaved] = useState(false);
@@ -85,9 +95,6 @@ const CustomerProfile = () => {
       }
     })();
     fetchFiles();
-    axios.get(`${API_BASE_URL}/team-members`, { headers })
-      .then((r) => setTeamMembers(r.data?.team_members || []))
-      .catch(() => setTeamMembers([]));
     // Real invoices for this client (income section is role-guarded — a 403 just
     // means the viewer can't see billing).
     axios.get(`${API_BASE_URL}/api/income/invoices`, { headers, params: { customer_id: id } })
@@ -101,6 +108,34 @@ const CustomerProfile = () => {
       .catch(() => setUpcoming(null));
     return () => { alive = false; };
   }, [id, headers, fetchFiles]);
+
+  // One pass for everything the Resumen answers: how content is doing, what the
+  // team owes, and whether the connections behind those numbers are alive.
+  useEffect(() => {
+    const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const params = { customer_id: id, from: day(59), to: day(0) };
+    Promise.all([
+      axios.get(`${API_BASE_URL}/api/social/analytics/series`, { headers, params }).catch(() => ({ data: {} })),
+      axios.get(`${API_BASE_URL}/api/social/analytics/posts`, { headers, params: { customer_id: id, from: day(29), to: day(0), limit: 6, sort: "views" } }).catch(() => ({ data: {} })),
+      axios.get(`${API_BASE_URL}/api/tasks`, { headers, params: { customer_id: id } }).catch(() => ({ data: {} })),
+      axios.get(`${API_BASE_URL}/api/social/connections`, { headers }).catch(() => ({ data: {} })),
+    ]).then(([se, po, ta, co]) => {
+      const rows = Array.isArray(se.data?.series) ? se.data.series : [];
+      const cut = day(29);
+      const sum = (list, key) => list.reduce((t, r) => t + (Number(r[key]) || 0), 0);
+      const conns = [
+        ...(co.data?.social || []).map((c) => ({ ...c, kind: "social" })),
+        ...(co.data?.ads || []).map((c) => ({ ...c, kind: "ads" })),
+      ].filter((c) => String(c.customer_id) === String(id));
+      setPulse({
+        views: sum(rows.filter((r) => String(r.day).slice(0, 10) >= cut), "views"),
+        prevViews: sum(rows.filter((r) => String(r.day).slice(0, 10) < cut), "views"),
+        posts: Array.isArray(po.data?.posts) ? po.data.posts : [],
+        tasks: Array.isArray(ta.data?.tasks) ? ta.data.tasks : [],
+        connections: conns,
+      });
+    });
+  }, [id, headers]);
 
   // Production roster (assigned designer / community / senior). Options list ALL
   // active members — role tags are free-form, so hard-filtering would empty the
@@ -280,51 +315,167 @@ const CustomerProfile = () => {
   );
   const pendingCount = invoices.list.filter((i) => (i.current_status || i.status) !== "paid" && (i.current_status || i.status) !== "cancelled").length;
 
+  // Cockpit readings. A delta needs a baseline; without one it stays absent
+  // rather than inventing a comparison.
+  const openTasks = pulse.tasks.filter((t) => t.status !== "completed");
+  const overdueTasks = openTasks.filter(
+    (t) => t.due_date && new Date(t.due_date) < new Date(new Date().toDateString())
+  );
+  const brokenConns = pulse.connections.filter(
+    (c) => !c.last_synced_at || (Date.now() - new Date(c.last_synced_at).getTime()) / 3600000 > 36
+  );
+  const viewsDelta = pulse.prevViews
+    ? (() => {
+        const pct = ((pulse.views - pulse.prevViews) / pulse.prevViews) * 100;
+        if (Math.abs(pct) < 0.5) return { text: "· 0%", dir: "flat" };
+        return { text: `${pct > 0 ? "↑" : "↓"} ${Math.abs(pct).toFixed(0)}%`, dir: pct > 0 ? "up" : "down" };
+      })()
+    : null;
+  const bestPost = pulse.posts[0];
+  const nf = new Intl.NumberFormat("es-MX");
+
   return (
     <Layout>
-      <div className="zxp">
-        <div className="zxp-head">
-          <div className="zxp-head-in">
-            <div className="zxp-head-top">
-              <div className="zxp-id">
-                <span className="zxp-avatar">{name.charAt(0).toUpperCase()}</span>
-                <div>
-                  <h1>{name}</h1>
-                  {contact && contact !== name && <div className="comm">Contacto: {contact}</div>}
-                  {(customer.contact_phone || customer.phone) && <div className="phone">{customer.contact_phone || customer.phone}</div>}
+      <div className="zx-app zxp">
+        <header className="zx-cmd">
+          <div className="zx-cmd-inner">
+            <div className="zx-cmd-top">
+              <div>
+                <div className="zx-eyebrow">
+                  <PixelMark size={11} />
+                  <Link to="/crm" className="zxp-crumb">Clientes</Link>
+                  {contact && contact !== name ? ` · ${contact}` : ""}
                 </div>
+                <h1 className="zx-title">{name}</h1>
               </div>
-              <div className="zxp-actions">
-                <Link to="/crm" className="zxp-btn">← Volver</Link>
-                <button className="zxp-btn" onClick={openEdit}>Editar</button>
-                <Link to={`/portal?customer_id=${id}`} className="zxp-btn" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
-                <button className="zxp-btn" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
-                <Link to="/messages" className="zxp-btn">Mensajes</Link>
-                <button className="zxp-btn solid" onClick={() => { setActiveTab("recursos"); }}>Subir archivos</button>
+              <div className="zx-cmd-actions">
+                <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>
+                <Link to={`/portal?customer_id=${id}`} className="zx-btn on-ink ghost" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
+                <button className="zx-btn on-ink ghost" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
+                <button className="zx-btn on-ink" onClick={() => setActiveTab("recursos")}>Subir archivos</button>
               </div>
             </div>
+            <Telemetry
+              items={[
+                { k: "Vistas · 30d", v: pulse.views, delta: viewsDelta },
+                { k: "Próximas", v: upcoming ?? 0 },
+                { k: "Tareas", v: openTasks.length },
+                { k: "Vencidas", v: overdueTasks.length, tone: "crit" },
+                { k: "Cobros", v: invoices.denied ? 0 : pendingCount, tone: "brass" },
+              ]}
+            />
             <div className="zxp-tabs">
               {TABS.map((t) => (
                 <button key={t.id} className={`zxp-tab${activeTab === t.id ? " active" : ""}`} onClick={() => setActiveTab(t.id)}>{t.label}</button>
               ))}
             </div>
           </div>
-        </div>
+        </header>
 
         <div className="zxp-inner zxp-body">
           {/* ---- RESUMEN ---- */}
           {activeTab === "resumen" && (
             <>
-              <div className="zxp-glance">
-                <Link to={`/content-calendar?customer=${id}`}>
-                  <span className="v">{upcoming ?? "—"}</span><span className="k">Publicaciones próximas</span>
+              {/* Anything broken about this client's plumbing comes first —
+                  every number below it is downstream of these connections. */}
+              {brokenConns.length > 0 && (
+                <Link to="/conexiones" className="zxp-alert">
+                  <strong>{brokenConns.length} conexión{brokenConns.length > 1 ? "es" : ""} sin datos.</strong>
+                  Las métricas de este cliente están incompletas hasta reconectarla{brokenConns.length > 1 ? "s" : ""} →
                 </Link>
-                <a onClick={(e) => { e.preventDefault(); setActiveTab("facturacion"); }} href="#facturacion">
-                  <span className="v">{invoices.denied ? "—" : pendingCount}</span><span className="k">Facturas pendientes</span>
-                </a>
-                <Link to="/approvals">
-                  <span className="v">→</span><span className="k">Aprobaciones</span>
-                </Link>
+              )}
+
+              <div className="zxp-cockpit">
+                {/* Contenido: what shipped and what's coming, one click from the
+                    calendar and the metrics filtered to this client. */}
+                <section className="zxp-block">
+                  <div className="zxp-block-head">
+                    <h3>Contenido</h3>
+                    <Link to={`/social-analytics?customer=${id}`}>Ver rendimiento →</Link>
+                  </div>
+                  {bestPost ? (
+                    <>
+                      <div className="zxp-best">
+                        <span className="k">Mejor publicación · 30d</span>
+                        <span className="t">{bestPost.message || "Sin texto"}</span>
+                        <span className="n">
+                          {nf.format(bestPost.views || 0)} vistas · {nf.format(bestPost.total_interactions || 0)} interacciones
+                          {" · "}{Number(bestPost.engagement_rate || 0).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="zxp-mini">
+                        {pulse.posts.slice(0, 5).map((p) => (
+                          <span key={p.platform_post_id} title={p.message || ""}>
+                            {FORMAT_SHORT[p.media_type] || "Post"} · {nf.format(p.views || 0)}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="zxp-none">Sin métricas todavía para los últimos 30 días.</p>
+                  )}
+                  <Link to={`/content-calendar?customer=${id}`} className="zxp-block-cta">
+                    {upcoming
+                      ? `${upcoming} publicación${upcoming === 1 ? "" : "es"} programada${upcoming === 1 ? "" : "s"}`
+                      : "Programar contenido"} →
+                  </Link>
+                </section>
+
+                {/* Trabajo: what the team owes on this client, right now. */}
+                <section className="zxp-block">
+                  <div className="zxp-block-head">
+                    <h3>Trabajo</h3>
+                    <Link to={`/tareas?customer=${id}`}>Ver tareas →</Link>
+                  </div>
+                  {openTasks.length === 0 ? (
+                    <p className="zxp-none">Sin tareas abiertas para este cliente.</p>
+                  ) : (
+                    <ul className="zxp-tasks">
+                      {openTasks.slice(0, 5).map((t) => {
+                        const over = t.due_date && new Date(t.due_date) < new Date(new Date().toDateString());
+                        return (
+                          <li key={t.id}>
+                            <span className="t">{t.title}</span>
+                            <span className={`d${over ? " over" : ""}`}>
+                              {t.due_date ? fmtDate(t.due_date) : "sin fecha"}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {overdueTasks.length > 0 && (
+                    <span className="zxp-block-cta over">{overdueTasks.length} vencida{overdueTasks.length > 1 ? "s" : ""}</span>
+                  )}
+                </section>
+
+                {/* Conexiones: the plumbing, stated plainly. */}
+                <section className="zxp-block">
+                  <div className="zxp-block-head">
+                    <h3>Conexiones</h3>
+                    <Link to="/conexiones">Administrar →</Link>
+                  </div>
+                  {pulse.connections.length === 0 ? (
+                    <p className="zxp-none">Sin cuentas de Meta asignadas a este cliente.</p>
+                  ) : (
+                    <ul className="zxp-conns">
+                      {pulse.connections.map((c) => {
+                        const stale = !c.last_synced_at || (Date.now() - new Date(c.last_synced_at).getTime()) / 3600000 > 36;
+                        return (
+                          <li key={`${c.kind}-${c.id}`}>
+                            <i className={`zxp-dot${stale ? " bad" : ""}`} />
+                            <span className="t">
+                              {c.kind === "ads"
+                                ? (c.account_name || c.platform_account_id)
+                                : (c.account_username ? `@${c.account_username}` : c.account_name)}
+                            </span>
+                            <span className="w">{c.kind === "ads" ? "Publicidad" : c.platform}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
               </div>
 
               <div className="zxp-grid">
