@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
-import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName as resolveCustomerName } from "../utils/customerName";
-import "../styles/zionx.css";
 import "./Connections.css";
 
 const PLATFORM_LABEL = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", linkedin: "LinkedIn" };
@@ -137,34 +134,26 @@ const Connections = () => {
   const jobLabel = { meta_accounts: "Cuentas", meta_posts: "Publicaciones", meta_ads: "Anuncios" };
 
   return (
-    <Layout>
-      <div className="zx-app zxcn">
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow"><PixelMark size={11} /> Infraestructura</div>
-                <h1 className="zx-title">Conexiones <span className="zx-serif">de Meta</span></h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <Link className="zx-btn on-ink ghost" to="/social/accounts">Conectar cuenta</Link>
-                <button className="zx-btn on-ink" onClick={syncNow} disabled={syncing}>
-                  {syncing ? "Sincronizando…" : "Sincronizar ahora"}
-                </button>
-              </div>
-            </div>
-            <Telemetry
-              items={[
-                { k: "Conexiones", v: counts.total },
-                { k: "Al día", v: counts.ok },
-                { k: "Atención", v: counts.warn, tone: "brass" },
-                { k: "Caídas", v: counts.bad, tone: "crit" },
-              ]}
-            />
-          </div>
-        </header>
-
-        <div className="zx-canvas">
+      <PageShell
+        className="zxcn"
+        eyebrow="Infraestructura"
+        title="Conexiones"
+        titleAccent="de Meta"
+        actions={
+          <>
+            <Link className="zx-btn on-ink ghost" to="/social/accounts">Conectar cuenta</Link>
+            <button className="zx-btn on-ink" onClick={syncNow} disabled={syncing}>
+              {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+            </button>
+          </>
+        }
+        telemetry={[
+          { k: "Conexiones", v: counts.total },
+          { k: "Al día", v: counts.ok },
+          { k: "Atención", v: counts.warn, tone: "brass" },
+          { k: "Caídas", v: counts.bad, tone: "crit" },
+        ]}
+      >
           {loading ? (
             <div className="zx-empty">Cargando conexiones…</div>
           ) : all.length === 0 ? (
@@ -238,9 +227,7 @@ const Connections = () => {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </Layout>
+      </PageShell>
   );
 };
 

@@ -6,12 +6,10 @@ import {
   BarElement, Tooltip, Filler,
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName as resolveCustomerName } from "../utils/customerName";
-import "../styles/zionx.css";
 import "./Analytics.css";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
@@ -304,48 +302,41 @@ const Analytics = () => {
   const staleAfterHours = 12;
 
   return (
-    <Layout>
-      <div className="zx-app zxa">
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow"><PixelMark size={11} /> Analítica</div>
-                <h1 className="zx-title">Rendimiento <span className="zx-serif">en el tiempo</span></h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <select className="zx-select inline on-ink" value={customerFilter}
-                        onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
-                  <option value="all">Todos los clientes</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{resolveCustomerName(c)}</option>
-                  ))}
-                </select>
-                <div className="zx-seg on-ink">
-                  {RANGES.map((r) => (
-                    <button key={r.value} className={range === r.value ? "on" : ""}
-                            onClick={() => setRange(r.value)}>{r.label}</button>
-                  ))}
-                </div>
-                <button className="zx-btn on-ink" onClick={syncNow} disabled={syncing}>
-                  {syncing ? "Sincronizando…" : "Sincronizar ahora"}
-                </button>
-              </div>
+    <>
+      <PageShell
+        className="zxa"
+        eyebrow="Analítica"
+        title="Rendimiento"
+        titleAccent="en el tiempo"
+        actions={
+          <>
+            <select className="zx-select inline on-ink" value={customerFilter}
+                    onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
+              <option value="all">Todos los clientes</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{resolveCustomerName(c)}</option>
+              ))}
+            </select>
+            <div className="zx-seg on-ink">
+              {RANGES.map((r) => (
+                <button key={r.value} className={range === r.value ? "on" : ""}
+                        onClick={() => setRange(r.value)}>{r.label}</button>
+              ))}
             </div>
-            <Telemetry
-              items={[
-                { k: "Vistas", v: sum(viewsSeries), delta: dViews },
-                { k: "Alcance", v: sum(reachSeries), delta: dReach },
-                { k: "Interacciones", v: sum(interactionSeries), delta: dInteractions },
-                { k: "Seguidores", v: followers,
-                  delta: netFollowers !== 0 ? { text: `${netFollowers > 0 ? "+" : "−"}${Math.abs(netFollowers)}`, dir: netFollowers > 0 ? "up" : "down" } : null },
-                { k: "Conversaciones", v: sum(dmSeries), tone: "brass", delta: dDms },
-              ]}
-            />
-          </div>
-        </header>
-
-        <div className="zx-canvas">
+            <button className="zx-btn on-ink" onClick={syncNow} disabled={syncing}>
+              {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+            </button>
+          </>
+        }
+        telemetry={[
+          { k: "Vistas", v: sum(viewsSeries), delta: dViews },
+          { k: "Alcance", v: sum(reachSeries), delta: dReach },
+          { k: "Interacciones", v: sum(interactionSeries), delta: dInteractions },
+          { k: "Seguidores", v: followers,
+            delta: netFollowers !== 0 ? { text: `${netFollowers > 0 ? "+" : "−"}${Math.abs(netFollowers)}`, dir: netFollowers > 0 ? "up" : "down" } : null },
+          { k: "Conversaciones", v: sum(dmSeries), tone: "brass", delta: dDms },
+        ]}
+      >
           {loading && !hasSocial && !hasSpend && posts.length === 0 ? (
             <div className="zx-empty">Cargando métricas…</div>
           ) : (
@@ -560,8 +551,7 @@ const Analytics = () => {
               )}
             </>
           )}
-        </div>
-      </div>
+      </PageShell>
 
       {/* ---------- post drawer: one post's numbers and its curve ---------- */}
       {selectedPost && (
@@ -638,7 +628,7 @@ const Analytics = () => {
           </aside>
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 

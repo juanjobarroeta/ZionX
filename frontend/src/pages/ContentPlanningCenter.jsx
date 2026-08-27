@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
-import Layout from "../components/Layout";
-import PinterestEmbed from "../components/PinterestEmbed";
+import PageShell from "../components/PageShell";
 import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
+import PinterestEmbed from "../components/PinterestEmbed";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName as resolveCustomerName } from "../utils/customerName";
 import {
@@ -22,7 +21,6 @@ import {
   OPTIONAL_STAGES,
 } from "../config/pipeline";
 import { tMinus } from "../utils/countdown";
-import "../styles/zionx.css";
 import "./Calendar.css";
 
 // ---------- status + platform mapping ----------
@@ -616,42 +614,33 @@ const ContentPlanningCenter = () => {
   };
 
   return (
-    <Layout>
-      <div className="zx-app zxc">
-        {/* ---------- command bar ---------- */}
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow"><PixelMark size={11} /> Programación</div>
-                <h1 className="zx-title">Calendario <span className="zx-serif">de contenido</span></h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <div className="zx-seg on-ink">
-                  <button className={view === "week" ? "on" : ""} onClick={() => setView("week")}>Semana</button>
-                  <button className={view === "month" ? "on" : ""} onClick={() => setView("month")}>Mes</button>
-                </div>
-                <div className="zxc-range">
-                  <button className="zx-btn on-ink ghost icon" onClick={() => shift(-1)} aria-label="Período anterior">←</button>
-                  <button className="zxc-range-label" onClick={goToday} title="Ir a hoy">{rangeLabel(view, anchor)}</button>
-                  <button className="zx-btn on-ink ghost icon" onClick={() => shift(1)} aria-label="Período siguiente">→</button>
-                </div>
-                <button className="zx-btn on-ink" onClick={() => openCreate(null)}>Nueva publicación</button>
-              </div>
+    <>
+      <PageShell
+        className="zxc"
+        eyebrow="Programación"
+        title="Calendario"
+        titleAccent="de contenido"
+        actions={
+          <>
+            <div className="zx-seg on-ink">
+              <button className={view === "week" ? "on" : ""} onClick={() => setView("week")}>Semana</button>
+              <button className={view === "month" ? "on" : ""} onClick={() => setView("month")}>Mes</button>
             </div>
-            <Telemetry
-              items={[
-                { k: "Publicaciones", v: totals.total },
-                { k: "En cola", v: totals.queued, tone: "brass" },
-                { k: "Fallidas", v: totals.failed, tone: "crit" },
-                { k: "Publicadas", v: totals.published },
-              ]}
-            />
-          </div>
-        </header>
-
-        {/* ---------- working surface ---------- */}
-        <div className="zx-canvas">
+            <div className="zxc-range">
+              <button className="zx-btn on-ink ghost icon" onClick={() => shift(-1)} aria-label="Período anterior">←</button>
+              <button className="zxc-range-label" onClick={goToday} title="Ir a hoy">{rangeLabel(view, anchor)}</button>
+              <button className="zx-btn on-ink ghost icon" onClick={() => shift(1)} aria-label="Período siguiente">→</button>
+            </div>
+            <button className="zx-btn on-ink" onClick={() => openCreate(null)}>Nueva publicación</button>
+          </>
+        }
+        telemetry={[
+          { k: "Publicaciones", v: totals.total },
+          { k: "En cola", v: totals.queued, tone: "brass" },
+          { k: "Fallidas", v: totals.failed, tone: "crit" },
+          { k: "Publicadas", v: totals.published },
+        ]}
+      >
           {/* Client filter chips */}
           <div className="zx-toolbar">
             <button className={`zx-chip${customerFilter === "all" ? " on" : ""}`} onClick={() => setCustomerFilter("all")}>
@@ -691,8 +680,7 @@ const ContentPlanningCenter = () => {
             <span><i className="zxc-qdot" /> En cola de publicación</span>
             <span><span style={{ color: "#8A1C1C", fontWeight: 700 }}>⚠</span> Producción pendiente y publica pronto</span>
           </div>
-        </div>
-      </div>
+      </PageShell>
 
       {/* Detail drawer */}
       {selected && (
@@ -1102,7 +1090,7 @@ const ContentPlanningCenter = () => {
           </form>
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 

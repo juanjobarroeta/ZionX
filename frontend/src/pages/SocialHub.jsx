@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import Layout from "../components/Layout";
-import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import { publishStatusInfo } from "../config/contentStatus";
 import { tMinus } from "../utils/countdown";
-import "../styles/zionx.css";
 import "./Hub.css";
 
 // ---------- mappings ----------
@@ -171,42 +168,33 @@ const SocialHub = () => {
   };
 
   return (
-    <Layout>
-      <div className="zx-app zxh">
-        {/* ---------- command bar ---------- */}
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow"><PixelMark size={11} /> Bitácora de publicación</div>
-                <h1 className="zx-title">Hub de <span className="zx-serif">publicaciones</span></h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <select className="zx-select inline on-ink" value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
-                  <option value="all">Todos los clientes</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.business_name || c.commercial_name || `Cliente ${c.id}`}</option>
-                  ))}
-                </select>
-                <select className="zx-select inline on-ink" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mes">
-                  {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-                <button className="zx-btn on-ink" onClick={() => navigate("/content-calendar")}>Programar publicación</button>
-              </div>
-            </div>
-            <Telemetry
-              items={[
-                { k: "Programadas", v: counts.scheduled, tone: "brass" },
-                { k: "Publicadas", v: counts.published },
-                { k: "Fallidas", v: counts.failed, tone: "crit" },
-                { k: "Total", v: counts.total },
-              ]}
-            />
-          </div>
-        </header>
-
-        {/* ---------- working surface ---------- */}
-        <div className="zx-canvas">
+    <>
+      <PageShell
+        className="zxh"
+        eyebrow="Bitácora de publicación"
+        title="Hub de"
+        titleAccent="publicaciones"
+        actions={
+          <>
+            <select className="zx-select inline on-ink" value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
+              <option value="all">Todos los clientes</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.business_name || c.commercial_name || `Cliente ${c.id}`}</option>
+              ))}
+            </select>
+            <select className="zx-select inline on-ink" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mes">
+              {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            <button className="zx-btn on-ink" onClick={() => navigate("/content-calendar")}>Programar publicación</button>
+          </>
+        }
+        telemetry={[
+          { k: "Programadas", v: counts.scheduled, tone: "brass" },
+          { k: "Publicadas", v: counts.published },
+          { k: "Fallidas", v: counts.failed, tone: "crit" },
+          { k: "Total", v: counts.total },
+        ]}
+      >
           <div className="zx-toolbar">
             {PLATFORMS.map((p) => (
               <button key={p.value} className={`zx-chip${platformFilter === p.value ? " on" : ""}`} onClick={() => setPlatformFilter(p.value)}>
@@ -242,8 +230,7 @@ const SocialHub = () => {
               {visiblePosts.map((p) => <Card key={p.id} post={p} />)}
             </div>
           )}
-        </div>
-      </div>
+      </PageShell>
 
       {/* ---------- detail modal ---------- */}
       {selected && (
@@ -281,7 +268,7 @@ const SocialHub = () => {
           </div>
         </div>
       )}
-    </Layout>
+    </>
   );
 };
 
