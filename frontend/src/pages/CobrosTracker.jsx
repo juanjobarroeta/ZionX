@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import "./CobrosTracker.css";
 
@@ -101,39 +101,37 @@ const CobrosTracker = () => {
   const t = data.totals || {};
 
   return (
-    <Layout>
-      <div className="zxcob">
-        <div className="zxcob-inner">
-          <div className="zxcob-head">
-            <div>
-              <div className="eyebrow">Finanzas · Ingresos</div>
-              <h1>Cobros del <span className="zxcob-serif">mes</span></h1>
-              <div className="sub">Seguimiento de pago por suscripción — independiente de la facturación.</div>
-            </div>
-            <div className="zxcob-tools">
-              <input
-                className="zxcob-month"
-                type="month"
-                value={month}
-                onChange={(e) => setMonth(e.target.value || currentMonth())}
-              />
-              <button className="zxcob-btn" onClick={generate} disabled={working} title="Crea los cobros del mes y actualiza los pendientes si cambió una suscripción (no toca los ya cobrados)">
-                {working ? "…" : "Generar / actualizar cobros"}
-              </button>
-              <button className="zxcob-btn ghost" onClick={align} disabled={working} title="Ajusta la próxima facturación de todas las suscripciones activas al mes actual">
-                Alinear al mes actual
-              </button>
-            </div>
-          </div>
-
+    <PageShell
+      className="zxcob"
+      eyebrow="Finanzas · Ingresos"
+      title="Cobros del"
+      titleAccent="mes"
+      actions={
+        <>
+          <input
+            className="zx-input sm"
+            style={{ width: "auto" }}
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value || currentMonth())}
+            aria-label="Mes"
+          />
+          <button className="zx-btn on-ink" onClick={generate} disabled={working} title="Crea los cobros del mes y actualiza los pendientes si cambió una suscripción (no toca los ya cobrados)">
+            {working ? "…" : "Generar / actualizar"}
+          </button>
+          <button className="zx-btn on-ink ghost" onClick={align} disabled={working} title="Ajusta la próxima facturación de todas las suscripciones activas al mes actual">
+            Alinear al mes
+          </button>
+        </>
+      }
+      telemetry={[
+        { k: "Cobros", v: t.count || 0 },
+        { k: "Total del mes", v: fmtMoney(t.total) },
+        { k: "Cobrado", v: fmtMoney(t.cobrado) },
+        { k: "Pendiente", v: fmtMoney(t.pendiente), tone: "brass" },
+      ]}
+    >
           {msg && <div className="zxcob-note">{msg}</div>}
-
-          <div className="zxcob-tiles">
-            <div className="zxcob-tile"><span className="k">Cobros</span><span className="v">{t.count || 0}</span></div>
-            <div className="zxcob-tile"><span className="k">Total del mes</span><span className="v">{fmtMoney(t.total)}</span></div>
-            <div className="zxcob-tile ok"><span className="k">Cobrado</span><span className="v">{fmtMoney(t.cobrado)}</span></div>
-            <div className="zxcob-tile warn"><span className="k">Pendiente</span><span className="v">{fmtMoney(t.pendiente)}</span></div>
-          </div>
 
           <div className="zxcob-card">
             <div className="zxcob-card-head">
@@ -213,9 +211,7 @@ const CobrosTracker = () => {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 

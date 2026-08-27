@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 
@@ -195,51 +195,30 @@ const PeopleManagement = () => {
   const avgWage = employees.length > 0 ? totalPayroll / employees.length : 0;
 
   if (loading) {
+    // Loading is a page too — same shell, so the chrome doesn't blink.
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-        </div>
-      </Layout>
+      <PageShell eyebrow="Equipo" title="Empleados">
+        <div className="zx-empty">Cargando empleados…</div>
+      </PageShell>
     );
   }
 
   return (
-    <Layout>
-      <div className="p-6 bg-gray-50 min-h-screen">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">👥 Equipo</h1>
-            <p className="text-gray-500">Gestión centralizada de empleados</p>
-          </div>
-          <button
-            onClick={() => { resetForm(); setShowModal(true); }}
-            className="bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 flex items-center gap-2 font-medium"
-          >
-            ➕ Nuevo Empleado
-          </button>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-5 border shadow-sm">
-            <p className="text-sm text-gray-500">Total Empleados</p>
-            <p className="text-3xl font-bold text-gray-900">{employees.length}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border shadow-sm">
-            <p className="text-sm text-gray-500">Activos</p>
-            <p className="text-3xl font-bold text-green-600">{activeCount}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border shadow-sm">
-            <p className="text-sm text-gray-500">Nómina Mensual</p>
-            <p className="text-3xl font-bold text-blue-600">${totalPayroll.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl p-5 border shadow-sm">
-            <p className="text-sm text-gray-500">Salario Promedio</p>
-            <p className="text-3xl font-bold text-purple-600">${avgWage.toLocaleString()}</p>
-          </div>
-        </div>
+    <PageShell
+      eyebrow="Equipo"
+      title="Empleados"
+      actions={
+        <button className="zx-btn on-ink" onClick={() => { resetForm(); setShowModal(true); }}>
+          Nuevo empleado
+        </button>
+      }
+      telemetry={[
+        { k: "Empleados", v: employees.length },
+        { k: "Activos", v: activeCount },
+        { k: "Nómina mensual", v: `$${totalPayroll.toLocaleString("es-MX")}` },
+        { k: "Salario promedio", v: `$${avgWage.toLocaleString("es-MX")}` },
+      ]}
+    >
 
         {/* Filters & Actions */}
         <div className="bg-white rounded-xl p-4 border shadow-sm mb-6">
@@ -706,8 +685,7 @@ const PeopleManagement = () => {
             </div>
           </div>
         )}
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 

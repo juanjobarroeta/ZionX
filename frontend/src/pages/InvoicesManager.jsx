@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import "./Finance.css";
@@ -127,22 +127,17 @@ const InvoicesManager = () => {
   const cfdiView = configured && view === "cfdi";
 
   return (
-    <Layout>
-      <div className="zxin">
-        <div className="zxin-inner">
-          <div className="zxin-head">
-            <div>
-              <div className="zxin-eyebrow">Finanzas</div>
-              <h1 className="zxin-h1">Facturas</h1>
-              {configured && (
-                <div className="zxin-sync">Comprobantes fiscales sincronizados con contabilidad-os</div>
-              )}
-            </div>
-            <div className="zxin-actions">
-              <Link to="/income" className="zxin-btn">← Ingresos</Link>
-              <Link to="/income/invoice-generator" className="zxin-btn solid">+ Generar factura</Link>
-            </div>
-          </div>
+    <PageShell
+      className="zxin"
+      eyebrow={configured ? "Finanzas · sincronizado con contabilidad-os" : "Finanzas"}
+      title="Facturas"
+      actions={
+        <>
+          <Link to="/income" className="zx-btn on-ink ghost">Ingresos</Link>
+          <Link to="/income/invoice-generator" className="zx-btn on-ink">Generar factura</Link>
+        </>
+      }
+    >
 
           {configured && (
             <div className="zxin-toggle">
@@ -269,9 +264,7 @@ const InvoicesManager = () => {
               )}
             </>
           )}
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 

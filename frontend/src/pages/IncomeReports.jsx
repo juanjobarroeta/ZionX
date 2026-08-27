@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import "./IncomeReports.css";
@@ -56,30 +56,27 @@ const IncomeReports = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <PageShell className="zxrep" eyebrow="Finanzas" title="Reportes de" titleAccent="ingresos">
         <div className="zxrep-loading">
           <div className="zxrep-spin"></div>
         </div>
-      </Layout>
+      </PageShell>
     );
   }
 
   return (
-    <Layout>
-      <div className="zxrep">
-        <div className="zxrep-inner">
-          {/* Header */}
-          <div className="zxrep-head">
-            <div>
-              <div className="zxrep-eyebrow">Finanzas</div>
-              <h1 className="zxrep-h1">Reportes de <span className="zxrep-serif">ingresos</span></h1>
-              <p className="zxrep-sub">Análisis y métricas de ingresos</p>
-            </div>
-            <div className="zxrep-actions">
-              <Link to="/income" className="zxrep-btn">← Volver</Link>
-              <button onClick={fetchReports} className="zxrep-btn solid">Actualizar</button>
-            </div>
-          </div>
+    <PageShell
+      className="zxrep"
+      eyebrow="Finanzas"
+      title="Reportes de"
+      titleAccent="ingresos"
+      actions={
+        <>
+          <Link to="/income" className="zx-btn on-ink ghost">Ingresos</Link>
+          <button onClick={fetchReports} className="zx-btn on-ink">Actualizar</button>
+        </>
+      }
+    >
 
           {/* MRR Stats */}
           {mrrData && (
@@ -191,9 +188,7 @@ const IncomeReports = () => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 
