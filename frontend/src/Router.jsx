@@ -12,8 +12,6 @@ const MarketingDashboard = lazy(() => import("./pages/MarketingDashboard"));
 const CustomerProfile = lazy(() => import("./pages/CustomerProfile"));
 const CreateCustomer = lazy(() => import("./pages/CreateCustomer"));
 const CustomerDirectoryClean = lazy(() => import("./pages/CustomerDirectoryClean"));
-const PublicRegister = lazy(() => import("./pages/PublicRegister"));
-const AdminPromotions = lazy(() => import("./pages/AdminPromotions"));
 const AdminExpenses = lazy(() => import("./pages/AdminExpenses"));
 const BriefsList = lazy(() => import("./pages/BriefsList"));
 const CreativeBrief = lazy(() => import("./pages/CreativeBrief"));
@@ -22,9 +20,6 @@ const PublicBriefStart = lazy(() => import("./pages/PublicBriefStart"));
 const PublicClientApproval = lazy(() => import("./pages/PublicClientApproval"));
 const PublicCapture = lazy(() => import("./pages/PublicCapture"));
 const PublicLegal = lazy(() => import("./pages/PublicLegal"));
-const InventoryRequest = lazy(() => import("./pages/InventoryRequest"));
-const AdminInventoryViewer = lazy(() => import("./pages/AdminInventoryViewer"));
-const ProductProfile = lazy(() => import("./pages/ProductProfile"));
 const CreateUser = lazy(() => import("./pages/CreateUser"));
 const BudgetManagement = lazy(() => import("./pages/BudgetManagement"));
 const TeamManagement = lazy(() => import("./pages/TeamManagement"));
@@ -137,7 +132,6 @@ const AppRouter = () => (
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/registro" element={<PublicRegister />} />
         <Route path="/brief-publico" element={<PublicBriefStart />} />
         <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
         <Route path="/client-approval/:token" element={<PublicClientApproval />} />
@@ -216,14 +210,8 @@ const AppRouter = () => (
         <Route path="/briefs/new" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
         <Route path="/briefs/:id" element={<ProtectedRoute><CreativeBrief /></ProtectedRoute>} />
 
-        {/* Inventory */}
-        <Route path="/inventory-request" element={<ProtectedRoute><InventoryRequest /></ProtectedRoute>} />
-        <Route path="/inventory/:id" element={<ProtectedRoute><ProductProfile /></ProtectedRoute>} />
-        <Route path="/admin/inventory-request" element={<AdminRoute><InventoryRequest /></AdminRoute>} />
-        <Route path="/admin/inventory" element={<AdminRoute><AdminInventoryViewer /></AdminRoute>} />
 
         {/* Admin */}
-        <Route path="/admin/promotions" element={<AdminRoute><AdminPromotions /></AdminRoute>} />
         <Route path="/admin/expenses" element={<AdminRoute><AdminExpenses /></AdminRoute>} />
         <Route path="/admin/budgets" element={<AdminRoute><BudgetManagement /></AdminRoute>} />
         <Route path="/admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />

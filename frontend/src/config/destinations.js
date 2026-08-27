@@ -59,11 +59,6 @@ export const DESTINATIONS = [
   { path: "/hr/payroll", label: "Nómina", group: "Equipo", section: "hr", keywords: "pago sueldos periodo nómina" },
   { path: "/hr/nomina-fiscal", label: "Nómina fiscal", group: "Equipo", section: "hr", keywords: "cfdi nómina timbrado sat" },
 
-  // Inventario
-  { path: "/admin/inventory", label: "Inventario general", group: "Inventario", section: "settings", keywords: "almacén productos stock existencias" },
-  { path: "/inventory-request", label: "Solicitud de inventario", group: "Inventario", section: "settings", keywords: "pedir material solicitud almacén" },
-  { path: "/admin/promotions", label: "Promociones", group: "Inventario", section: "settings", keywords: "promos descuentos" },
-
   // Sistema
   { path: "/dashboard", label: "Dashboard", group: "Sistema", section: null, keywords: "inicio home resumen general" },
   { path: "/messages", label: "Mensajes", group: "Sistema", section: null, keywords: "chat conversaciones equipo" },

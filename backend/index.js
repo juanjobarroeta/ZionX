@@ -237,8 +237,6 @@ async function start() {
     const contentCalendarRoutes = require('./routes/content-calendar-routes');
     const pipelineRoutes = require('./routes/pipeline-routes');
     const teamRoutes = require('./routes/team-routes');
-    const dashboardRoutes = require('./routes/dashboard-routes');
-    const inventoryRoutes = require('./routes/inventory-routes');
     const budgetsRoutes = require('./routes/budgets-routes');
     const adminRoutes = require('./routes/admin-routes');
     const portalRoutes = require('./routes/portal-routes');
@@ -306,12 +304,6 @@ async function start() {
 
     // Team, tasks, projects
     app.use('/', withPool, authenticateToken, teamRoutes);
-
-    // Dashboard & promotions
-    app.use('/', withPool, authenticateToken, dashboardRoutes);
-
-    // Inventory & warehouse
-    app.use('/', withPool, authenticateToken, inventoryRoutes);
 
     // Budgets (finance — finanzas section)
     app.use('/budgets', withPool, authenticateToken, requireSection('finanzas'), budgetsRoutes);
