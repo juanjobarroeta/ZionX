@@ -72,6 +72,16 @@ const align = (days, rows, dayKey, valueKey) => {
 
 const sum = (arr) => arr.reduce((t, v) => t + (Number(v) || 0), 0);
 
+const FORMAT_LABEL = { REELS: "Reel", CAROUSEL_ALBUM: "Carrusel", IMAGE: "Imagen", VIDEO: "Video", STORY: "Story", POST: "Post" };
+const fmtLabel = (t) => FORMAT_LABEL[t] || (t || "Post");
+const POST_SORTS = [
+  { v: "views", label: "Vistas" },
+  { v: "reach", label: "Alcance" },
+  { v: "total_interactions", label: "Interacciones" },
+  { v: "engagement_rate", label: "Tasa" },
+];
+const postMediaUrl = (u) => (u ? (/^(https?:|data:)/.test(u) ? u : `${API_BASE_URL}${u}`) : null);
+
 const Analytics = () => {
   const [customers, setCustomers] = useState([]);
   const [customerFilter, setCustomerFilter] = useState("all");
@@ -80,6 +90,10 @@ const Analytics = () => {
   const [spend, setSpend] = useState([]);
   const [posts, setPosts] = useState([]);
   const [status, setStatus] = useState([]);
+  const [postSort, setPostSort] = useState("views");
+  const [postView, setPostView] = useState("galeria");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [postSeries, setPostSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
@@ -99,7 +113,7 @@ const Analytics = () => {
     const [s, a, p, st] = await Promise.all([
       axios.get(`${API_BASE_URL}/api/social/analytics/series`, { headers, params }).catch(() => ({ data: {} })),
       axios.get(`${API_BASE_URL}/api/ads/spend/series`, { headers, params }).catch(() => ({ data: {} })),
-      axios.get(`${API_BASE_URL}/api/social/analytics/posts`, { headers, params: { ...params, limit: 10, sort: "views" } }).catch(() => ({ data: {} })),
+      axios.get(`${API_BASE_URL}/api/social/analytics/posts`, { headers, params: { ...params, limit: 60, sort: "views" } }).catch(() => ({ data: {} })),
       axios.get(`${API_BASE_URL}/api/social/analytics/status`, { headers }).catch(() => ({ data: {} })),
     ]);
     setSocial(Array.isArray(s.data?.series) ? s.data.series : []);
@@ -110,6 +124,15 @@ const Analytics = () => {
   }, [headers, days, customerFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    if (!selectedPost) { setPostSeries([]); return; }
+    let alive = true;
+    axios.get(`${API_BASE_URL}/api/social/analytics/posts/${encodeURIComponent(selectedPost.platform_post_id)}`, { headers })
+      .then((r) => { if (alive) setPostSeries(Array.isArray(r.data?.series) ? r.data.series : []); })
+      .catch(() => { if (alive) setPostSeries([]); });
+    return () => { alive = false; };
+  }, [selectedPost, headers]);
 
   const syncNow = async () => {
     setSyncing(true);
@@ -220,6 +243,26 @@ const Analytics = () => {
       {what}
     </div>
   );
+
+  const sortedPosts = useMemo(
+    () => [...posts].sort((a, b) => Number(b[postSort] || 0) - Number(a[postSort] || 0)),
+    [posts, postSort]
+  );
+  // Per-format average views for the current client + range: the "what should
+  // we make more of" number, computed from what's on screen.
+  const formatStats = useMemo(() => {
+    const acc = new Map();
+    for (const p of posts) {
+      const k = fmtLabel(p.media_type);
+      const e = acc.get(k) || { n: 0, views: 0 };
+      e.n += 1; e.views += Number(p.views) || 0;
+      acc.set(k, e);
+    }
+    return [...acc.entries()]
+      .map(([k, e]) => ({ label: k, n: e.n, avg: e.views / e.n }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 4);
+  }, [posts]);
 
   const jobLabel = { meta_accounts: "Cuentas", meta_posts: "Publicaciones", meta_ads: "Anuncios" };
   const staleAfterHours = 12;
@@ -343,14 +386,55 @@ const Analytics = () => {
                 </section>
               </div>
 
-              {/* --- leaderboard: also the table view for every number above --- */}
+              {/* --- content: every post on the connected accounts, ZIONX-published
+                     or organic, as a gallery with a table twin --- */}
               <section className="zxa-card">
                 <div className="zxa-card-head">
-                  <h2>Publicaciones con mejor rendimiento</h2>
-                  <span className="sub">último dato de cada publicación</span>
+                  <h2>Contenido del período</h2>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <select className="zx-select inline" value={postSort} onChange={(e) => setPostSort(e.target.value)} aria-label="Ordenar por">
+                      {POST_SORTS.map((o) => <option key={o.v} value={o.v}>Por {o.label.toLowerCase()}</option>)}
+                    </select>
+                    <div className="zx-seg" role="group" aria-label="Vista">
+                      <button className={postView === "galeria" ? "on" : ""} onClick={() => setPostView("galeria")}>Galería</button>
+                      <button className={postView === "tabla" ? "on" : ""} onClick={() => setPostView("tabla")}>Tabla</button>
+                    </div>
+                  </div>
                 </div>
-                {posts.length === 0 ? (
-                  empty("Cuando se publique contenido y corra la sincronización, aquí aparece qué funcionó.")
+
+                {formatStats.length > 1 && (
+                  <div className="zxa-formats">
+                    {formatStats.map((f) => (
+                      <span key={f.label}>{f.label} ø <b>{fmtNum(f.avg)}</b> vistas · {f.n}</span>
+                    ))}
+                  </div>
+                )}
+
+                {sortedPosts.length === 0 ? (
+                  empty("Cuando corra la sincronización, aquí aparece todo el contenido de las cuentas conectadas — publicado desde ZIONX o directo en la app.")
+                ) : postView === "galeria" ? (
+                  <div className="zxa-postgrid">
+                    {sortedPosts.map((p) => {
+                      const img = postMediaUrl(p.thumbnail_url);
+                      return (
+                        <button className="zxa-postcard" key={p.platform_post_id} onClick={() => setSelectedPost(p)}>
+                          <div className="zxa-postmedia">
+                            {img ? <img src={img} alt="" loading="lazy" /> : <span className="stripes" />}
+                            <span className="fmt">{fmtLabel(p.media_type)}</span>
+                            {!p.organic && <span className="zx-mark" title="Publicado desde ZIONX"><PixelMark size={9} /></span>}
+                          </div>
+                          <div className="zxa-postcard-body">
+                            <div className="zxa-postcard-cap">{p.message || "Sin texto"}</div>
+                            <div className="zxa-postcard-nums">
+                              <span><b>{fmtNum(p.views)}</b> vistas</span>
+                              <span><b>{fmtNum(p.total_interactions)}</b> int.</span>
+                              <span><b>{Number(p.engagement_rate || 0).toFixed(1)}%</b></span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="zxa-table-wrap">
                     <table className="zxa-table">
@@ -365,17 +449,18 @@ const Analytics = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {posts.map((p) => (
-                          <tr key={p.platform_post_id}>
+                        {sortedPosts.map((p) => (
+                          <tr key={p.platform_post_id} onClick={() => setSelectedPost(p)} style={{ cursor: "pointer" }}>
                             <td>
                               <div className="post-msg">{p.message || "Sin texto"}</div>
                               <div className="post-meta">
                                 {(p.platform || "").toUpperCase()}
                                 {p.account_username ? ` · @${p.account_username}` : ""}
                                 {p.published_at ? ` · ${fmtDay(String(p.published_at).slice(0, 10))}` : ""}
+                                {p.organic ? " · orgánico" : " · zionx"}
                               </div>
                             </td>
-                            <td>{p.media_type || "—"}</td>
+                            <td>{fmtLabel(p.media_type)}</td>
                             <td className="num">{fmtNum(p.views)}</td>
                             <td className="num">{fmtNum(p.reach)}</td>
                             <td className="num">{fmtNum(p.total_interactions)}</td>
@@ -408,6 +493,75 @@ const Analytics = () => {
           )}
         </div>
       </div>
+
+      {/* ---------- post drawer: one post's numbers and its curve ---------- */}
+      {selectedPost && (
+        <div className="zx-overlay">
+          <button className="zxa-scrim" onClick={() => setSelectedPost(null)} aria-label="Cerrar" />
+          <aside className="zxa-drawer">
+            <div className="zxa-drawer-head">
+              <span className="plat">
+                {(selectedPost.platform || "").toUpperCase()} · {fmtLabel(selectedPost.media_type)}
+                {selectedPost.account_username ? ` · @${selectedPost.account_username}` : ""}
+              </span>
+              <button className="zxa-drawer-x" onClick={() => setSelectedPost(null)} aria-label="Cerrar">×</button>
+            </div>
+            <div className="zxa-drawer-body">
+              {postMediaUrl(selectedPost.thumbnail_url) && (
+                <div className="zxa-drawer-media">
+                  <img src={postMediaUrl(selectedPost.thumbnail_url)} alt="" />
+                </div>
+              )}
+              <div className="zx-field">
+                <span className="k">
+                  {selectedPost.organic ? "Publicado en la app" : "Publicado desde ZIONX"}
+                  {selectedPost.published_at ? ` · ${fmtDay(String(selectedPost.published_at).slice(0, 10))}` : ""}
+                </span>
+                {selectedPost.message && <span className="val zxa-drawer-cap">{selectedPost.message}</span>}
+              </div>
+              <div className="zxa-drawer-grid">
+                {[
+                  ["Vistas", fmtNum(selectedPost.views)],
+                  ["Alcance", fmtNum(selectedPost.reach)],
+                  ["Tasa", `${Number(selectedPost.engagement_rate || 0).toFixed(1)}%`],
+                  ["Likes", fmtNum(selectedPost.likes)],
+                  ["Comentarios", fmtNum(selectedPost.comments)],
+                  ["Guardados", fmtNum(selectedPost.saves)],
+                ].map(([k, v]) => (
+                  <div className="zx-field" key={k}>
+                    <span className="k">{k}</span>
+                    <span className="val zx-mono">{v}</span>
+                  </div>
+                ))}
+              </div>
+              {postSeries.length > 1 && (
+                <div className="zx-field">
+                  <span className="k">Cómo acumuló vistas</span>
+                  <div className="zxa-legend">
+                    <span><i className="zxa-key" style={{ background: COLOR.views }} /> Vistas</span>
+                    <span><i className="zxa-key" style={{ background: COLOR.interactions }} /> Interacciones</span>
+                  </div>
+                  <div className="zxa-drawer-plot">
+                    <Line
+                      data={{
+                        labels: postSeries.map((r) => fmtDay(String(r.day).slice(0, 10))),
+                        datasets: [
+                          lineSet("vistas", postSeries.map((r) => Number(r.views) || 0), COLOR.views),
+                          lineSet("interacciones", postSeries.map((r) => Number(r.total_interactions) || 0), COLOR.interactions),
+                        ],
+                      }}
+                      options={baseOptions(fmtNum)}
+                    />
+                  </div>
+                </div>
+              )}
+              {selectedPost.platform_post_url && (
+                <a className="link" href={selectedPost.platform_post_url} target="_blank" rel="noreferrer">Ver publicación →</a>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
     </Layout>
   );
 };

@@ -639,6 +639,12 @@ const createTables = async (pool) => {
       ['platform', 'VARCHAR(20)'],
       ['customer_id', 'INTEGER'],
       ['raw', 'JSONB'],
+      // Organic posts (published outside ZionX) have no scheduled_posts row to
+      // join for display, so the snapshot itself carries what the UI shows.
+      ['caption', 'TEXT'],
+      ['permalink', 'TEXT'],
+      ['thumbnail_url', 'TEXT'],
+      ['posted_at', 'TIMESTAMP'],
     ];
     for (const [col, type] of postMetricColumns) {
       await pool.query(`ALTER TABLE post_analytics ADD COLUMN IF NOT EXISTS ${col} ${type};`);

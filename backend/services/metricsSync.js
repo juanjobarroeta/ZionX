@@ -113,9 +113,61 @@ async function syncAccountInsights(pool) {
  * refreshed — older ones stop moving, and Instagram only keeps insights for 90
  * days anyway. The stored rows keep the history regardless.
  */
-async function syncPostInsights(pool, { windowDays = 30, limit = 200 } = {}) {
+async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAccount = 12 } = {}) {
+  const day = today();
+  const cutoff = Date.now() - windowDays * 86400000;
+  let synced = 0;
+  let organic = 0;
+  const errors = [];
+  const seen = new Set();
+
+  /** One dated snapshot per post per day — shared by both passes. */
+  const store = async (row) => {
+    const m = row.metrics;
+    const interactions = m.total_interactions
+      || (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0);
+    // Engagement rate against reach — the denominator clients recognize.
+    const rate = m.reach > 0 ? Math.min(999.99, (interactions / m.reach) * 100) : 0;
+    await pool.query(`
+      INSERT INTO post_analytics (
+        scheduled_post_id, social_account_id, platform_post_id, snapshot_date,
+        views, reach, likes, comments, shares, saves, clicks, video_views,
+        total_interactions, replies, navigation, profile_visits, follows, link_clicks,
+        avg_watch_time, total_watch_time, engagement_rate, media_type, platform,
+        customer_id, caption, permalink, thumbnail_url, posted_at, raw, fetched_at
+      ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,NOW())
+      ON CONFLICT (platform_post_id, snapshot_date) DO UPDATE SET
+        views = EXCLUDED.views, reach = EXCLUDED.reach, likes = EXCLUDED.likes,
+        comments = EXCLUDED.comments, shares = EXCLUDED.shares, saves = EXCLUDED.saves,
+        clicks = EXCLUDED.clicks, video_views = EXCLUDED.video_views,
+        total_interactions = EXCLUDED.total_interactions, replies = EXCLUDED.replies,
+        navigation = EXCLUDED.navigation, profile_visits = EXCLUDED.profile_visits,
+        follows = EXCLUDED.follows, link_clicks = EXCLUDED.link_clicks,
+        avg_watch_time = EXCLUDED.avg_watch_time, total_watch_time = EXCLUDED.total_watch_time,
+        engagement_rate = EXCLUDED.engagement_rate, media_type = EXCLUDED.media_type,
+        caption = COALESCE(EXCLUDED.caption, post_analytics.caption),
+        permalink = COALESCE(EXCLUDED.permalink, post_analytics.permalink),
+        thumbnail_url = COALESCE(EXCLUDED.thumbnail_url, post_analytics.thumbnail_url),
+        posted_at = COALESCE(EXCLUDED.posted_at, post_analytics.posted_at),
+        raw = EXCLUDED.raw, fetched_at = NOW()
+    `, [
+      row.scheduledPostId, row.accountId, row.platformPostId, day,
+      m.views || 0, m.reach || 0, m.likes || 0, m.comments || 0, m.shares || 0,
+      m.saves || 0, m.link_clicks || 0, m.video_views || 0,
+      interactions, m.replies || 0, m.navigation || 0, m.profile_visits || 0,
+      m.follows || 0, m.link_clicks || 0,
+      m.avg_watch_time || 0, m.total_watch_time || 0, rate.toFixed(2),
+      row.mediaType, row.platform, row.customerId || null,
+      row.caption || null, row.permalink || null, row.thumbnail || null,
+      row.postedAt || null, JSON.stringify(row.raw || []),
+    ]);
+    seen.add(row.platformPostId);
+  };
+
+  // ---- Pass 1: posts ZionX itself published (scheduled_posts) --------------
   const posts = await pool.query(`
     SELECT sp.id, sp.platform_post_id, sp.content_type, sp.customer_id,
+           sp.message, sp.platform_post_url, sp.media_urls, sp.published_at,
            sa.id AS account_id, sa.platform, sa.access_token
       FROM scheduled_posts sp
       JOIN social_accounts sa ON sa.id = sp.social_account_id
@@ -129,61 +181,89 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200 } = {}) {
      LIMIT $2
   `, [String(windowDays), limit]);
 
-  const day = today();
-  let synced = 0;
-  const errors = [];
-
   for (const post of posts.rows) {
     try {
+      const mediaType = mediaTypeOf(post.content_type);
       const result = post.platform === 'instagram'
-        ? await metaService.getInstagramMediaInsights(post.platform_post_id, post.access_token, mediaTypeOf(post.content_type))
+        ? await metaService.getInstagramMediaInsights(post.platform_post_id, post.access_token, mediaType)
         : await metaService.getFacebookPostInsights(post.platform_post_id, post.access_token);
-
-      if (!result.success) {
-        errors.push({ post: post.id, error: result.error });
-        continue;
-      }
-
-      const m = result.metrics;
-      const interactions = m.total_interactions
-        || (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0);
-      // Engagement rate against reach — the denominator clients recognize.
-      const rate = m.reach > 0 ? Math.min(999.99, (interactions / m.reach) * 100) : 0;
-
-      await pool.query(`
-        INSERT INTO post_analytics (
-          scheduled_post_id, social_account_id, platform_post_id, snapshot_date,
-          views, reach, likes, comments, shares, saves, clicks, video_views,
-          total_interactions, replies, navigation, profile_visits, follows, link_clicks,
-          avg_watch_time, total_watch_time, engagement_rate, media_type, platform,
-          customer_id, raw, fetched_at
-        ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,NOW())
-        ON CONFLICT (platform_post_id, snapshot_date) DO UPDATE SET
-          views = EXCLUDED.views, reach = EXCLUDED.reach, likes = EXCLUDED.likes,
-          comments = EXCLUDED.comments, shares = EXCLUDED.shares, saves = EXCLUDED.saves,
-          clicks = EXCLUDED.clicks, video_views = EXCLUDED.video_views,
-          total_interactions = EXCLUDED.total_interactions, replies = EXCLUDED.replies,
-          navigation = EXCLUDED.navigation, profile_visits = EXCLUDED.profile_visits,
-          follows = EXCLUDED.follows, link_clicks = EXCLUDED.link_clicks,
-          avg_watch_time = EXCLUDED.avg_watch_time, total_watch_time = EXCLUDED.total_watch_time,
-          engagement_rate = EXCLUDED.engagement_rate, raw = EXCLUDED.raw, fetched_at = NOW()
-      `, [
-        post.id, post.account_id, post.platform_post_id, day,
-        m.views || 0, m.reach || 0, m.likes || 0, m.comments || 0, m.shares || 0,
-        m.saves || 0, m.link_clicks || 0, m.video_views || 0,
-        interactions, m.replies || 0, m.navigation || 0, m.profile_visits || 0,
-        m.follows || 0, m.link_clicks || 0,
-        m.avg_watch_time || 0, m.total_watch_time || 0, rate.toFixed(2),
-        mediaTypeOf(post.content_type), post.platform, post.customer_id || null,
-        JSON.stringify(result.raw || []),
-      ]);
+      if (!result.success) { errors.push({ post: post.id, error: result.error }); continue; }
+      await store({
+        scheduledPostId: post.id, accountId: post.account_id,
+        platformPostId: post.platform_post_id, platform: post.platform,
+        customerId: post.customer_id, mediaType, metrics: result.metrics,
+        caption: post.message, permalink: post.platform_post_url,
+        thumbnail: Array.isArray(post.media_urls) ? post.media_urls[0] : null,
+        postedAt: post.published_at, raw: result.raw,
+      });
       synced++;
     } catch (err) {
       errors.push({ post: post.id, error: err.message });
     }
   }
 
-  return { synced, total: posts.rows.length, errors };
+  // ---- Pass 2: everything else on the connected accounts -------------------
+  // Clients and the team also publish directly in the apps; those posts have no
+  // scheduled_posts row but they are the same account and the same client
+  // conversation. Sweep each account's recent media so "cómo va el contenido"
+  // means all of it, not just what went through ZionX. Stories are excluded
+  // (separate edge, 24h lifetime); ZionX-published stories are covered above.
+  const accounts = await pool.query(`
+    SELECT id, platform, platform_account_id, access_token, customer_id
+      FROM social_accounts
+     WHERE is_active = true
+       AND access_token IS NOT NULL
+       AND (token_expires_at IS NULL OR token_expires_at > NOW())
+  `);
+
+  for (const account of accounts.rows) {
+    try {
+      if (account.platform === 'instagram') {
+        const list = await metaService.getInstagramMedia(account.platform_account_id, account.access_token, mediaPerAccount);
+        if (!list.success) { errors.push({ account: account.id, error: list.error }); continue; }
+        for (const media of list.media || []) {
+          if (seen.has(media.id)) continue;
+          if (media.timestamp && new Date(media.timestamp).getTime() < cutoff) continue;
+          const mediaType = media.media_product_type === 'REELS' ? 'REELS' : (media.media_type || 'IMAGE');
+          const ins = await metaService.getInstagramMediaInsights(media.id, account.access_token, mediaType);
+          if (!ins.success) { errors.push({ media: media.id, error: ins.error }); continue; }
+          // The media list itself carries like/comment counts — trust insights,
+          // fall back to the list where insights return nothing.
+          ins.metrics.likes = ins.metrics.likes || Number(media.like_count) || 0;
+          ins.metrics.comments = ins.metrics.comments || Number(media.comments_count) || 0;
+          await store({
+            scheduledPostId: null, accountId: account.id, platformPostId: media.id,
+            platform: 'instagram', customerId: account.customer_id, mediaType,
+            metrics: ins.metrics, caption: media.caption || null, permalink: media.permalink || null,
+            thumbnail: media.thumbnail_url || media.media_url || null,
+            postedAt: media.timestamp || null, raw: ins.raw,
+          });
+          organic++;
+        }
+      } else if (account.platform === 'facebook') {
+        const list = await metaService.getFacebookPagePosts(account.platform_account_id, account.access_token, mediaPerAccount);
+        if (!list.success) { errors.push({ account: account.id, error: list.error }); continue; }
+        for (const post of list.posts || []) {
+          if (seen.has(post.id)) continue;
+          if (post.created_time && new Date(post.created_time).getTime() < cutoff) continue;
+          const ins = await metaService.getFacebookPostInsights(post.id, account.access_token);
+          if (!ins.success) { errors.push({ media: post.id, error: ins.error }); continue; }
+          await store({
+            scheduledPostId: null, accountId: account.id, platformPostId: post.id,
+            platform: 'facebook', customerId: account.customer_id, mediaType: 'POST',
+            metrics: ins.metrics, caption: post.message || null, permalink: post.permalink_url || null,
+            thumbnail: post.full_picture || null, postedAt: post.created_time || null,
+            raw: [],
+          });
+          organic++;
+        }
+      }
+    } catch (err) {
+      errors.push({ account: account.id, error: err.message });
+    }
+  }
+
+  return { synced, organic, total: posts.rows.length, accounts: accounts.rows.length, errors };
 }
 
 /** Map our content_type vocabulary onto Instagram's media types. */

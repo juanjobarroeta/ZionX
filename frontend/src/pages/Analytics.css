@@ -64,3 +64,85 @@
   .zxa-grid { grid-template-columns: 1fr; }
   .zxa-plot { height: 210px; }
 }
+
+/* ---------- content gallery ---------- */
+.zxa-formats {
+  display: flex; gap: 22px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--zx-muted);
+}
+.zxa-formats b { font-family: var(--zx-mono); font-weight: 500; color: var(--zx-ink); }
+
+.zxa-postgrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+  gap: 16px;
+}
+.zxa-postcard {
+  background: var(--zx-paper); border: 1px solid var(--zx-line);
+  padding: 0; text-align: left; font-family: inherit; cursor: pointer;
+  display: flex; flex-direction: column;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.zxa-postcard:hover { border-color: var(--zx-ink); background: var(--zx-surface); }
+/* One ratio for every card — a wall of mixed formats reads as one grid. */
+.zxa-postmedia {
+  position: relative; aspect-ratio: 4 / 5; background: var(--zx-ink); overflow: hidden;
+}
+.zxa-postmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zxa-postmedia .stripes {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, rgba(242,243,241,0.07) 0, rgba(242,243,241,0.07) 10px, transparent 10px, transparent 20px);
+}
+.zxa-postmedia .fmt {
+  position: absolute; top: 10px; left: 10px;
+  font-family: var(--zx-mono); font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(242, 243, 241, 0.9);
+  background: rgba(4, 17, 26, 0.55); padding: 2px 7px; border-radius: 2px;
+}
+/* Published through ZIONX — our work, marked with the brand cross. */
+.zxa-postmedia .zx-mark {
+  position: absolute; top: 10px; right: 10px; color: var(--zx-paper);
+  background: rgba(4, 17, 26, 0.55); padding: 4px; border-radius: 2px;
+  display: inline-flex;
+}
+.zxa-postcard-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.zxa-postcard-cap {
+  font-size: 12.5px; font-weight: 600; line-height: 1.35; min-height: 17px;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+}
+.zxa-postcard-nums {
+  display: flex; gap: 10px; font-family: var(--zx-mono); font-size: 11px;
+  color: var(--zx-muted); flex-wrap: wrap;
+}
+.zxa-postcard-nums b { color: var(--zx-ink); font-weight: 500; }
+
+/* ---------- post drawer ---------- */
+.zxa-scrim { position: fixed; inset: 0; z-index: 200; background: rgba(4, 17, 26, 0.45); border: none; cursor: pointer; }
+.zxa-drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: min(440px, 94vw); z-index: 201;
+  background: var(--zx-bg); border-left: 1px solid var(--zx-line);
+  display: flex; flex-direction: column; overflow-y: auto;
+  animation: zxaSlide 0.22s ease;
+}
+@keyframes zxaSlide { from { transform: translateX(100%); } to { transform: none; } }
+.zxa-drawer-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 22px; background: var(--zx-ink); color: var(--zx-paper);
+}
+.zxa-drawer-head .plat {
+  font-family: var(--zx-mono); font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--zx-muted-ink);
+}
+.zxa-drawer-x {
+  background: none; border: none; font-size: 22px; line-height: 1;
+  color: currentColor; opacity: 0.55; cursor: pointer; font-family: inherit;
+}
+.zxa-drawer-x:hover { opacity: 1; }
+.zxa-drawer-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+.zxa-drawer-media { background: var(--zx-ink); border-radius: 2px; overflow: hidden; max-height: 320px; }
+.zxa-drawer-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zxa-drawer-cap { font-size: 13.5px; line-height: 1.5; }
+.zxa-drawer-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.zxa-drawer-plot { height: 150px; position: relative; }
+.zxa-drawer a.link { color: var(--zx-ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { .zxa-drawer { animation: none; } }
