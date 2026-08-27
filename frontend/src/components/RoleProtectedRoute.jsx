@@ -12,7 +12,7 @@ import { canAccessPage, getRoleInfo } from '../config/roles';
  * 
  * Or with section-based access:
  * <RoleProtectedRoute section="social_media">
- *   <ContentCalendar />
+ *   <ContentPlanningCenter />
  * </RoleProtectedRoute>
  */
 const RoleProtectedRoute = ({ 

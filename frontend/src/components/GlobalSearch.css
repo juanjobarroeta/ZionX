@@ -54,3 +54,11 @@
   font-family: inherit; font-size: 11px; padding: 1px 6px; margin-right: 4px;
   background: #FFFFFF; border: 1px solid rgba(4, 17, 26, 0.16); border-radius: 3px;
 }
+
+/* A destination is not a person — mark it with the palette's own glyph. */
+.zxgs-avatar.page {
+  background: transparent;
+  border: 1px solid rgba(242, 243, 241, 0.25);
+  color: rgba(242, 243, 241, 0.7);
+  font-size: 12px;
+}

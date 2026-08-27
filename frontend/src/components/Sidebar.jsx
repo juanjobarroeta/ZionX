@@ -215,7 +215,7 @@ const Sidebar = () => {
 
         <button className="zxs-search" onClick={() => setShowGlobalSearch(true)}>
           <span>⌕</span>
-          <span>Buscar clientes, equipo…</span>
+          <span>Buscar páginas, clientes, equipo…</span>
           <span className="kbd">⌘K</span>
         </button>
 
