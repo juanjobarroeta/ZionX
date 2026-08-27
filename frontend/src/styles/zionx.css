@@ -1,0 +1,263 @@
+/* ============================================================================
+   ZIONX app surface — shared tokens + primitives
+   ----------------------------------------------------------------------------
+   The landing (Landing.css) is the brand: ink chrome, paper working surfaces,
+   Bricolage display with a Nyght italic accent, hairline rules, 2–3px radii.
+   This file carries that vocabulary into the product so an internal screen and
+   the marketing site read as the same company.
+
+   Structure of a screen built on this file:
+
+     .zx-app
+       .zx-cmd      — ink command bar (eyebrow, title, actions, telemetry)
+       .zx-canvas   — paper working surface (filters, grids, cards)
+
+   Tokens live on :root (inert custom properties; the Tailwind screens ignore
+   them). Everything else is a .zx- class, so nothing leaks into pages that
+   still use Tailwind.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Bricolage';
+  src: url('/fonts/Bricolage.ttf') format('truetype');
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nyght';
+  src: url('/fonts/NyghtLightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  /* Surfaces — straight from the landing */
+  --zx-ink: #04111A;
+  --zx-ink-2: #0A2233;
+  --zx-paper: #F2F3F1;
+  --zx-bg: #E8E8E5;
+  --zx-surface: #FFFFFF;
+
+  /* Rules: hairlines on paper, hairlines on ink */
+  --zx-line: rgba(4, 17, 26, 0.14);
+  --zx-line-soft: rgba(4, 17, 26, 0.08);
+  --zx-line-ink: rgba(242, 243, 241, 0.13);
+  --zx-muted: rgba(4, 17, 26, 0.55);
+  --zx-muted-ink: rgba(242, 243, 241, 0.58);
+
+  /* Signal colors. Brass is sampled from the landing's own illustrations and
+     carries one meaning only: in flight — queued to publish, work in progress.
+     Each has an on-ink twin because the command bar is dark. */
+  --zx-brass: #9A6B1E;
+  --zx-brass-ink: #C9964A;
+  --zx-crit: #8A1C1C;
+  --zx-crit-ink: #D97A72;
+  --zx-ok: #235B44;
+  --zx-ok-ink: #6FAE8E;
+
+  --zx-sans: 'Bricolage', Helvetica, Arial, sans-serif;
+  --zx-serif: 'Nyght', Georgia, serif;
+  /* Anything the user reads as data — times, counts, countdowns — is mono, so
+     it aligns in a column and never gets mistaken for prose. */
+  --zx-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+/* ---------- page wrapper ---------- */
+.zx-app {
+  min-height: 100vh;
+  background: var(--zx-bg);
+  color: var(--zx-ink);
+  font-family: var(--zx-sans);
+}
+.zx-app * { box-sizing: border-box; }
+
+/* Overlays (drawers, modals) render outside .zx-app, so they opt in to the
+   same font stack explicitly. Tokens are global, so they need no repeating. */
+.zx-overlay { font-family: var(--zx-sans); color: var(--zx-ink); }
+.zx-overlay * { box-sizing: border-box; }
+
+.zx-serif { font-family: var(--zx-serif); font-style: italic; font-weight: 300; letter-spacing: 0; }
+.zx-mono { font-family: var(--zx-mono); font-variant-numeric: tabular-nums; }
+
+/* Visible keyboard focus everywhere, on both grounds. */
+.zx-app :focus-visible,
+.zx-overlay :focus-visible { outline: 2px solid var(--zx-ink); outline-offset: 2px; }
+.zx-cmd :focus-visible { outline-color: var(--zx-paper); }
+
+/* ---------- command bar (ink) ---------- */
+.zx-cmd {
+  background: var(--zx-ink);
+  color: var(--zx-paper);
+  border-bottom: 1px solid var(--zx-line-ink);
+  /* Seam against the ink sidebar, in the landing's hairline vocabulary. */
+  border-left: 1px solid var(--zx-line-ink);
+  padding: 26px 48px 0;
+}
+.zx-cmd-inner { max-width: 1320px; margin: 0 auto; }
+.zx-cmd-top {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
+}
+.zx-cmd-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.zx-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase;
+  font-weight: 500; color: var(--zx-muted-ink);
+}
+.zx-title {
+  margin: 12px 0 0;
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;
+}
+
+/* Telemetry: the counts, as instrument readouts along the bottom of the bar. */
+.zx-tele {
+  display: flex; flex-wrap: wrap; gap: 0 36px;
+  margin-top: 22px; padding: 14px 0 16px;
+  border-top: 1px solid var(--zx-line-ink);
+}
+.zx-tele-item { display: flex; align-items: baseline; gap: 9px; }
+.zx-tele-item .k {
+  font-family: var(--zx-mono); font-size: 10.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--zx-muted-ink);
+}
+.zx-tele-item .v {
+  font-family: var(--zx-mono); font-size: 17px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.zx-tele-item .v.brass { color: var(--zx-brass-ink); }
+.zx-tele-item .v.crit { color: var(--zx-crit-ink); }
+.zx-tele-item .v.zero { color: var(--zx-muted-ink); }
+
+/* ---------- working surface (paper) ---------- */
+.zx-canvas {
+  max-width: 1320px; margin: 0 auto;
+  padding: 26px 48px 64px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.zx-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.zx-sep { width: 1px; height: 22px; background: var(--zx-line); margin: 0 4px; }
+
+/* ---------- controls ---------- */
+.zx-btn {
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  padding: 11px 21px; border-radius: 3px; cursor: pointer;
+  border: 1px solid var(--zx-ink); background: var(--zx-ink); color: var(--zx-paper);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.zx-btn:hover { background: var(--zx-ink-2); }
+.zx-btn:disabled { opacity: 0.5; cursor: default; }
+.zx-btn.ghost { background: transparent; color: var(--zx-ink); border-color: rgba(4, 17, 26, 0.25); }
+.zx-btn.ghost:hover { border-color: var(--zx-ink); background: transparent; }
+/* On the ink bar the fill/outline roles invert: paper is the loud one. */
+.zx-btn.on-ink { background: var(--zx-paper); color: var(--zx-ink); border-color: var(--zx-paper); }
+.zx-btn.on-ink:hover { background: #FFFFFF; border-color: #FFFFFF; }
+.zx-btn.on-ink.ghost { background: transparent; color: var(--zx-paper); border-color: var(--zx-line-ink); }
+.zx-btn.on-ink.ghost:hover { border-color: var(--zx-paper); background: transparent; }
+.zx-btn.icon { padding: 9px 13px; font-size: 14px; line-height: 1; }
+
+.zx-linkbtn {
+  background: none; border: none; padding: 0; font-family: inherit;
+  font-size: 13px; font-weight: 700; color: var(--zx-ink);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.zx-linkbtn:hover { opacity: 0.65; }
+.zx-linkbtn:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
+.zx-linkbtn.muted { color: var(--zx-muted); font-weight: 600; }
+
+.zx-seg { display: inline-flex; border: 1px solid rgba(4, 17, 26, 0.25); border-radius: 3px; overflow: hidden; }
+.zx-seg button {
+  background: transparent; color: var(--zx-ink); border: none;
+  padding: 10px 18px; font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; opacity: 0.6; transition: opacity 0.15s ease;
+}
+.zx-seg button:hover { opacity: 1; }
+.zx-seg button.on { background: var(--zx-ink); color: var(--zx-paper); opacity: 1; }
+.zx-seg.on-ink { border-color: var(--zx-line-ink); }
+.zx-seg.on-ink button { color: var(--zx-paper); }
+.zx-seg.on-ink button.on { background: var(--zx-paper); color: var(--zx-ink); }
+
+.zx-chip {
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  border: 1px solid rgba(4, 17, 26, 0.25); background: transparent; color: var(--zx-ink);
+  padding: 6px 16px; border-radius: 20px; cursor: pointer; opacity: 0.75;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+.zx-chip:hover { opacity: 1; border-color: var(--zx-ink); }
+.zx-chip.on { background: var(--zx-ink); color: var(--zx-paper); border-color: var(--zx-ink); opacity: 1; font-weight: 700; }
+
+.zx-select, .zx-input, .zx-textarea {
+  width: 100%; padding: 11px 13px; font-size: 14px; font-family: inherit;
+  color: var(--zx-ink); background: var(--zx-surface);
+  border: 1px solid var(--zx-line); border-radius: 3px; outline: none;
+  transition: border-color 0.15s ease;
+}
+.zx-select:focus, .zx-input:focus, .zx-textarea:focus { border-color: var(--zx-ink); }
+.zx-textarea { resize: vertical; min-height: 74px; }
+.zx-select.sm, .zx-input.sm { padding: 8px 10px; font-size: 13px; }
+/* Inline filter selects sit on the paper canvas, not in a form column. */
+.zx-select.inline {
+  width: auto; background: transparent; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; border-color: rgba(4, 17, 26, 0.25); cursor: pointer;
+}
+.zx-select.inline.on-ink {
+  color: var(--zx-paper); border-color: var(--zx-line-ink);
+  background: rgba(242, 243, 241, 0.06);
+}
+.zx-select.inline.on-ink option { color: var(--zx-ink); }
+
+/* ---------- status pill ---------- */
+.zx-pill {
+  display: inline-block;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-weight: 700; padding: 3px 9px; border-radius: 2px; white-space: nowrap;
+}
+.zx-pill.v-published { background: var(--zx-ink); color: var(--zx-paper); }
+.zx-pill.v-accent { border: 1px solid rgba(4, 17, 26, 0.35); }
+.zx-pill.v-draft { border: 1px dashed rgba(4, 17, 26, 0.4); }
+.zx-pill.v-queued { background: var(--zx-brass); color: var(--zx-paper); }
+.zx-pill.v-failed { background: var(--zx-crit); color: var(--zx-paper); }
+.zx-pill.v-muted { border: 1px solid rgba(4, 17, 26, 0.2); color: var(--zx-muted); }
+.zx-pill.v-ok { background: var(--zx-ok); color: var(--zx-paper); }
+.zx-pill.v-warn { background: var(--zx-brass); color: var(--zx-paper); }
+.zx-pill.v-bad { background: var(--zx-crit); color: var(--zx-paper); }
+
+/* Countdown to an automatic publish: T-2 D, T-6 H, T-45 M. */
+.zx-tmin {
+  font-family: var(--zx-mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.06em; color: var(--zx-brass); white-space: nowrap;
+}
+.zx-tmin.on-ink { color: var(--zx-brass-ink); }
+
+/* ---------- shared states ---------- */
+.zx-empty {
+  padding: 64px 24px; text-align: center; font-size: 15px;
+  color: var(--zx-muted); background: var(--zx-paper); border: 1px solid var(--zx-line);
+}
+.zx-empty strong { display: block; font-size: 17px; color: var(--zx-ink); margin-bottom: 6px; font-weight: 600; }
+.zx-err {
+  background: rgba(138, 28, 28, 0.08); border: 1px solid rgba(138, 28, 28, 0.3);
+  color: var(--zx-crit); padding: 11px 13px; border-radius: 3px; font-size: 13.5px;
+}
+.zx-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--zx-muted); }
+.zx-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.zx-swatch { width: 22px; height: 12px; border-radius: 2px; display: inline-block; }
+
+/* ---------- field (label over value / input) ---------- */
+.zx-field { display: flex; flex-direction: column; gap: 5px; }
+.zx-field .k {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: rgba(4, 17, 26, 0.45);
+}
+.zx-field .val { font-size: 15px; }
+.zx-field .val.copy { font-size: 14px; color: rgba(4, 17, 26, 0.8); line-height: 1.55; white-space: pre-wrap; }
+.zx-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+@media (max-width: 900px) {
+  .zx-cmd { padding: 64px 18px 0; border-left: none; }
+  .zx-canvas { padding: 20px 18px 48px; }
+  .zx-tele { gap: 0 24px; }
+  .zx-row2 { grid-template-columns: 1fr; }
+}
