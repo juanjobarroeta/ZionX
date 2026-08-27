@@ -64,6 +64,62 @@ class PostScheduler {
     console.log('📅 Post scheduler stopped');
   }
 
+  /**
+   * Route one due post to the right Meta publish call by platform and format.
+   * A post's format decides the mechanics: a story has no caption and dies in
+   * 24h, a reel is a video with a long transcode, a carousel is many images.
+   * Returns { success, ... } from metaService, or { skipped, error } when the
+   * post can't be routed at all.
+   */
+  async publishToPlatform(post) {
+    const isVideoUrl = (u) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '');
+    const type = (post.content_type || '').toLowerCase();
+
+    if (post.platform === 'facebook') {
+      if (type === 'story' || type === 'reel') {
+        return { skipped: true, error: `Publicar ${type} en Facebook aún no está soportado — usa Instagram` };
+      }
+      return metaService.postToFacebookPage(post.platform_account_id, post.access_token, {
+        message: post.message,
+        photoUrl: post.media_urls?.[0],
+        link: post.link_url,
+      });
+    }
+
+    if (post.platform === 'instagram') {
+      const igAccountId = post.instagram_account_id || post.platform_account_id;
+      const media = post.media_urls || [];
+      if (!media.length) {
+        return { skipped: true, error: 'Instagram necesita al menos una imagen o video' };
+      }
+
+      if (type === 'story') {
+        return metaService.postStoryToInstagram(igAccountId, post.access_token, {
+          mediaUrl: media[0],
+          isVideo: isVideoUrl(media[0]),
+        });
+      }
+      if (type === 'reel' || type === 'video' || isVideoUrl(media[0])) {
+        return metaService.postReelToInstagram(igAccountId, post.access_token, {
+          videoUrl: media[0],
+          caption: post.message,
+        });
+      }
+      if (media.length > 1) {
+        return metaService.postCarouselToInstagram(igAccountId, post.access_token, {
+          imageUrls: media,
+          caption: post.message,
+        });
+      }
+      return metaService.postToInstagram(igAccountId, post.access_token, {
+        imageUrl: media[0],
+        caption: post.message,
+      });
+    }
+
+    return { skipped: true, error: `Unsupported platform: ${post.platform}` };
+  }
+
   /** Daily Meta token refresh; never throws (a failure must not kill the loop). */
   async refreshTokensSafe() {
     try {
@@ -191,41 +247,9 @@ class PostScheduler {
         return;
       }
 
-      let result;
-
-      if (post.platform === 'facebook') {
-        result = await metaService.postToFacebookPage(
-          post.platform_account_id,
-          post.access_token,
-          {
-            message: post.message,
-            photoUrl: post.media_urls?.[0],
-            link: post.link_url
-          }
-        );
-      } else if (post.platform === 'instagram') {
-        const igAccountId = post.instagram_account_id || post.platform_account_id;
-
-        if (!post.media_urls?.length) {
-          await this.markFailed(postId, 'Instagram requires at least one image');
-          return;
-        }
-
-        if (post.media_urls.length === 1) {
-          result = await metaService.postToInstagram(
-            igAccountId,
-            post.access_token,
-            { imageUrl: post.media_urls[0], caption: post.message }
-          );
-        } else {
-          result = await metaService.postCarouselToInstagram(
-            igAccountId,
-            post.access_token,
-            { imageUrls: post.media_urls, caption: post.message }
-          );
-        }
-      } else {
-        await this.markFailed(postId, `Unsupported platform: ${post.platform}`);
+      const result = await this.publishToPlatform(post);
+      if (result.skipped) {
+        await this.markFailed(postId, result.error);
         return;
       }
 

@@ -835,7 +835,19 @@ const createTables = async (pool) => {
         ADD COLUMN IF NOT EXISTS elementos_utilizar TEXT,
         ADD COLUMN IF NOT EXISTS hashtags TEXT,
         ADD COLUMN IF NOT EXISTS location TEXT,
-        ADD COLUMN IF NOT EXISTS pinterest_ref TEXT;
+        ADD COLUMN IF NOT EXISTS pinterest_ref TEXT,
+        ADD COLUMN IF NOT EXISTS month_year VARCHAR(7),
+        ADD COLUMN IF NOT EXISTS post_number INTEGER,
+        ADD COLUMN IF NOT EXISTS campaign VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS copy_in TEXT,
+        ADD COLUMN IF NOT EXISTS copy_out TEXT,
+        ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'planificado',
+        ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS client_status VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS publish_date TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS scheduled_post_id INTEGER,
+        ADD COLUMN IF NOT EXISTS assigned_designer INTEGER,
+        ADD COLUMN IF NOT EXISTS assigned_community_manager INTEGER;
     `);
 
     // Pinterest mood board attached to a client (visual direction for the month).
@@ -1584,6 +1596,9 @@ const createTables = async (pool) => {
         UNIQUE (content_calendar_id, stage_key)
       );
     `);
+    // Backward planning: each stage carries a deadline derived from the post's
+    // publish date (see services/pipeline.js PIPELINE_OFFSETS).
+    await pool.query(`ALTER TABLE post_pipeline_stages ADD COLUMN IF NOT EXISTS due_date DATE;`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pipeline_post ON post_pipeline_stages(content_calendar_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pipeline_owner ON post_pipeline_stages(owner_id, status);`);
     console.log("✅ Post pipeline stages table created");

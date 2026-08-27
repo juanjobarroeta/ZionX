@@ -120,3 +120,6 @@
 .zxw-taskmeta { display: flex; align-items: center; gap: 7px; margin-top: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .zxw-taskpri { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 2px; background: rgba(138,28,28,0.10); color: var(--action); }
 .zxw-taskdesc { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+/* Stage deadline past due and not done — the red that matters. */
+.zxw-due-over { color: #8A1C1C; font-weight: 700; }

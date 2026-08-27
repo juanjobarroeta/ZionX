@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
@@ -87,15 +87,27 @@ const rangeLabel = (view, anchor) => {
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+const mediaSrc = (u) => (u ? (/^(https?:|data:)/.test(u) ? u : `${API_BASE_URL}${u}`) : null);
+const isVideoFile = (u) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || "");
+const fmtShort = (s) => {
+  if (!s) return "";
+  const [, m, d] = String(s).slice(0, 10).split("-").map(Number);
+  return `${d} ${MONTHS_ES_SHORT[(m || 1) - 1]}`;
+};
+const isPastDue = (due, status) =>
+  due && status !== "listo" && new Date(String(due).slice(0, 10)) < new Date(new Date().toDateString());
+
 // ---------- publish readiness (mirrors backend publishSync) ----------
 
 const PLAT_NAME = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", linkedin: "LinkedIn" };
 
 const readinessOf = (p) => {
   const missing = [];
+  const isStory = (p.content_type || "").toLowerCase() === "story";
   if (!APPROVED_INTERNAL.has((p.status || "").toLowerCase())) missing.push("aprobación interna");
   if (CLIENT_BLOCKED.has((p.client_status || "").toLowerCase())) missing.push("aprobación del cliente");
-  if (!(p.copy_out || p.copy_in || "").trim()) missing.push("copy");
+  // Stories carry no caption — mirror of publishSync.computeReadiness.
+  if (!isStory && !(p.copy_out || p.copy_in || "").trim()) missing.push("copy");
   if ((p.platform || "").toLowerCase() === "instagram" && !(p.arte || "").trim()) missing.push("arte");
   if (!p.scheduled_date) missing.push("fecha");
   if (!p.has_account) missing.push(`cuenta de ${PLAT_NAME[(p.platform || "").toLowerCase()] || "la plataforma"} conectada`);
@@ -383,6 +395,28 @@ const ContentPlanningCenter = () => {
 
   // Per-post client sign-off: generate a link scoped to just this post and copy it.
   const [clientLinkFor, setClientLinkFor] = useState(null);
+  const [uploadingArte, setUploadingArte] = useState(false);
+  const arteInputRef = useRef(null);
+
+  // Attach the actual media to the post — the thing Instagram publishes. One
+  // file: image for posts/carruseles, video for reels y stories.
+  const uploadArte = async (file) => {
+    if (!selected || !file) return;
+    setUploadingArte(true);
+    try {
+      const form = new FormData();
+      form.append("files", file);
+      form.append("fileType", "arte");
+      const r = await axios.post(`${API_BASE_URL}/content/${selected.id}/upload`, form, { headers });
+      const arte = r.data?.post?.arte || r.data?.files?.[0]?.file_path;
+      if (arte) applyPatch(selected.id, { arte });
+    } catch {
+      /* the readiness panel keeps saying "arte" until it actually lands */
+    } finally {
+      setUploadingArte(false);
+      if (arteInputRef.current) arteInputRef.current.value = "";
+    }
+  };
   const sendToClient = async (post) => {
     setBusy(true);
     try {
@@ -490,6 +524,13 @@ const ContentPlanningCenter = () => {
     const queued = post.publish_status === "scheduled" || post.publish_status === "publishing";
     const failed = post.publish_status === "failed";
     const countdown = queued ? tMinus(post.scheduled_date) : null;
+    // Close to air with required production unfinished — the chip that asks
+    // for attention before the failure happens instead of after.
+    const untilAir = post.scheduled_date ? new Date(post.scheduled_date).getTime() - Date.now() : null;
+    const atRisk = !queued && !failed
+      && statusInfo(post.status).variant !== "published"
+      && Number(post.pending_stages) > 0
+      && untilAir !== null && untilAir < 72 * 3600e3 && untilAir > -7 * 86400e3;
     return (
       <button className={`zxc-post v-${variant}`} onClick={() => setSelected(post)}>
         <div className="top">
@@ -498,6 +539,10 @@ const ContentPlanningCenter = () => {
             <span className="flight fail"><i className="zxc-qdot fail" />Falló</span>
           ) : queued ? (
             <span className="flight" title="En cola de publicación"><i className="zxc-qdot" />{countdown}</span>
+          ) : atRisk ? (
+            <span className="flight fail" title={`${post.pending_stages} etapas pendientes y publica pronto`}>
+              ⚠ {post.pending_stages}
+            </span>
           ) : null}
         </div>
         <div className="title">{postTitle(post)}</div>
@@ -644,6 +689,7 @@ const ContentPlanningCenter = () => {
             <span><i className="zx-swatch" style={{ background: "#FFFFFF", borderLeft: "3px dashed rgba(4,17,26,0.4)" }} /> Planificado / en diseño</span>
             <span><i className="zx-swatch" style={{ background: "#FFFFFF", borderLeft: "3px solid #8A1C1C" }} /> Fallida</span>
             <span><i className="zxc-qdot" /> En cola de publicación</span>
+            <span><span style={{ color: "#8A1C1C", fontWeight: 700 }}>⚠</span> Producción pendiente y publica pronto</span>
           </div>
         </div>
       </div>
@@ -789,6 +835,38 @@ const ContentPlanningCenter = () => {
                 </select>
               </div>
 
+              {/* Arte — the media Instagram will actually publish */}
+              <div className="zx-field">
+                <span className="k">Arte / medios</span>
+                {selected.arte ? (
+                  <div className="zxc-arte">
+                    {isVideoFile(selected.arte) ? (
+                      <video src={mediaSrc(selected.arte)} controls muted playsInline />
+                    ) : (
+                      <img src={mediaSrc(selected.arte)} alt="Arte de la publicación" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="zxc-note">
+                    {(selected.platform || "").toLowerCase() === "instagram"
+                      ? "Sin arte todavía — Instagram lo necesita para publicar."
+                      : "Sin arte todavía."}
+                  </div>
+                )}
+                <div className="zxc-actions">
+                  <button type="button" className="zx-btn ghost" disabled={uploadingArte}
+                          onClick={() => arteInputRef.current?.click()}>
+                    {uploadingArte ? "Subiendo…" : selected.arte ? "Reemplazar arte" : "Subir arte"}
+                  </button>
+                  <input ref={arteInputRef} type="file" hidden
+                         accept="image/*,video/mp4,video/quicktime"
+                         onChange={(e) => uploadArte(e.target.files?.[0])} />
+                  {["story", "reel", "video"].includes((selected.content_type || "").toLowerCase()) && (
+                    <span className="zxc-note">Para {selected.content_type}: sube video (MP4/MOV).</span>
+                  )}
+                </div>
+              </div>
+
               {/* Production pipeline — live, stateful stages */}
               <div className="zx-field">
                 <span className="k">Producción</span>
@@ -797,6 +875,19 @@ const ContentPlanningCenter = () => {
                 ) : pipeline.stages.length === 0 ? (
                   <div className="zxc-pipe-note">Sin etapas de producción.</div>
                 ) : (
+                  <>
+                    {(() => {
+                      const req = pipeline.stages.filter((x) => !OPTIONAL_STAGES.has(x.stage_key));
+                      const done = req.filter((x) => x.status === "listo").length;
+                      const overdue = req.filter((x) => isPastDue(x.due_date, x.status)).length;
+                      return (
+                        <div className="zxc-pipe-summary">
+                          <b>{done} de {req.length}</b> listas
+                          {selected.scheduled_date && <> · publica el {fmtShort(postDayKey(selected))}</>}
+                          {overdue > 0 && <span className="over"> · {overdue} vencida{overdue > 1 ? "s" : ""}</span>}
+                        </div>
+                      );
+                    })()}
                   <div className="zxc-pipe">
                     {pipeline.stages.map((s) => {
                       const optional = OPTIONAL_STAGES.has(s.stage_key);
@@ -811,7 +902,14 @@ const ContentPlanningCenter = () => {
                               {STATUS_LABELS[s.status] || s.status}
                             </span>
                           </div>
-                          <div className="zxc-stage-owner">{stageOwnerLabel(s)}</div>
+                          <div className="zxc-stage-owner">
+                            {stageOwnerLabel(s)}
+                            {s.due_date && (
+                              <span className={`zxc-stage-due${isPastDue(s.due_date, s.status) ? " over" : ""}`}>
+                                {" "}· entrega {fmtShort(s.due_date)}
+                              </span>
+                            )}
+                          </div>
                           <div className="zxc-stage-controls">
                             <select
                               className="zx-select sm"
@@ -881,6 +979,7 @@ const ContentPlanningCenter = () => {
                       );
                     })}
                   </div>
+                  </>
                 )}
               </div>
 
