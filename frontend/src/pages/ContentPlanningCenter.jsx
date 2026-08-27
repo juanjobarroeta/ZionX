@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Layout from "../components/Layout";
 import PinterestEmbed from "../components/PinterestEmbed";
+import PixelMark from "../components/PixelMark";
+import Telemetry from "../components/Telemetry";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName as resolveCustomerName } from "../utils/customerName";
 import {
@@ -19,6 +21,8 @@ import {
   STATUS_VARIANT,
   OPTIONAL_STAGES,
 } from "../config/pipeline";
+import { tMinus } from "../utils/countdown";
+import "../styles/zionx.css";
 import "./Calendar.css";
 
 // ---------- status + platform mapping ----------
@@ -99,7 +103,7 @@ const readinessOf = (p) => {
 };
 
 // Map the canonical publish tone → this surface's Calendar.css variant.
-const PUBLISH_VARIANT = { queued: "accent", active: "accent", success: "published", failed: "failed", muted: "draft" };
+const PUBLISH_VARIANT = { queued: "queued", active: "queued", success: "published", failed: "failed", muted: "muted" };
 const publishMeta = (s) => {
   const info = publishStatusInfo(s);
   return info ? { label: info.label, variant: PUBLISH_VARIANT[info.tone] } : null;
@@ -300,6 +304,19 @@ const ContentPlanningCenter = () => {
     return map;
   }, [posts]);
 
+  // Counts for the command-bar readout: what is planned in this range, what is
+  // already in the publish queue, and what broke.
+  const totals = useMemo(() => {
+    let queued = 0, failed = 0, published = 0;
+    for (const p of posts) {
+      const ps = (p.publish_status || "").toLowerCase();
+      if (ps === "scheduled" || ps === "publishing") queued += 1;
+      if (ps === "failed") failed += 1;
+      if (ps === "published" || statusInfo(p.status).variant === "published") published += 1;
+    }
+    return { total: posts.length, queued, failed, published };
+  }, [posts]);
+
   const customerName = useCallback(
     (post) => post.customer_name || resolveCustomerName(customers.find((c) => c.id === post.customer_id)),
     [customers]
@@ -466,20 +483,25 @@ const ContentPlanningCenter = () => {
 
   // ---------- render helpers ----------
 
+  // The rail carries the editorial state; the right of the top row carries the
+  // flight state — queued posts count down to air, failed ones say so.
   const PostChip = ({ post }) => {
-    const { variant } = statusInfo(post.status);
+    const { variant, label } = statusInfo(post.status);
+    const queued = post.publish_status === "scheduled" || post.publish_status === "publishing";
+    const failed = post.publish_status === "failed";
+    const countdown = queued ? tMinus(post.scheduled_date) : null;
     return (
       <button className={`zxc-post v-${variant}`} onClick={() => setSelected(post)}>
         <div className="top">
           <span>{[postTime(post), platAbbr(post.platform)].filter(Boolean).join(" · ")}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {post.publish_status === "scheduled" && <i className="zxc-qdot" title="En cola de publicación" />}
-            {post.publish_status === "failed" && <i className="zxc-qdot fail" title="Falló la publicación" />}
-            {statusInfo(post.status).label}
-          </span>
+          {failed ? (
+            <span className="flight fail"><i className="zxc-qdot fail" />Falló</span>
+          ) : queued ? (
+            <span className="flight" title="En cola de publicación"><i className="zxc-qdot" />{countdown}</span>
+          ) : null}
         </div>
         <div className="title">{postTitle(post)}</div>
-        <div className="client">{customerName(post)}</div>
+        <div className="client">{customerName(post)} <span className="state">· {label}</span></div>
       </button>
     );
   };
@@ -489,15 +511,26 @@ const ContentPlanningCenter = () => {
     return (
       <div className="zxc-grid-wrap">
         <div className="zxc-week">
-          {days.map((d) => (
-            <div key={"h" + dayKey(d)} className={`zxc-dayhead${isSameDay(d, today) ? " today" : ""}`}>
-              {DAYS_ES[d.getDay()]} {d.getDate()}{isSameDay(d, today) ? " · Hoy" : ""}
-            </div>
-          ))}
+          {days.map((d) => {
+            const n = (byDay[dayKey(d)] || []).length;
+            const isToday = isSameDay(d, today);
+            return (
+              <div key={"h" + dayKey(d)} className={`zxc-dayhead${isToday ? " today" : ""}`}>
+                <span className="when">
+                  <span className="n">{d.getDate()}</span>
+                  <span className="d">{DAYS_ES[d.getDay()]}</span>
+                </span>
+                <span className="c">
+                  {isToday && <PixelMark size={9} />}
+                  {n > 0 ? String(n).padStart(2, "0") : "—"}
+                </span>
+              </div>
+            );
+          })}
           {days.map((d) => {
             const list = byDay[dayKey(d)] || [];
             return (
-              <div key={"c" + dayKey(d)} className={`zxc-daycell${isSameDay(d, today) ? " today" : ""}`}>
+              <div key={"c" + dayKey(d)} className={`zxc-daycell${isSameDay(d, today) ? " today" : ""}${d < today ? " past" : ""}`}>
                 {list.map((p) => <PostChip key={p.id} post={p} />)}
                 <button className="addslot" onClick={() => openCreate(d)}>+ Publicación</button>
               </div>
@@ -514,7 +547,7 @@ const ContentPlanningCenter = () => {
       <div className="zxc-grid-wrap">
         <div className="zxc-month">
           {DAYS_ES.slice(1).concat(DAYS_ES[0]).map((d) => (
-            <div key={"mh" + d} className="zxc-dayhead">{d}</div>
+            <div key={"mh" + d} className="zxc-mhead">{d}</div>
           ))}
           {cells.map((d) => {
             const list = byDay[dayKey(d)] || [];
@@ -524,7 +557,8 @@ const ContentPlanningCenter = () => {
                 <span className="num">{d.getDate()}</span>
                 {list.slice(0, 3).map((p) => (
                   <button key={p.id} className={`zxc-mpost v-${statusInfo(p.status).variant}`} onClick={() => setSelected(p)} title={postTitle(p)}>
-                    {postTime(p) ? postTime(p) + " " : ""}{postTitle(p)}
+                    {postTime(p) && <span className="t">{postTime(p)}</span>}
+                    {postTitle(p)}
                   </button>
                 ))}
                 {list.length > 3 && <span className="zxc-mmore">+{list.length - 3} más</span>}
@@ -538,37 +572,50 @@ const ContentPlanningCenter = () => {
 
   return (
     <Layout>
-      <div className="zxc">
-        <div className="zxc-inner">
-          {/* Header */}
-          <div className="zxc-head">
-            <div>
-              <div className="zxc-eyebrow">Contenido</div>
-              <h1 className="zxc-h1">Calendario <span className="zxc-serif">de contenido</span></h1>
-            </div>
-            <div className="zxc-controls">
-              <div className="zxc-seg">
-                <button className={view === "week" ? "on" : ""} onClick={() => setView("week")}>Semana</button>
-                <button className={view === "month" ? "on" : ""} onClick={() => setView("month")}>Mes</button>
+      <div className="zx-app zxc">
+        {/* ---------- command bar ---------- */}
+        <header className="zx-cmd">
+          <div className="zx-cmd-inner">
+            <div className="zx-cmd-top">
+              <div>
+                <div className="zx-eyebrow"><PixelMark size={11} /> Programación</div>
+                <h1 className="zx-title">Calendario <span className="zx-serif">de contenido</span></h1>
               </div>
-              <div className="zxc-nav">
-                <button className="zxc-iconbtn" onClick={() => shift(-1)} aria-label="Anterior">←</button>
-                <span className="range" onClick={goToday} style={{ cursor: "pointer" }} title="Ir a hoy">{rangeLabel(view, anchor)}</span>
-                <button className="zxc-iconbtn" onClick={() => shift(1)} aria-label="Siguiente">→</button>
+              <div className="zx-cmd-actions">
+                <div className="zx-seg on-ink">
+                  <button className={view === "week" ? "on" : ""} onClick={() => setView("week")}>Semana</button>
+                  <button className={view === "month" ? "on" : ""} onClick={() => setView("month")}>Mes</button>
+                </div>
+                <div className="zxc-range">
+                  <button className="zx-btn on-ink ghost icon" onClick={() => shift(-1)} aria-label="Período anterior">←</button>
+                  <button className="zxc-range-label" onClick={goToday} title="Ir a hoy">{rangeLabel(view, anchor)}</button>
+                  <button className="zx-btn on-ink ghost icon" onClick={() => shift(1)} aria-label="Período siguiente">→</button>
+                </div>
+                <button className="zx-btn on-ink" onClick={() => openCreate(null)}>Nueva publicación</button>
               </div>
-              <button className="zxc-btn-solid" onClick={() => openCreate(null)}>+ Nueva publicación</button>
             </div>
+            <Telemetry
+              items={[
+                { k: "Publicaciones", v: totals.total },
+                { k: "En cola", v: totals.queued, tone: "brass" },
+                { k: "Fallidas", v: totals.failed, tone: "crit" },
+                { k: "Publicadas", v: totals.published },
+              ]}
+            />
           </div>
+        </header>
 
+        {/* ---------- working surface ---------- */}
+        <div className="zx-canvas">
           {/* Client filter chips */}
-          <div className="zxc-chips">
-            <button className={`zxc-chip${customerFilter === "all" ? " on" : ""}`} onClick={() => setCustomerFilter("all")}>
+          <div className="zx-toolbar">
+            <button className={`zx-chip${customerFilter === "all" ? " on" : ""}`} onClick={() => setCustomerFilter("all")}>
               Todos los clientes
             </button>
             {customers.map((c) => (
               <button
                 key={c.id}
-                className={`zxc-chip${String(customerFilter) === String(c.id) ? " on" : ""}`}
+                className={`zx-chip${String(customerFilter) === String(c.id) ? " on" : ""}`}
                 onClick={() => setCustomerFilter(c.id)}
               >
                 {resolveCustomerName(c)}
@@ -578,9 +625,12 @@ const ContentPlanningCenter = () => {
 
           {/* Grid */}
           {loading ? (
-            <div className="zxc-empty">Cargando calendario…</div>
+            <div className="zx-empty">Cargando calendario…</div>
           ) : posts.length === 0 ? (
-            <div className="zxc-empty">Sin publicaciones en este período. Usa “+ Nueva publicación” para empezar.</div>
+            <div className="zx-empty">
+              <strong>Esta ventana está vacía.</strong>
+              Crea la primera publicación con “Nueva publicación”, o pasa el cursor sobre un día para programarla ahí.
+            </div>
           ) : view === "week" ? (
             <WeekView />
           ) : (
@@ -588,11 +638,12 @@ const ContentPlanningCenter = () => {
           )}
 
           {/* Legend */}
-          <div className="zxc-legend">
-            <span><i className="zxc-swatch" style={{ background: "#04111A" }} /> Publicado</span>
-            <span><i className="zxc-swatch" style={{ background: "#F2F3F1", borderLeft: "3px solid #04111A" }} /> Aprobado / revisión</span>
-            <span><i className="zxc-swatch" style={{ border: "1px dashed rgba(4,17,26,0.4)" }} /> En diseño / planificado</span>
-            <span><i className="zxc-swatch" style={{ background: "#F2F3F1", borderLeft: "3px solid #8A1C1C" }} /> Fallida</span>
+          <div className="zx-legend">
+            <span><i className="zx-swatch" style={{ background: "#04111A" }} /> Publicado</span>
+            <span><i className="zx-swatch" style={{ background: "#FFFFFF", borderLeft: "3px solid #04111A" }} /> Aprobado / revisión</span>
+            <span><i className="zx-swatch" style={{ background: "#FFFFFF", borderLeft: "3px dashed rgba(4,17,26,0.4)" }} /> Planificado / en diseño</span>
+            <span><i className="zx-swatch" style={{ background: "#FFFFFF", borderLeft: "3px solid #8A1C1C" }} /> Fallida</span>
+            <span><i className="zxc-qdot" /> En cola de publicación</span>
           </div>
         </div>
       </div>
@@ -605,126 +656,131 @@ const ContentPlanningCenter = () => {
             <div className="zxc-drawer-head">
               <span className="plat">{capitalize(selected.platform) || "Contenido"} · {capitalize(selected.content_type) || "Post"}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {!editing && <button className="zxc-btn-ghost" onClick={openEdit}>Editar</button>}
+                {!editing && <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>}
                 <button className="zxc-x" onClick={() => { setSelected(null); setEditing(false); }} aria-label="Cerrar">×</button>
               </div>
             </div>
             <div className="zxc-drawer-body">
-              <div className={`zxc-pill v-${statusInfo(selected.status).variant}`} style={{ alignSelf: "flex-start" }}>
+              <div className={`zx-pill v-${statusInfo(selected.status).variant}`} style={{ alignSelf: "flex-start" }}>
                 {statusInfo(selected.status).label}
               </div>
               <h3>{postTitle(selected)}</h3>
 
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Cliente</span>
                 <span className="val">{customerName(selected)}</span>
               </div>
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Programado</span>
-                <span className="val">
-                  {(() => {
-                    const dk = postDayKey(selected);
-                    const [y, m, day] = dk.split("-").map(Number);
-                    const t = postTime(selected);
-                    return `${day} ${MONTHS_ES[(m || 1) - 1]} ${y}${t ? ` · ${t}` : ""}`;
-                  })()}
+                <span className="zxc-when">
+                  <span>
+                    {(() => {
+                      const dk = postDayKey(selected);
+                      const [y, m, day] = dk.split("-").map(Number);
+                      const t = postTime(selected);
+                      return `${day} ${MONTHS_ES[(m || 1) - 1]} ${y}${t ? ` · ${t}` : ""}`;
+                    })()}
+                  </span>
+                  {selected.publish_status === "scheduled" && tMinus(selected.scheduled_date) && (
+                    <span className="zx-tmin">{tMinus(selected.scheduled_date)}</span>
+                  )}
                 </span>
               </div>
               {editing ? (
                 <>
-                  <div className="zxc-row2">
-                    <div className="zxc-field">
+                  <div className="zx-row2">
+                    <div className="zx-field">
                       <span className="k">Plataforma</span>
-                      <select className="zxc-select" value={editForm.platform || ""} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })}>
+                      <select className="zx-select" value={editForm.platform || ""} onChange={(e) => setEditForm({ ...editForm, platform: e.target.value })}>
                         {PLATFORMS.map((p) => <option key={p} value={p}>{capitalize(p)}</option>)}
                       </select>
                     </div>
-                    <div className="zxc-field">
+                    <div className="zx-field">
                       <span className="k">Formato</span>
-                      <select className="zxc-select" value={editForm.content_type || ""} onChange={(e) => setEditForm({ ...editForm, content_type: e.target.value })}>
+                      <select className="zx-select" value={editForm.content_type || ""} onChange={(e) => setEditForm({ ...editForm, content_type: e.target.value })}>
                         {CONTENT_TYPES.map((t) => <option key={t} value={t}>{capitalize(t)}</option>)}
                       </select>
                     </div>
                   </div>
-                  <div className="zxc-row2">
-                    <div className="zxc-field">
+                  <div className="zx-row2">
+                    <div className="zx-field">
                       <span className="k">Campaña</span>
-                      <input className="zxc-input" type="text" value={editForm.campaign || ""} onChange={(e) => setEditForm({ ...editForm, campaign: e.target.value })} />
+                      <input className="zx-input" type="text" value={editForm.campaign || ""} onChange={(e) => setEditForm({ ...editForm, campaign: e.target.value })} />
                     </div>
-                    <div className="zxc-field">
+                    <div className="zx-field">
                       <span className="k">Pilar</span>
-                      <input className="zxc-input" type="text" value={editForm.pilar || ""} onChange={(e) => setEditForm({ ...editForm, pilar: e.target.value })} />
+                      <input className="zx-input" type="text" value={editForm.pilar || ""} onChange={(e) => setEditForm({ ...editForm, pilar: e.target.value })} />
                     </div>
                   </div>
-                  <div className="zxc-field">
+                  <div className="zx-field">
                     <span className="k">Idea / tema</span>
-                    <input className="zxc-input" type="text" value={editForm.idea_tema || ""} onChange={(e) => setEditForm({ ...editForm, idea_tema: e.target.value })} />
+                    <input className="zx-input" type="text" value={editForm.idea_tema || ""} onChange={(e) => setEditForm({ ...editForm, idea_tema: e.target.value })} />
                   </div>
-                  <div className="zxc-field">
+                  <div className="zx-field">
                     <span className="k">Referencia</span>
-                    <input className="zxc-input" type="text" value={editForm.referencia || ""} onChange={(e) => setEditForm({ ...editForm, referencia: e.target.value })} />
+                    <input className="zx-input" type="text" value={editForm.referencia || ""} onChange={(e) => setEditForm({ ...editForm, referencia: e.target.value })} />
                   </div>
-                  <div className="zxc-field">
+                  <div className="zx-field">
                     <span className="k">Pinterest (Pin/tablero)</span>
-                    <input className="zxc-input" type="url" placeholder="https://pinterest.com/pin/…" value={editForm.pinterest_ref || ""} onChange={(e) => setEditForm({ ...editForm, pinterest_ref: e.target.value })} />
+                    <input className="zx-input" type="url" placeholder="https://pinterest.com/pin/…" value={editForm.pinterest_ref || ""} onChange={(e) => setEditForm({ ...editForm, pinterest_ref: e.target.value })} />
                   </div>
-                  <div className="zxc-field">
+                  <div className="zx-field">
                     <span className="k">Copy in (brief)</span>
-                    <textarea className="zxc-input" rows={2} value={editForm.copy_in || ""} onChange={(e) => setEditForm({ ...editForm, copy_in: e.target.value })} />
+                    <textarea className="zx-input" rows={2} value={editForm.copy_in || ""} onChange={(e) => setEditForm({ ...editForm, copy_in: e.target.value })} />
                   </div>
-                  <div className="zxc-field">
+                  <div className="zx-field">
                     <span className="k">Copy out (publicación)</span>
-                    <textarea className="zxc-input" rows={3} value={editForm.copy_out || ""} onChange={(e) => setEditForm({ ...editForm, copy_out: e.target.value })} />
+                    <textarea className="zx-input" rows={3} value={editForm.copy_out || ""} onChange={(e) => setEditForm({ ...editForm, copy_out: e.target.value })} />
                   </div>
-                  <div className="zxc-row2">
-                    <div className="zxc-field">
+                  <div className="zx-row2">
+                    <div className="zx-field">
                       <span className="k">Diseñador</span>
-                      <select className="zxc-select" value={editForm.assigned_designer || ""} onChange={(e) => setEditForm({ ...editForm, assigned_designer: e.target.value })}>
+                      <select className="zx-select" value={editForm.assigned_designer || ""} onChange={(e) => setEditForm({ ...editForm, assigned_designer: e.target.value })}>
                         <option value="">Sin asignar</option>
                         {designers.map((e) => <option key={e.id} value={e.id}>{e.name || e.full_name}</option>)}
                       </select>
                     </div>
-                    <div className="zxc-field">
+                    <div className="zx-field">
                       <span className="k">Community manager</span>
-                      <select className="zxc-select" value={editForm.assigned_community_manager || ""} onChange={(e) => setEditForm({ ...editForm, assigned_community_manager: e.target.value })}>
+                      <select className="zx-select" value={editForm.assigned_community_manager || ""} onChange={(e) => setEditForm({ ...editForm, assigned_community_manager: e.target.value })}>
                         <option value="">Sin asignar</option>
                         {cms.map((e) => <option key={e.id} value={e.id}>{e.name || e.full_name}</option>)}
                       </select>
                     </div>
                   </div>
-                  <div className="zxc-pub" style={{ marginTop: 4 }}>
-                    <button className="zxc-btn-solid" disabled={saving} onClick={saveEdit}>{saving ? "Guardando…" : "Guardar cambios"}</button>
-                    <button className="zxc-btn-ghost" disabled={saving} onClick={() => setEditing(false)}>Cancelar</button>
+                  <div className="zxc-actions" style={{ marginTop: 4 }}>
+                    <button className="zx-btn" disabled={saving} onClick={saveEdit}>{saving ? "Guardando…" : "Guardar cambios"}</button>
+                    <button className="zx-btn ghost" disabled={saving} onClick={() => setEditing(false)}>Cancelar</button>
                   </div>
                 </>
               ) : (
               <>
               {selected.campaign && (
-                <div className="zxc-field"><span className="k">Campaña</span><span className="val">{selected.campaign}</span></div>
+                <div className="zx-field"><span className="k">Campaña</span><span className="val">{selected.campaign}</span></div>
               )}
               {selected.pilar && (
-                <div className="zxc-field"><span className="k">Pilar</span><span className="val">{selected.pilar}</span></div>
+                <div className="zx-field"><span className="k">Pilar</span><span className="val">{selected.pilar}</span></div>
               )}
               {(selected.designer_name || selected.cm_name) && (
-                <div className="zxc-field">
+                <div className="zx-field">
                   <span className="k">Equipo</span>
                   <span className="val">{[selected.designer_name && `Diseño: ${selected.designer_name}`, selected.cm_name && `CM: ${selected.cm_name}`].filter(Boolean).join(" · ")}</span>
                 </div>
               )}
               {selected.copy_out && (
-                <div className="zxc-field"><span className="k">Copy</span><span className="val copy">{selected.copy_out}</span></div>
+                <div className="zx-field"><span className="k">Copy</span><span className="val copy">{selected.copy_out}</span></div>
               )}
               {selected.pinterest_ref && (
-                <div className="zxc-field">
+                <div className="zx-field">
                   <span className="k">Referencia visual</span>
                   <PinterestEmbed url={selected.pinterest_ref} />
                 </div>
               )}
 
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Cambiar estado</span>
                 <select
-                  className="zxc-select"
+                  className="zx-select"
                   value={STATUS_OPTIONS.find((o) => o.value === (selected.status || "").toLowerCase())?.value || ""}
                   onChange={(e) => updateStatus(selected, e.target.value)}
                 >
@@ -734,12 +790,12 @@ const ContentPlanningCenter = () => {
               </div>
 
               {/* Production pipeline — live, stateful stages */}
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Producción</span>
                 {pipeline.loading ? (
-                  <div className="zxc-pipe-loading">Cargando producción…</div>
+                  <div className="zxc-pipe-note">Cargando producción…</div>
                 ) : pipeline.stages.length === 0 ? (
-                  <div className="zxc-pipe-loading">Sin etapas de producción.</div>
+                  <div className="zxc-pipe-note">Sin etapas de producción.</div>
                 ) : (
                   <div className="zxc-pipe">
                     {pipeline.stages.map((s) => {
@@ -751,14 +807,14 @@ const ContentPlanningCenter = () => {
                               {STAGE_LABELS[s.stage_key] || s.stage_key}
                               {optional && <span className="zxc-opt-tag">opcional</span>}
                             </span>
-                            <span className={`zxc-pill v-stage-${STATUS_VARIANT[s.status] || "muted"}`}>
+                            <span className={`zx-pill v-${STATUS_VARIANT[s.status] || "muted"}`}>
                               {STATUS_LABELS[s.status] || s.status}
                             </span>
                           </div>
                           <div className="zxc-stage-owner">{stageOwnerLabel(s)}</div>
                           <div className="zxc-stage-controls">
                             <select
-                              className="zxc-select sm"
+                              className="zx-select sm"
                               value={s.status || "pendiente"}
                               disabled={stageBusy === s.stage_key}
                               onChange={(e) => patchStage(s.stage_key, { status: e.target.value })}
@@ -767,7 +823,7 @@ const ContentPlanningCenter = () => {
                             </select>
                             {s.stage_key !== "client_approval" && (
                               <select
-                                className="zxc-select sm"
+                                className="zx-select sm"
                                 value={s.owner_id ?? ""}
                                 disabled={stageBusy === s.stage_key}
                                 onChange={(e) => patchStage(s.stage_key, { owner_id: e.target.value === "" ? null : Number(e.target.value) })}
@@ -781,19 +837,19 @@ const ContentPlanningCenter = () => {
                             <div className="zxc-stage-ai">
                               <button
                                 type="button"
-                                className="zxc-linkbtn"
+                                className="zx-linkbtn"
                                 onClick={generateIdea}
                                 disabled={ideaDraft?.loading}
                               >
                                 {ideaDraft?.loading ? "Generando…" : "Generar idea con IA"}
                               </button>
-                              {ideaDraft?.error && <span className="zxc-soon">{ideaDraft.error}</span>}
+                              {ideaDraft?.error && <span className="zxc-note">{ideaDraft.error}</span>}
                               {ideaDraft?.draft && (
                                 <div className="zxc-ai-draft">
                                   <div className="zxc-ai-draft-text">{ideaDraft.draft}</div>
                                   <div className="zxc-ai-draft-actions">
-                                    <button type="button" className="zxc-linkbtn" onClick={useIdea}>Usar como idea/tema</button>
-                                    <button type="button" className="zxc-linkbtn muted" onClick={() => setIdeaDraft(null)}>Descartar</button>
+                                    <button type="button" className="zx-linkbtn" onClick={useIdea}>Usar como idea/tema</button>
+                                    <button type="button" className="zx-linkbtn muted" onClick={() => setIdeaDraft(null)}>Descartar</button>
                                   </div>
                                 </div>
                               )}
@@ -803,19 +859,19 @@ const ContentPlanningCenter = () => {
                             <div className="zxc-stage-ai">
                               <button
                                 type="button"
-                                className="zxc-linkbtn"
+                                className="zx-linkbtn"
                                 onClick={generateDraft}
                                 disabled={copyDraft?.loading}
                               >
                                 {copyDraft?.loading ? "Generando…" : "Generar borrador con IA"}
                               </button>
-                              {copyDraft?.error && <span className="zxc-soon">{copyDraft.error}</span>}
+                              {copyDraft?.error && <span className="zxc-note">{copyDraft.error}</span>}
                               {copyDraft?.draft && (
                                 <div className="zxc-ai-draft">
                                   <div className="zxc-ai-draft-text">{copyDraft.draft}</div>
                                   <div className="zxc-ai-draft-actions">
-                                    <button type="button" className="zxc-linkbtn" onClick={useDraft}>Usar en copy</button>
-                                    <button type="button" className="zxc-linkbtn muted" onClick={() => setCopyDraft(null)}>Descartar</button>
+                                    <button type="button" className="zx-linkbtn" onClick={useDraft}>Usar en copy</button>
+                                    <button type="button" className="zx-linkbtn muted" onClick={() => setCopyDraft(null)}>Descartar</button>
                                   </div>
                                 </div>
                               )}
@@ -829,41 +885,41 @@ const ContentPlanningCenter = () => {
               </div>
 
               {/* Client sign-off (per-post approval link) */}
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Cliente</span>
-                <div className="zxc-pub">
-                  {selected.client_status === "approved" && <span className="zxc-pill v-published">Aprobado por cliente</span>}
+                <div className="zxc-actions">
+                  {selected.client_status === "approved" && <span className="zx-pill v-published">Aprobado por cliente</span>}
                   {["changes_requested", "rejected", "rechazado"].includes((selected.client_status || "").toLowerCase()) && (
-                    <span className="zxc-pill v-failed">Cambios solicitados</span>
+                    <span className="zx-pill v-failed">Cambios solicitados</span>
                   )}
-                  <button className="zxc-btn-ghost" disabled={busy} onClick={() => sendToClient(selected)}>
+                  <button className="zx-btn ghost" disabled={busy} onClick={() => sendToClient(selected)}>
                     {clientLinkFor?.id === selected.id ? "Enlace copiado ✓" : "Enviar a cliente"}
                   </button>
                   {clientLinkFor?.id === selected.id && (
-                    <input className="zxc-input" readOnly value={clientLinkFor.url} onFocus={(e) => e.target.select()} />
+                    <input className="zx-input" readOnly value={clientLinkFor.url} onFocus={(e) => e.target.select()} />
                   )}
                 </div>
               </div>
 
               {/* Publish (plan → queue) */}
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Publicación</span>
                 {(() => {
                   const pm = publishMeta(selected.publish_status);
                   if (pm) {
                     return (
-                      <div className="zxc-pub">
-                        <span className={`zxc-pill v-${pm.variant}`}>{pm.label}</span>
+                      <div className="zxc-actions">
+                        <span className={`zx-pill v-${pm.variant}`}>{pm.label}</span>
                         {selected.publish_status === "failed" && selected.publish_error && (
-                          <div className="zxc-pub-err">⚠ {selected.publish_error}</div>
+                          <div className="zx-err">⚠ {selected.publish_error}</div>
                         )}
                         {selected.publish_status === "scheduled" && (
-                          <button className="zxc-btn-ghost" disabled={busy} onClick={() => unschedulePost(selected)}>
+                          <button className="zx-btn ghost" disabled={busy} onClick={() => unschedulePost(selected)}>
                             Quitar de la cola
                           </button>
                         )}
                         {selected.publish_status === "failed" && readinessOf(selected).ready && (
-                          <button className="zxc-btn-solid" disabled={busy} onClick={() => schedulePost(selected)}>
+                          <button className="zx-btn" disabled={busy} onClick={() => schedulePost(selected)}>
                             {busy ? "Reintentando…" : "Reintentar"}
                           </button>
                         )}
@@ -872,11 +928,11 @@ const ContentPlanningCenter = () => {
                   }
                   const rd = readinessOf(selected);
                   return rd.ready ? (
-                    <button className="zxc-btn-solid" disabled={busy} onClick={() => schedulePost(selected)}>
+                    <button className="zx-btn" disabled={busy} onClick={() => schedulePost(selected)}>
                       {busy ? "Programando…" : "Programar publicación"}
                     </button>
                   ) : (
-                    <div className="zxc-missing">Completa las etapas de producción para habilitar la programación.</div>
+                    <div className="zxc-note">Completa las etapas de producción para habilitar la programación.</div>
                   );
                 })()}
               </div>
@@ -896,53 +952,53 @@ const ContentPlanningCenter = () => {
               <button type="button" className="zxc-x" onClick={() => setShowCreate(false)} aria-label="Cerrar">×</button>
             </div>
             <div className="zxc-modal-body">
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Cliente</span>
-                <select className="zxc-select" value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })} required>
+                <select className="zx-select" value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })} required>
                   <option value="">Selecciona un cliente…</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>{resolveCustomerName(c)}</option>
                   ))}
                 </select>
               </div>
-              <div className="zxc-row2">
-                <div className="zxc-field">
+              <div className="zx-row2">
+                <div className="zx-field">
                   <span className="k">Fecha y hora</span>
-                  <input className="zxc-input" type="datetime-local" value={form.scheduled_date} onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} required />
+                  <input className="zx-input" type="datetime-local" value={form.scheduled_date} onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })} required />
                 </div>
-                <div className="zxc-field">
+                <div className="zx-field">
                   <span className="k">Estado</span>
-                  <select className="zxc-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  <select className="zx-select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                     {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="zxc-row2">
-                <div className="zxc-field">
+              <div className="zx-row2">
+                <div className="zx-field">
                   <span className="k">Plataforma</span>
-                  <select className="zxc-select" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
+                  <select className="zx-select" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
                     {PLATFORMS.map((p) => <option key={p} value={p}>{capitalize(p)}</option>)}
                   </select>
                 </div>
-                <div className="zxc-field">
+                <div className="zx-field">
                   <span className="k">Formato</span>
-                  <select className="zxc-select" value={form.content_type} onChange={(e) => setForm({ ...form, content_type: e.target.value })}>
+                  <select className="zx-select" value={form.content_type} onChange={(e) => setForm({ ...form, content_type: e.target.value })}>
                     {CONTENT_TYPES.map((t) => <option key={t} value={t}>{capitalize(t)}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Idea / tema</span>
-                <input className="zxc-input" type="text" value={form.idea_tema} onChange={(e) => setForm({ ...form, idea_tema: e.target.value })} placeholder="p. ej. Promo verano 2×1" />
+                <input className="zx-input" type="text" value={form.idea_tema} onChange={(e) => setForm({ ...form, idea_tema: e.target.value })} placeholder="p. ej. Promo verano 2×1" />
               </div>
-              <div className="zxc-field">
+              <div className="zx-field">
                 <span className="k">Campaña (opcional)</span>
-                <input className="zxc-input" type="text" value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} />
+                <input className="zx-input" type="text" value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} />
               </div>
             </div>
             <div className="zxc-modal-foot">
-              <button type="button" className="zxc-btn-ghost" onClick={() => setShowCreate(false)}>Cancelar</button>
-              <button type="submit" className="zxc-btn-solid" disabled={saving}>{saving ? "Guardando…" : "Crear publicación"}</button>
+              <button type="button" className="zx-btn ghost" onClick={() => setShowCreate(false)}>Cancelar</button>
+              <button type="submit" className="zx-btn" disabled={saving}>{saving ? "Guardando…" : "Crear publicación"}</button>
             </div>
           </form>
         </div>

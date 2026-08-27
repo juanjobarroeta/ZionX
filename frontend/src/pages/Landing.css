@@ -99,7 +99,9 @@
   display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 48px; align-items: center; max-width: 1440px; margin: 0 auto;
 }
-.zx-eyebrow {
+/* Scoped: `.zx-eyebrow` is also a shared primitive (styles/zionx.css); this is
+   the landing's own take on it. */
+.zx-landing .zx-eyebrow {
   display: flex; align-items: center; gap: 14px; font-size: 13px;
   letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.6; font-weight: 500;
 }
