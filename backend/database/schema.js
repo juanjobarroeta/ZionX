@@ -431,6 +431,19 @@ const createTables = async (pool) => {
         is_read BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Two shapes of this table exist in the codebase: the one above, and a
+      -- wider one in messaging-schema.sql that nothing ever runs. Routes were
+      -- written against both — routes/messages.js and utils/notifications.js
+      -- insert title/icon/link_type/link_id/link_url/from_user_id, which the
+      -- live table does not have, so every one of those inserts fails silently.
+      -- Guarantee the columns instead of picking a winner.
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS icon VARCHAR(50);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_type VARCHAR(50);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_id INTEGER;
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url VARCHAR(500);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
     `);
     console.log("✅ Notifications table created");
 
@@ -731,6 +744,23 @@ const createTables = async (pool) => {
       );
       CREATE INDEX IF NOT EXISTS idx_client_reports_token ON client_reports(token);
     `);
+    // Web push: one row per browser/device a person allowed. The endpoint is
+    // the unique identity — the same person on a phone and a laptop is two.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id);
+    `);
+    console.log("✅ Push subscription table ready");
+
     console.log("✅ Client report tables ready");
 
     console.log("✅ Analytics history tables ready");
