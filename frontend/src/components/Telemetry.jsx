@@ -4,7 +4,10 @@ const grouped = new Intl.NumberFormat("es-MX");
 
 // Small counts keep the zero-padded instrument look ("04"); anything that runs
 // into the thousands gets separators, because "468523" is not a readable number.
+// A caller may pass an already-formatted string — money, a percentage, a range —
+// when the value isn't a plain count; it is rendered as given.
 const fmt = (v) => {
+  if (typeof v === "string") return v;
   const n = Number(v) || 0;
   return n >= 1000 ? grouped.format(Math.round(n)) : String(n).padStart(2, "0");
 };

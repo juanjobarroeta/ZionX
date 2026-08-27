@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import "./Finance.css";
@@ -37,46 +37,37 @@ const IncomeDashboard = () => {
   const maxRev = Math.max(1, ...revenue.map((m) => parseFloat(m.total_paid || 0)));
 
   return (
-    <Layout>
-      <div className="zxin">
-        <div className="zxin-inner">
-          <div className="zxin-head">
-            <div>
-              <div className="zxin-eyebrow">Finanzas</div>
-              <h1 className="zxin-h1">Ingresos <span className="zxin-serif">del mes</span></h1>
-            </div>
-            <div className="zxin-actions">
-              <Link to="/income/invoices" className="zxin-btn">Facturas</Link>
-              <Link to="/income/payments" className="zxin-btn">Pagos</Link>
-              <Link to="/income/invoice-generator" className="zxin-btn solid">+ Generar factura</Link>
-            </div>
-          </div>
+    <PageShell
+      className="zxin"
+      eyebrow="Finanzas"
+      title="Ingresos"
+      titleAccent="del mes"
+      actions={
+        <>
+          <Link to="/income/invoices" className="zx-btn on-ink ghost">Facturas</Link>
+          <Link to="/income/payments" className="zx-btn on-ink ghost">Pagos</Link>
+          <Link to="/income/invoice-generator" className="zx-btn on-ink">Generar factura</Link>
+        </>
+      }
+      telemetry={[
+        { k: "MRR", v: fmtMoney(d?.mrr) },
+        { k: "Este mes", v: fmtMoney(d?.revenue_this_month),
+          delta: Number.isFinite(growth) && growth !== 0
+            ? { text: `${growth > 0 ? "↑" : "↓"} ${Math.abs(growth).toFixed(0)}%`, dir: growth > 0 ? "up" : "down" }
+            : null },
+        { k: "Por cobrar", v: fmtMoney(d?.total_outstanding), tone: "brass" },
+        { k: "Vencido", v: fmtMoney(d?.overdue_amount), tone: "crit" },
+      ]}
+    >
 
           {loading ? (
             <div className="zxin-loading">Cargando ingresos…</div>
           ) : (
             <>
-              <div className="zxin-tiles">
-                <div className="zxin-tile lead">
-                  <span className="k">MRR</span>
-                  <span className="v">{fmtMoney(d?.mrr)}</span>
-                  <span className="sub">ARR {fmtMoney((d?.mrr || 0) * 12)}</span>
-                </div>
-                <div className="zxin-tile">
-                  <span className="k">Este mes</span>
-                  <span className="v">{fmtMoney(d?.revenue_this_month)}</span>
-                  <span className={`sub ${growth >= 0 ? "up" : "down"}`}>{growth >= 0 ? "↗" : "↘"} {Math.abs(growth).toFixed(1)}% vs mes anterior</span>
-                </div>
-                <div className="zxin-tile">
-                  <span className="k">Por cobrar</span>
-                  <span className="v warn">{fmtMoney(d?.total_outstanding)}</span>
-                  <span className="sub">{d?.invoices_this_month || 0} facturas pendientes</span>
-                </div>
-                <div className="zxin-tile">
-                  <span className="k">Vencido</span>
-                  <span className="v bad">{fmtMoney(d?.overdue_amount)}</span>
-                  <span className="sub">{d?.overdue_count || 0} facturas vencidas</span>
-                </div>
+              {/* The counts behind the money — the tiles' only unique content. */}
+              <div className="zxin-context">
+                <span><b>{d?.invoices_this_month || 0}</b> facturas pendientes</span>
+                <span className={d?.overdue_count ? "bad" : undefined}><b>{d?.overdue_count || 0}</b> vencidas</span>
               </div>
 
               <div className="zxin-subrow">
@@ -132,9 +123,7 @@ const IncomeDashboard = () => {
               </div>
             </>
           )}
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 
