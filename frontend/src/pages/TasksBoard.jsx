@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
-import Layout from "../components/Layout";
-import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName } from "../utils/customerName";
-import "../styles/zionx.css";
 import "./TasksBoard.css";
 
 const PRIORITIES = [
@@ -206,39 +203,31 @@ const TasksBoard = () => {
   );
 
   return (
-    <Layout>
-      <div className="zx-app zxtk">
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow"><PixelMark size={11} /> Equipo</div>
-                <h1 className="zx-title">Tareas <span className="zx-serif">del equipo</span></h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <select className="zx-select inline on-ink" value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
-                  <option value="all">Todos los clientes</option>
-                  {customers.map((c) => <option key={c.id} value={c.id}>{customerName(c)}</option>)}
-                </select>
-                <div className="zx-seg on-ink" role="group" aria-label="Agrupar por">
-                  {GROUPS.map((g) => (
-                    <button key={g.v} className={group === g.v ? "on" : ""} onClick={() => setMode(g.v)}>{g.label}</button>
-                  ))}
-                </div>
-              </div>
+      <PageShell
+        className="zxtk"
+        eyebrow="Equipo"
+        title="Tareas"
+        titleAccent="del equipo"
+        actions={
+          <>
+            <select className="zx-select inline on-ink" value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} aria-label="Cliente">
+              <option value="all">Todos los clientes</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{customerName(c)}</option>)}
+            </select>
+            <div className="zx-seg on-ink" role="group" aria-label="Agrupar por">
+              {GROUPS.map((g) => (
+                <button key={g.v} className={group === g.v ? "on" : ""} onClick={() => setMode(g.v)}>{g.label}</button>
+              ))}
             </div>
-            <Telemetry
-              items={[
-                { k: "Abiertas", v: open.length },
-                { k: "Vencidas", v: open.filter(isOverdue).length, tone: "crit" },
-                { k: "En progreso", v: open.filter((t) => t.status === "in_progress").length, tone: "brass" },
-                { k: "Hechas · 7d", v: doneWeek },
-              ]}
-            />
-          </div>
-        </header>
-
-        <div className="zx-canvas">
+          </>
+        }
+        telemetry={[
+          { k: "Abiertas", v: open.length },
+          { k: "Vencidas", v: open.filter(isOverdue).length, tone: "crit" },
+          { k: "En progreso", v: open.filter((t) => t.status === "in_progress").length, tone: "brass" },
+          { k: "Hechas · 7d", v: doneWeek },
+        ]}
+      >
           {/* ---------- composer ---------- */}
           <form className="zxtk-form" onSubmit={submit}>
             <div className="zxtk-form-row">
@@ -316,9 +305,7 @@ const TasksBoard = () => {
               })}
             </div>
           )}
-        </div>
-      </div>
-    </Layout>
+      </PageShell>
   );
 };
 

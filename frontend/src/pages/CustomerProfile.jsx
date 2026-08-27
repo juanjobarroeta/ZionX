@@ -1,13 +1,10 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName, customerContact } from "../utils/customerName";
 import PinterestEmbed from "../components/PinterestEmbed";
-import PixelMark from "../components/PixelMark";
-import Telemetry from "../components/Telemetry";
-import "../styles/zionx.css";
 import "./Profile.css";
 
 const fmtMoney = (n) => `$${(Number(n) || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -293,15 +290,22 @@ const CustomerProfile = () => {
     }
   };
 
-  if (loading) return <Layout><div className="zxp"><div className="zxp-loading">Cargando perfil…</div></div></Layout>;
+  // Loading and error are pages too — same shell, so the chrome never blinks.
+  if (loading) {
+    return (
+      <PageShell className="zxp" eyebrow="Clientes" title="Cargando perfil…">
+        <div className="zxp-loading">Cargando perfil…</div>
+      </PageShell>
+    );
+  }
   if (error || !customer) {
     return (
-      <Layout>
-        <div className="zxp"><div className="zxp-inner zxp-body">
-          <div className="zxp-note warn"><strong>{error || "Cliente no encontrado"}</strong>
-            <p><Link to="/crm">← Volver al directorio</Link></p></div>
-        </div></div>
-      </Layout>
+      <PageShell className="zxp" eyebrow="Clientes" title="Cliente no encontrado">
+        <div className="zxp-note warn">
+          <strong>{error || "Cliente no encontrado"}</strong>
+          <p><Link to="/crm">← Volver al directorio</Link></p>
+        </div>
+      </PageShell>
     );
   }
 
@@ -335,44 +339,34 @@ const CustomerProfile = () => {
   const nf = new Intl.NumberFormat("es-MX");
 
   return (
-    <Layout>
-      <div className="zx-app zxp">
-        <header className="zx-cmd">
-          <div className="zx-cmd-inner">
-            <div className="zx-cmd-top">
-              <div>
-                <div className="zx-eyebrow">
-                  <PixelMark size={11} />
-                  <Link to="/crm" className="zxp-crumb">Clientes</Link>
-                  {contact && contact !== name ? ` · ${contact}` : ""}
-                </div>
-                <h1 className="zx-title">{name}</h1>
-              </div>
-              <div className="zx-cmd-actions">
-                <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>
-                <Link to={`/portal?customer_id=${id}`} className="zx-btn on-ink ghost" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
-                <button className="zx-btn on-ink ghost" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
-                <button className="zx-btn on-ink" onClick={() => setActiveTab("recursos")}>Subir archivos</button>
-              </div>
-            </div>
-            <Telemetry
-              items={[
-                { k: "Vistas · 30d", v: pulse.views, delta: viewsDelta },
-                { k: "Próximas", v: upcoming ?? 0 },
-                { k: "Tareas", v: openTasks.length },
-                { k: "Vencidas", v: overdueTasks.length, tone: "crit" },
-                { k: "Cobros", v: invoices.denied ? 0 : pendingCount, tone: "brass" },
-              ]}
-            />
-            <div className="zxp-tabs">
-              {TABS.map((t) => (
-                <button key={t.id} className={`zxp-tab${activeTab === t.id ? " active" : ""}`} onClick={() => setActiveTab(t.id)}>{t.label}</button>
-              ))}
-            </div>
+    <>
+      <PageShell
+        className="zxp"
+        eyebrow={<><Link to="/crm" className="zxp-crumb">Clientes</Link>{contact && contact !== name ? ` · ${contact}` : ""}</>}
+        title={name}
+        actions={
+          <>
+            <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>
+            <Link to={`/portal?customer_id=${id}`} className="zx-btn on-ink ghost" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
+            <button className="zx-btn on-ink ghost" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
+            <button className="zx-btn on-ink" onClick={() => setActiveTab("recursos")}>Subir archivos</button>
+          </>
+        }
+        telemetry={[
+          { k: "Vistas · 30d", v: pulse.views, delta: viewsDelta },
+          { k: "Próximas", v: upcoming ?? 0 },
+          { k: "Tareas", v: openTasks.length },
+          { k: "Vencidas", v: overdueTasks.length, tone: "crit" },
+          { k: "Cobros", v: invoices.denied ? 0 : pendingCount, tone: "brass" },
+        ]}
+        below={
+          <div className="zxp-tabs">
+            {TABS.map((t) => (
+              <button key={t.id} className={`zxp-tab${activeTab === t.id ? " active" : ""}`} onClick={() => setActiveTab(t.id)}>{t.label}</button>
+            ))}
           </div>
-        </header>
-
-        <div className="zxp-inner zxp-body">
+        }
+      >
           {/* ---- RESUMEN ---- */}
           {activeTab === "resumen" && (
             <>
@@ -702,7 +696,7 @@ const CustomerProfile = () => {
               </>
             )
           )}
-        </div>
+      </PageShell>
 
         {editing && (
           <div className="zxp-modal-overlay" onClick={() => !saving && setEditing(false)}>
@@ -740,8 +734,7 @@ const CustomerProfile = () => {
             </div>
           </div>
         )}
-      </div>
-    </Layout>
+    </>
   );
 };
 
