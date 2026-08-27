@@ -1,4 +1,38 @@
 import React, { lazy, Suspense } from "react";
+
+/**
+ * Lazy import that survives a deploy.
+ *
+ * Every build hashes its chunks. A browser that still has the previous
+ * index.js asks for a chunk filename that no longer exists; the SPA rewrite
+ * answers with index.html, and the dynamic import dies with "'text/html' is
+ * not a valid JavaScript MIME type" — a white screen for anyone who left the
+ * app open across a release (ZIONX-2).
+ *
+ * The fix is to reload once, which fetches the new index.html and its new
+ * chunk names. A session flag keeps a genuinely broken chunk from looping:
+ * the second failure is allowed to throw so it reaches Sentry and the error
+ * boundary instead of reloading forever. A successful load clears the flag so
+ * the next deploy gets its own reload.
+ */
+const RELOAD_FLAG = "zx.chunk-reloaded";
+const lazyWithReload = (factory) =>
+  lazy(() =>
+    factory()
+      .then((mod) => {
+        sessionStorage.removeItem(RELOAD_FLAG);
+        return mod;
+      })
+      .catch((err) => {
+        if (!sessionStorage.getItem(RELOAD_FLAG)) {
+          sessionStorage.setItem(RELOAD_FLAG, "1");
+          window.location.reload();
+          // Never resolves: the page is on its way out.
+          return new Promise(() => {});
+        }
+        throw err;
+      })
+  );
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Public entry points stay eager for fast first paint.
@@ -8,59 +42,59 @@ import Unauthorized from "./pages/Unauthorized";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 
 // Everything else is code-split — each route loads its own chunk on demand.
-const MarketingDashboard = lazy(() => import("./pages/MarketingDashboard"));
-const CustomerProfile = lazy(() => import("./pages/CustomerProfile"));
-const CreateCustomer = lazy(() => import("./pages/CreateCustomer"));
-const CustomerDirectoryClean = lazy(() => import("./pages/CustomerDirectoryClean"));
-const AdminExpenses = lazy(() => import("./pages/AdminExpenses"));
-const BriefsList = lazy(() => import("./pages/BriefsList"));
-const CreativeBrief = lazy(() => import("./pages/CreativeBrief"));
-const PublicCreativeBrief = lazy(() => import("./pages/PublicCreativeBrief"));
-const PublicBriefStart = lazy(() => import("./pages/PublicBriefStart"));
-const PublicClientApproval = lazy(() => import("./pages/PublicClientApproval"));
-const PublicCapture = lazy(() => import("./pages/PublicCapture"));
-const PublicLegal = lazy(() => import("./pages/PublicLegal"));
-const CreateUser = lazy(() => import("./pages/CreateUser"));
-const BudgetManagement = lazy(() => import("./pages/BudgetManagement"));
-const TeamManagement = lazy(() => import("./pages/TeamManagement"));
-const TeamDashboardClean = lazy(() => import("./pages/TeamDashboardClean"));
-const EmployeeDashboardClean = lazy(() => import("./pages/EmployeeDashboardClean"));
-const SocialHub = lazy(() => import("./pages/SocialHub"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Connections = lazy(() => import("./pages/Connections"));
-const ContentPlanningCenter = lazy(() => import("./pages/ContentPlanningCenter"));
-const ApprovalsHub = lazy(() => import("./pages/ApprovalsHub"));
-const MyWork = lazy(() => import("./pages/MyWork"));
-const ProjectManagement = lazy(() => import("./pages/ProjectManagement"));
-const ProjectDetails = lazy(() => import("./pages/ProjectDetails"));
-const CreateProject = lazy(() => import("./pages/CreateProject"));
-const FunnelBoard = lazy(() => import("./pages/FunnelBoard"));
-const ClientDashboard = lazy(() => import("./pages/ClientDashboard"));
-const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
-const LeadsCapture = lazy(() => import("./pages/LeadsCapture"));
-const LeadsManage = lazy(() => import("./pages/LeadsManage"));
-const LeadsAnalytics = lazy(() => import("./pages/LeadsAnalytics"));
-const IncomeDashboard = lazy(() => import("./pages/IncomeDashboard"));
-const SubscriptionsManager = lazy(() => import("./pages/SubscriptionsManager"));
-const PaymentManagement = lazy(() => import("./pages/PaymentManagement"));
-const CobrosTracker = lazy(() => import("./pages/CobrosTracker"));
-const InvoiceGenerator = lazy(() => import("./pages/InvoiceGenerator"));
-const InvoicesManager = lazy(() => import("./pages/InvoicesManager"));
-const BancosManager = lazy(() => import("./pages/BancosManager"));
-const NominaFiscal = lazy(() => import("./pages/NominaFiscal"));
-const EstadosFinancieros = lazy(() => import("./pages/EstadosFinancieros"));
-const InvoiceDetail = lazy(() => import("./pages/InvoiceDetail"));
-const PayrollManagement = lazy(() => import("./pages/PayrollManagement"));
-const FinancialStatements = lazy(() => import("./pages/FinancialStatements"));
-const PeopleManagement = lazy(() => import("./pages/PeopleManagement"));
-const AddonsManager = lazy(() => import("./pages/AddonsManager"));
-const IncomeReports = lazy(() => import("./pages/IncomeReports"));
-const CustomerImport = lazy(() => import("./pages/CustomerImport"));
-const NotificationHub = lazy(() => import("./pages/NotificationHub"));
-const MessageHub = lazy(() => import("./pages/MessageHub"));
-const SocialAccountsManager = lazy(() => import("./pages/SocialAccountsManager"));
-const AdAccountsManager = lazy(() => import("./pages/AdAccountsManager"));
-const TasksBoard = lazy(() => import("./pages/TasksBoard"));
+const MarketingDashboard = lazyWithReload(() => import("./pages/MarketingDashboard"));
+const CustomerProfile = lazyWithReload(() => import("./pages/CustomerProfile"));
+const CreateCustomer = lazyWithReload(() => import("./pages/CreateCustomer"));
+const CustomerDirectoryClean = lazyWithReload(() => import("./pages/CustomerDirectoryClean"));
+const AdminExpenses = lazyWithReload(() => import("./pages/AdminExpenses"));
+const BriefsList = lazyWithReload(() => import("./pages/BriefsList"));
+const CreativeBrief = lazyWithReload(() => import("./pages/CreativeBrief"));
+const PublicCreativeBrief = lazyWithReload(() => import("./pages/PublicCreativeBrief"));
+const PublicBriefStart = lazyWithReload(() => import("./pages/PublicBriefStart"));
+const PublicClientApproval = lazyWithReload(() => import("./pages/PublicClientApproval"));
+const PublicCapture = lazyWithReload(() => import("./pages/PublicCapture"));
+const PublicLegal = lazyWithReload(() => import("./pages/PublicLegal"));
+const CreateUser = lazyWithReload(() => import("./pages/CreateUser"));
+const BudgetManagement = lazyWithReload(() => import("./pages/BudgetManagement"));
+const TeamManagement = lazyWithReload(() => import("./pages/TeamManagement"));
+const TeamDashboardClean = lazyWithReload(() => import("./pages/TeamDashboardClean"));
+const EmployeeDashboardClean = lazyWithReload(() => import("./pages/EmployeeDashboardClean"));
+const SocialHub = lazyWithReload(() => import("./pages/SocialHub"));
+const Analytics = lazyWithReload(() => import("./pages/Analytics"));
+const Connections = lazyWithReload(() => import("./pages/Connections"));
+const ContentPlanningCenter = lazyWithReload(() => import("./pages/ContentPlanningCenter"));
+const ApprovalsHub = lazyWithReload(() => import("./pages/ApprovalsHub"));
+const MyWork = lazyWithReload(() => import("./pages/MyWork"));
+const ProjectManagement = lazyWithReload(() => import("./pages/ProjectManagement"));
+const ProjectDetails = lazyWithReload(() => import("./pages/ProjectDetails"));
+const CreateProject = lazyWithReload(() => import("./pages/CreateProject"));
+const FunnelBoard = lazyWithReload(() => import("./pages/FunnelBoard"));
+const ClientDashboard = lazyWithReload(() => import("./pages/ClientDashboard"));
+const LeadsInbox = lazyWithReload(() => import("./pages/LeadsInbox"));
+const LeadsCapture = lazyWithReload(() => import("./pages/LeadsCapture"));
+const LeadsManage = lazyWithReload(() => import("./pages/LeadsManage"));
+const LeadsAnalytics = lazyWithReload(() => import("./pages/LeadsAnalytics"));
+const IncomeDashboard = lazyWithReload(() => import("./pages/IncomeDashboard"));
+const SubscriptionsManager = lazyWithReload(() => import("./pages/SubscriptionsManager"));
+const PaymentManagement = lazyWithReload(() => import("./pages/PaymentManagement"));
+const CobrosTracker = lazyWithReload(() => import("./pages/CobrosTracker"));
+const InvoiceGenerator = lazyWithReload(() => import("./pages/InvoiceGenerator"));
+const InvoicesManager = lazyWithReload(() => import("./pages/InvoicesManager"));
+const BancosManager = lazyWithReload(() => import("./pages/BancosManager"));
+const NominaFiscal = lazyWithReload(() => import("./pages/NominaFiscal"));
+const EstadosFinancieros = lazyWithReload(() => import("./pages/EstadosFinancieros"));
+const InvoiceDetail = lazyWithReload(() => import("./pages/InvoiceDetail"));
+const PayrollManagement = lazyWithReload(() => import("./pages/PayrollManagement"));
+const FinancialStatements = lazyWithReload(() => import("./pages/FinancialStatements"));
+const PeopleManagement = lazyWithReload(() => import("./pages/PeopleManagement"));
+const AddonsManager = lazyWithReload(() => import("./pages/AddonsManager"));
+const IncomeReports = lazyWithReload(() => import("./pages/IncomeReports"));
+const CustomerImport = lazyWithReload(() => import("./pages/CustomerImport"));
+const NotificationHub = lazyWithReload(() => import("./pages/NotificationHub"));
+const MessageHub = lazyWithReload(() => import("./pages/MessageHub"));
+const SocialAccountsManager = lazyWithReload(() => import("./pages/SocialAccountsManager"));
+const AdAccountsManager = lazyWithReload(() => import("./pages/AdAccountsManager"));
+const TasksBoard = lazyWithReload(() => import("./pages/TasksBoard"));
 
 const PageLoader = () => (
   <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#E8E8E5", color: "#04111A", fontFamily: "'Bricolage', Helvetica, Arial, sans-serif", fontSize: 15, opacity: 0.55 }}>
