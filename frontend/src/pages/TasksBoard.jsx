@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import PixelMark from "../components/PixelMark";
 import Telemetry from "../components/Telemetry";
@@ -42,7 +43,9 @@ const TasksBoard = () => {
   const [err, setErr] = useState("");
   const [filter, setFilter] = useState("open");
   const [group, setGroup] = useState(() => localStorage.getItem("zxtk.group") || "proyecto");
-  const [customerFilter, setCustomerFilter] = useState("all");
+  // Deep-link support: /tareas?customer=<id> preselects the client.
+  const [searchParams] = useSearchParams();
+  const [customerFilter, setCustomerFilter] = useState(() => searchParams.get("customer") || "all");
   const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage.getItem("zxtk.group") || "proyecto"));
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 

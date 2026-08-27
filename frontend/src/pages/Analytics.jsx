@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
   BarElement, Tooltip, Filler,
@@ -84,7 +85,10 @@ const postMediaUrl = (u) => (u ? (/^(https?:|data:)/.test(u) ? u : `${API_BASE_U
 
 const Analytics = () => {
   const [customers, setCustomers] = useState([]);
-  const [customerFilter, setCustomerFilter] = useState("all");
+  // Deep-link support: /social-analytics?customer=<id> preselects the client,
+  // so the client hub can hand off without losing context.
+  const [searchParams] = useSearchParams();
+  const [customerFilter, setCustomerFilter] = useState(() => searchParams.get("customer") || "all");
   const [range, setRange] = useState(30);
   const [social, setSocial] = useState([]);
   const [spend, setSpend] = useState([]);
