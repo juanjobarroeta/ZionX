@@ -46,9 +46,12 @@ async function resolveAccount(pool, customerId, platform) {
 // batch query (the range endpoint) or a single resolveAccount() lookup.
 function computeReadiness(entry, hasAccount) {
   const missing = [];
+  const isStory = (entry.content_type || "").toLowerCase() === "story";
   if (!APPROVED_INTERNAL.has((entry.status || "").toLowerCase())) missing.push("aprobación interna");
   if (CLIENT_BLOCKED.has((entry.client_status || "").toLowerCase())) missing.push("aprobación del cliente");
-  if (!hasText(entry.copy_out) && !hasText(entry.copy_in)) missing.push("copy");
+  // Stories carry no caption — demanding copy for one blocks publishing on a
+  // field Instagram will never show.
+  if (!isStory && !hasText(entry.copy_out) && !hasText(entry.copy_in)) missing.push("copy");
   if ((entry.platform || "").toLowerCase() === "instagram" && !hasText(entry.arte)) missing.push("arte");
   if (!entry.scheduled_date && !entry.publish_date) missing.push("fecha");
   if (!hasAccount) missing.push(`cuenta de ${platLabel(entry.platform)} conectada`);

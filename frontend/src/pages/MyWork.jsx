@@ -147,7 +147,13 @@ const MyWork = () => {
         <div className="title">{postTitle(stage)}</div>
         <div className="client">{stage.customer_name || "—"}</div>
         <div className="foot">
-          <span className="date">{fmtDate(stage.scheduled_date)}</span>
+          <span className="date">
+            {stage.due_date ? (
+              <span className={new Date(stage.due_date) < new Date(new Date().toDateString()) && stage.status !== "listo" ? "zxw-due-over" : undefined}>
+                entrega {fmtDate(stage.due_date)}
+              </span>
+            ) : fmtDate(stage.scheduled_date)}
+          </span>
           <span className="zxw-roles">
             <span className="zxw-role stage">{STAGE_LABELS[stage.stage_key] || stage.stage_key}</span>
           </span>

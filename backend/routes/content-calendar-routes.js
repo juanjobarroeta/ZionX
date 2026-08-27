@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const publishSync = require('../services/publishSync');
-const { seedStagesForPost } = require('../services/pipeline');
+const { seedStagesForPost, recomputeDueDates } = require('../services/pipeline');
 
 // Public base for building absolute media URLs Meta can fetch.
 const publicBase = (req) =>
@@ -109,6 +109,9 @@ router.get("/content-calendar-range", async (req, res) => {
         cc.id, cc.customer_id, cc.campaign, cc.platform, cc.pilar, cc.content_type,
         cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_in, cc.copy_out, cc.arte,
         cc.priority, cc.client_status, cc.scheduled_post_id,
+        (SELECT COUNT(*)::int FROM post_pipeline_stages pps
+          WHERE pps.content_calendar_id = cc.id
+            AND pps.optional = false AND pps.status <> 'listo') AS pending_stages,
         cc.assigned_designer, cc.assigned_community_manager,
         COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
         designer.name AS designer_name,
@@ -189,6 +192,12 @@ router.put("/content-calendar/:id", async (req, res) => {
       WHERE id = $1
       RETURNING *
     `, values);
+
+    // Moving the publish date moves every pending deadline with it — the
+    // production plan is derived backwards from the date it serves.
+    if ('scheduled_date' in updates && result.rows[0]) {
+      await recomputeDueDates(pool, id, result.rows[0].scheduled_date);
+    }
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {

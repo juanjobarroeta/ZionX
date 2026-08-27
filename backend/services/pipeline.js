@@ -32,6 +32,50 @@ const CANONICAL_STAGES = [
   { stage_key: "schedule",          position: 7, optional: false, roster_field: "assigned_community" },
 ];
 
+// Working backwards from the publish date: how many days before it each stage
+// is due. The order mirrors reality — production first, approvals after,
+// queueing last. A stage with no publish date has no deadline.
+const PIPELINE_OFFSETS = {
+  design: 3,
+  copy: 3,
+  music: 3,
+  internal_approval: 2,
+  client_approval: 1,
+  paid_promo: 1,
+  schedule: 1,
+};
+
+/** The stage's deadline for a given publish date (Date | null). */
+function dueDateFor(scheduledDate, stageKey) {
+  if (!scheduledDate) return null;
+  const d = new Date(scheduledDate);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() - (PIPELINE_OFFSETS[stageKey] ?? 0));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Recompute every stage deadline from the post's current publish date. Done
+ * stages keep their dates (finished work doesn't need a new deadline); the rest
+ * follow the new date. Called on seed and whenever scheduled_date changes.
+ * Best-effort — never throws.
+ */
+async function recomputeDueDates(pool, postId, scheduledDate) {
+  try {
+    for (const s of CANONICAL_STAGES) {
+      await pool.query(
+        `UPDATE post_pipeline_stages SET due_date = $3
+          WHERE content_calendar_id = $1 AND stage_key = $2 AND status <> 'listo'`,
+        [postId, s.stage_key, dueDateFor(scheduledDate, s.stage_key)]
+      );
+    }
+    return true;
+  } catch (err) {
+    console.error(`⚠️ recomputeDueDates(${postId}) skipped:`, err.message);
+    return false;
+  }
+}
+
 const STAGE_KEYS = CANONICAL_STAGES.map((s) => s.stage_key);
 const isValidStageKey = (k) => STAGE_KEYS.includes(k);
 const stageDef = (k) => CANONICAL_STAGES.find((s) => s.stage_key === k) || null;
@@ -59,7 +103,7 @@ function nextRequiredStage(stageKey) {
 async function seedStagesForPost(pool, postId) {
   try {
     const { rows } = await pool.query(
-      `SELECT cc.id AS post_id,
+      `SELECT cc.id AS post_id, cc.scheduled_date,
               c.assigned_designer, c.assigned_community, c.assigned_senior
          FROM content_calendar cc
          LEFT JOIN customers c ON c.id = cc.customer_id
@@ -73,12 +117,14 @@ async function seedStagesForPost(pool, postId) {
       const ownerId = s.roster_field ? (roster[s.roster_field] ?? null) : null;
       await pool.query(
         `INSERT INTO post_pipeline_stages
-           (content_calendar_id, stage_key, owner_id, status, optional, position)
-         VALUES ($1, $2, $3, 'pendiente', $4, $5)
+           (content_calendar_id, stage_key, owner_id, status, optional, position, due_date)
+         VALUES ($1, $2, $3, 'pendiente', $4, $5, $6)
          ON CONFLICT (content_calendar_id, stage_key) DO NOTHING`,
-        [postId, s.stage_key, ownerId, s.optional, s.position]
+        [postId, s.stage_key, ownerId, s.optional, s.position, dueDateFor(roster.scheduled_date, s.stage_key)]
       );
     }
+    // Older posts seeded before deadlines existed pick them up here too.
+    await recomputeDueDates(pool, postId, roster.scheduled_date);
     return true;
   } catch (err) {
     console.error(`⚠️ seedStagesForPost(${postId}) skipped:`, err.message);
@@ -139,6 +185,9 @@ async function advanceAfter(pool, postId, stageKey) {
 }
 
 module.exports = {
+  recomputeDueDates,
+  dueDateFor,
+  PIPELINE_OFFSETS,
   CANONICAL_STAGES,
   STAGE_KEYS,
   STAGE_STATUSES,

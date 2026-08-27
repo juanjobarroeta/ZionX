@@ -83,7 +83,7 @@ function postLabel(post) {
 async function loadStages(pool, postId) {
   const { rows } = await pool.query(
     `SELECT s.id, s.content_calendar_id, s.stage_key, s.owner_id, s.status,
-            s.optional, s.position, s.updated_at,
+            s.optional, s.position, s.due_date, s.updated_at,
             tm.name AS owner_name, tm.role AS owner_role
        FROM post_pipeline_stages s
        LEFT JOIN team_members tm ON tm.id = s.owner_id
@@ -291,7 +291,7 @@ router.get('/pipeline/my-queue', async (req, res) => {
 
     const { rows } = await pool.query(
       `SELECT s.id, s.content_calendar_id AS post_id, s.stage_key, s.status,
-              s.optional, s.position,
+              s.optional, s.position, s.due_date,
               cc.customer_id, cc.campaign, cc.idea_tema, cc.title, cc.platform,
               cc.content_type, cc.scheduled_date, cc.status AS post_status,
               COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,

@@ -113,7 +113,7 @@ class MetaService {
    * Wait for Instagram media container to be ready before publishing.
    * Containers can take several seconds to process, especially for carousels.
    */
-  async waitForContainerReady(containerId, accessToken, maxAttempts = 10) {
+  async waitForContainerReady(containerId, accessToken, maxAttempts = 10, delayMs = 2000) {
     for (let i = 0; i < maxAttempts; i++) {
       const response = await axios.get(
         `${this.baseUrl}/${containerId}`,
@@ -126,7 +126,7 @@ class MetaService {
         return { ready: false, error: response.data.status || 'Container processing failed' };
       }
       // IN_PROGRESS — wait and retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, delayMs));
     }
     return { ready: false, error: 'Container processing timed out' };
   }
@@ -476,6 +476,72 @@ class MetaService {
         success: false,
         error: error.response?.data?.error?.message || error.message
       };
+    }
+  }
+
+  /**
+   * Publish a reel. Same container dance as a photo, but media_type=REELS with
+   * a video URL — and video transcoding takes real time, so the readiness wait
+   * is much longer (up to ~3 min) before giving up.
+   */
+  async postReelToInstagram(igAccountId, accessToken, { videoUrl, caption, shareToFeed = true }) {
+    try {
+      const container = await axios.post(`${this.baseUrl}/${igAccountId}/media`, {
+        media_type: 'REELS',
+        video_url: videoUrl,
+        caption: caption,
+        share_to_feed: shareToFeed,
+        access_token: accessToken,
+      });
+      const containerId = container.data.id;
+      console.log(`📦 Created reel container: ${containerId}`);
+
+      const readiness = await this.waitForContainerReady(containerId, accessToken, 60, 3000);
+      if (!readiness.ready) {
+        return { success: false, error: readiness.error || 'El video no terminó de procesarse' };
+      }
+
+      const publish = await axios.post(`${this.baseUrl}/${igAccountId}/media_publish`, {
+        creation_id: containerId,
+        access_token: accessToken,
+      });
+      console.log(`✅ Published reel to Instagram:`, publish.data.id);
+      return { success: true, mediaId: publish.data.id };
+    } catch (error) {
+      console.error('Error posting reel:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error?.message || error.message };
+    }
+  }
+
+  /**
+   * Publish a story — image or video, no caption (stories don't carry one).
+   * They live 24h; the account keeps the media in its archive.
+   */
+  async postStoryToInstagram(igAccountId, accessToken, { mediaUrl, isVideo = false }) {
+    try {
+      const payload = {
+        media_type: 'STORIES',
+        access_token: accessToken,
+        ...(isVideo ? { video_url: mediaUrl } : { image_url: mediaUrl }),
+      };
+      const container = await axios.post(`${this.baseUrl}/${igAccountId}/media`, payload);
+      const containerId = container.data.id;
+      console.log(`📦 Created story container: ${containerId}`);
+
+      const readiness = await this.waitForContainerReady(containerId, accessToken, isVideo ? 60 : 15, isVideo ? 3000 : 2000);
+      if (!readiness.ready) {
+        return { success: false, error: readiness.error || 'La historia no terminó de procesarse' };
+      }
+
+      const publish = await axios.post(`${this.baseUrl}/${igAccountId}/media_publish`, {
+        creation_id: containerId,
+        access_token: accessToken,
+      });
+      console.log(`✅ Published story to Instagram:`, publish.data.id);
+      return { success: true, mediaId: publish.data.id };
+    } catch (error) {
+      console.error('Error posting story:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error?.message || error.message };
     }
   }
 
