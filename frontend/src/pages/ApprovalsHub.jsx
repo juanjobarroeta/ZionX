@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import ApprovalModal from "../components/ApprovalModal";
 import { API_BASE_URL } from "../utils/constants";
 import "./Approvals.css";
@@ -54,34 +54,30 @@ const ApprovalsHub = () => {
   const onActionComplete = () => { setShowModal(false); setSelected(null); fetchQueue(); };
 
   return (
-    <Layout>
-      <div className="zxa">
-        <div className="zxa-inner">
-          <div className="zxa-head">
-            <div>
-              <div className="zxa-eyebrow">Contenido</div>
-              <h1 className="zxa-h1">Cola de <span className="zxa-serif">aprobaciones</span></h1>
-              <p className="zxa-sub">Contenido pendiente de revisión interna y sign-off del cliente.</p>
-            </div>
-          </div>
+    <>
+      <PageShell
+        className="zxap"
+        eyebrow="Contenido"
+        title="Cola de"
+        titleAccent="aprobaciones"
+        telemetry={[
+          { k: "Pendientes", v: stats.pending_review ?? queue.length, tone: "brass" },
+          { k: "Míos", v: stats.my_pending ?? 0 },
+          { k: "Aprobados · 7d", v: stats.approved_this_week ?? 0 },
+          { k: "Cambios · 7d", v: stats.revisions_this_week ?? 0, tone: "crit" },
+        ]}
+      >
 
-          <div className="zxa-stats">
-            <div className="zxa-stat warn"><span className="v">{stats.pending_review ?? queue.length}</span><span className="k">Pendientes</span></div>
-            <div className="zxa-stat info"><span className="v">{stats.my_pending ?? 0}</span><span className="k">Míos</span></div>
-            <div className="zxa-stat ok"><span className="v">{stats.approved_this_week ?? 0}</span><span className="k">Aprobados (semana)</span></div>
-            <div className="zxa-stat bad"><span className="v">{stats.revisions_this_week ?? 0}</span><span className="k">Cambios (semana)</span></div>
-          </div>
-
-          <div className="zxa-list">
-            <div className="zxa-list-head">
+          <div className="zxap-list">
+            <div className="zxap-list-head">
               <h2>📋 Por revisar</h2>
               <p>Abre un post para aprobar, solicitar cambios o reasignar el aprobador.</p>
             </div>
 
             {loading ? (
-              <div className="zxa-loading">Cargando cola…</div>
+              <div className="zxap-loading">Cargando cola…</div>
             ) : queue.length === 0 ? (
-              <div className="zxa-empty">
+              <div className="zxap-empty">
                 <span className="big">✅</span>
                 <div className="lead">No hay contenido pendiente de aprobación</div>
                 <div>¡Todo está al día!</div>
@@ -90,35 +86,34 @@ const ApprovalsHub = () => {
               queue.map((item) => {
                 const pill = pillOf(item.approval_status);
                 return (
-                  <div key={item.id} className="zxa-row" onClick={() => openReview(item)}>
-                    <div className="zxa-row-main">
-                      <div className="zxa-row-title">
+                  <div key={item.id} className="zxap-row" onClick={() => openReview(item)}>
+                    <div className="zxap-row-main">
+                      <div className="zxap-row-title">
                         <span>{platIcon(item.platform)}</span>
                         <span className="t">{item.campaign || item.idea_tema || "Sin título"}</span>
-                        {item.current_revision > 1 && <span className="zxa-rev">Rev. #{item.current_revision}</span>}
+                        {item.current_revision > 1 && <span className="zxap-rev">Rev. #{item.current_revision}</span>}
                       </div>
-                      <div className="zxa-row-meta">{item.customer_name || "—"} · {item.content_type || "Post"}</div>
-                      <div className="zxa-row-tags">
+                      <div className="zxap-row-meta">{item.customer_name || "—"} · {item.content_type || "Post"}</div>
+                      <div className="zxap-row-tags">
                         <span>📅 {fmtDate(item.scheduled_date)}</span>
                         {item.designer_name && <span>🎨 {item.designer_name}</span>}
                         {item.cm_name && <span>📱 {item.cm_name}</span>}
                         {item.approver_name && <span>👤 {item.approver_name}</span>}
                       </div>
                       {item.rejection_reason && (
-                        <div className="zxa-reject-note">⚠️ Última corrección: {item.rejection_reason.slice(0, 120)}</div>
+                        <div className="zxap-reject-note">⚠️ Última corrección: {item.rejection_reason.slice(0, 120)}</div>
                       )}
                     </div>
-                    <div className="zxa-row-side">
-                      <span className={`zxa-pill ${pill.cls}`}>{pill.label}</span>
-                      <button className="zxa-btn" onClick={(e) => { e.stopPropagation(); openReview(item); }}>Revisar →</button>
+                    <div className="zxap-row-side">
+                      <span className={`zxap-pill ${pill.cls}`}>{pill.label}</span>
+                      <button className="zxap-btn" onClick={(e) => { e.stopPropagation(); openReview(item); }}>Revisar →</button>
                     </div>
                   </div>
                 );
               })
             )}
           </div>
-        </div>
-      </div>
+      </PageShell>
 
       <ApprovalModal
         isOpen={showModal}
@@ -126,7 +121,7 @@ const ApprovalsHub = () => {
         content={selected}
         onActionComplete={onActionComplete}
       />
-    </Layout>
+    </>
   );
 };
 

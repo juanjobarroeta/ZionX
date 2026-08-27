@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName, customerContact } from "../utils/customerName";
 import "./Directory.css";
@@ -71,22 +71,18 @@ const CustomerDirectoryClean = () => {
   }, [customers]);
 
   return (
-    <Layout>
-      <div className="zxcr">
-        <div className="zxcr-inner">
-          <div className="zxcr-head">
-            <div>
-              <div className="zxcr-eyebrow">Clientes</div>
-              <h1 className="zxcr-h1">Directorio de <span className="zxcr-serif">clientes</span></h1>
-            </div>
-            <Link to="/create-customer" className="zxcr-new">+ Nuevo cliente</Link>
-          </div>
-
-          <div className="zxcr-stats">
-            <div className="zxcr-stat"><span className="v">{stats.total}</span><span className="k">Clientes</span></div>
-            <div className="zxcr-stat"><span className="v">{stats.withEmail}</span><span className="k">Con correo</span></div>
-            <div className="zxcr-stat"><span className="v">{stats.industries}</span><span className="k">Industrias</span></div>
-          </div>
+    <PageShell
+      className="zxcr"
+      eyebrow="Clientes"
+      title="Directorio de"
+      titleAccent="clientes"
+      actions={<Link to="/create-customer" className="zx-btn on-ink">Nuevo cliente</Link>}
+      telemetry={[
+        { k: "Clientes", v: stats.total },
+        { k: "Con correo", v: stats.withEmail },
+        { k: "Industrias", v: stats.industries },
+      ]}
+    >
 
           <input
             className="zxcr-search"
@@ -130,9 +126,7 @@ const CustomerDirectoryClean = () => {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 

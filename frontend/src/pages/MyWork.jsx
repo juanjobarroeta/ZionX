@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import Layout from "../components/Layout";
+import PageShell from "../components/PageShell";
 import { API_BASE_URL } from "../utils/constants";
 import { contentStatusInfo } from "../config/contentStatus";
 import { STAGE_LABELS, STATUS_LABELS, STATUS_VARIANT } from "../config/pipeline";
@@ -229,14 +229,18 @@ const MyWork = () => {
     state.items.length === 0 && !hasQueue && !hasSupervision && !hasTasks;
 
   return (
-    <Layout>
-      <div className="zxw">
-        <div className="zxw-inner">
-          <div className="zxw-head">
-            <div className="eyebrow">Tu día</div>
-            <h1>Mi <span className="zxw-serif">trabajo</span></h1>
-            <div className="greet">{firstName ? `Hola, ${firstName}. ` : ""}Todo lo que está en tus manos, en un solo lugar.</div>
-          </div>
+    <PageShell
+      className="zxw"
+      eyebrow={firstName ? `Tu día · Hola, ${firstName}` : "Tu día"}
+      title="Mi"
+      titleAccent="trabajo"
+      telemetry={[
+        { k: "Cambios", v: groupedQueue.cambios.length, tone: "crit" },
+        { k: "En progreso", v: groupedQueue.en_progreso.length, tone: "brass" },
+        { k: "Por empezar", v: groupedQueue.ready.length },
+        { k: "En espera", v: groupedQueue.blocked.length },
+      ]}
+    >
 
           {state.loading && queue.loading ? (
             <div className="zxw-loading">Cargando tu trabajo…</div>
@@ -250,13 +254,6 @@ const MyWork = () => {
               {/* ---- Personal production queue ---- */}
               {hasQueue && (
                 <section className="zxw-section">
-                  <div className="zxw-tiles">
-                    <div className="zxw-tile bad"><span className="v">{groupedQueue.cambios.length}</span><span className="k">Cambios</span></div>
-                    <div className="zxw-tile warn"><span className="v">{groupedQueue.en_progreso.length}</span><span className="k">En progreso</span></div>
-                    <div className="zxw-tile ok"><span className="v">{groupedQueue.ready.length}</span><span className="k">Por empezar</span></div>
-                    <div className="zxw-tile muted"><span className="v">{groupedQueue.blocked.length}</span><span className="k">En espera</span></div>
-                  </div>
-
                   <div className="zxw-section-head">
                     <h2>Tu cola de <span className="zxw-serif">producción</span></h2>
                     <span className="zxw-section-sub">{actionable} etapa{actionable === 1 ? "" : "s"} en tus manos ahora</span>
@@ -345,9 +342,7 @@ const MyWork = () => {
               )}
             </>
           )}
-        </div>
-      </div>
-    </Layout>
+    </PageShell>
   );
 };
 
