@@ -713,6 +713,26 @@ const createTables = async (pool) => {
         last_detail TEXT
       );
     `);
+    // Monthly client reports: a tokenized, read-only page a client can open
+    // without an account. One live token per (client, month) so re-sending the
+    // link doesn't invalidate the one already in their inbox.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_reports (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        period_month DATE NOT NULL,
+        token VARCHAR(64) NOT NULL UNIQUE,
+        headline TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_viewed_at TIMESTAMP,
+        view_count INTEGER DEFAULT 0,
+        UNIQUE (customer_id, period_month)
+      );
+      CREATE INDEX IF NOT EXISTS idx_client_reports_token ON client_reports(token);
+    `);
+    console.log("✅ Client report tables ready");
+
     console.log("✅ Analytics history tables ready");
 
 

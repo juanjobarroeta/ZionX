@@ -181,7 +181,9 @@ const Analytics = () => {
 
   const prevOf = useCallback((rows, key) => sum(align(prevDays, rows, "day", key)), [prevDays]);
   const dViews = deltaOf(sum(viewsSeries), prevOf(social, "views"));
-  const dReach = deltaOf(sum(reachSeries), prevOf(social, "reach"));
+  // Both sides of the comparison are per-day averages, so the delta is like-for-like.
+  const reachDays = Math.max(1, reachSeries.filter((v) => v != null).length);
+  const dReach = deltaOf(sum(reachSeries) / reachDays, prevOf(social, "reach") / Math.max(1, prevDays.length));
   const dInteractions = deltaOf(sum(interactionSeries), prevOf(social, "interactions"));
   const dSpend = deltaOf(sum(spendSeries), prevOf(spend, "spend"));
   const dDms = deltaOf(sum(dmSeries), prevOf(spend, "conversations_started"));
@@ -330,7 +332,9 @@ const Analytics = () => {
         }
         telemetry={[
           { k: "Vistas", v: sum(viewsSeries), delta: dViews },
-          { k: "Alcance", v: sum(reachSeries), delta: dReach },
+          // Reach is unique accounts per day; summing days counts a person once
+          // per day. Show the daily average, which is a number that holds.
+          { k: "Alcance diario", v: Math.round(sum(reachSeries) / Math.max(1, reachSeries.filter((v) => v != null).length)), delta: dReach },
           { k: "Interacciones", v: sum(interactionSeries), delta: dInteractions },
           { k: "Seguidores", v: followers,
             delta: netFollowers !== 0 ? { text: `${netFollowers > 0 ? "+" : "−"}${Math.abs(netFollowers)}`, dir: netFollowers > 0 ? "up" : "down" } : null },
@@ -346,7 +350,7 @@ const Analytics = () => {
                 <section className="zxa-card">
                   <div className="zxa-card-head">
                     <h2>Vistas y alcance</h2>
-                    <span className="sub">{fmtNum(sum(viewsSeries))} vistas · {fmtNum(sum(reachSeries))} alcance{deltaText(dViews)}</span>
+                    <span className="sub">{fmtNum(sum(viewsSeries))} vistas · {fmtNum(sum(reachSeries) / Math.max(1, reachSeries.filter((v) => v != null).length))} alcance diario prom.{deltaText(dViews)}</span>
                   </div>
                   <div className="zxa-legend">
                     <span><i className="zxa-key" style={{ background: COLOR.views }} /> Vistas</span>

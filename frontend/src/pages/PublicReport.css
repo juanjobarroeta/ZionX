@@ -1,0 +1,101 @@
+/* ============================================================================
+   Reporte mensual — the one ZIONX page a client sees.
+   No sidebar, no app chrome: it opens from an email on a phone as often as a
+   desktop. Same brand as the landing, because for many clients this and the
+   landing are the only ZIONX they ever look at.
+   ========================================================================== */
+
+.zxr {
+  min-height: 100vh;
+  background: var(--zx-bg);
+  color: var(--zx-ink);
+  font-family: var(--zx-sans);
+}
+.zxr * { box-sizing: border-box; }
+
+/* ---------- masthead ---------- */
+.zxr-top {
+  background: var(--zx-ink); color: var(--zx-paper);
+  padding: 32px 32px 0;
+}
+.zxr-top-in { max-width: 1000px; margin: 0 auto; }
+.zxr-brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.zxr-brand img { height: 20px; display: block; }
+.zxr-period {
+  font-family: var(--zx-mono); font-size: 11px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--zx-muted-ink);
+}
+.zxr-title { margin: 26px 0 0; font-size: clamp(30px, 5vw, 48px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.zxr-headline {
+  margin: 14px 0 0; max-width: 60ch; font-size: 16px; line-height: 1.6;
+  color: rgba(242, 243, 241, 0.72);
+}
+
+/* Headline figures, on the ink ground. */
+.zxr-figures {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 2px; margin-top: 30px;
+  background: var(--zx-line-ink); border-top: 1px solid var(--zx-line-ink);
+}
+.zxr-fig { background: var(--zx-ink); padding: 18px 4px 22px; }
+.zxr-fig .k {
+  display: block; font-family: var(--zx-mono); font-size: 10px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--zx-muted-ink);
+}
+.zxr-fig .v { display: block; margin-top: 6px; font-size: 27px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.zxr-fig .d { font-family: var(--zx-mono); font-size: 11px; }
+.zxr-fig .d.up { color: var(--zx-ok-ink); }
+.zxr-fig .d.down { color: var(--zx-crit-ink); }
+.zxr-fig .d.flat { color: var(--zx-muted-ink); }
+
+/* ---------- body ---------- */
+.zxr-body { max-width: 1000px; margin: 0 auto; padding: 30px 32px 72px; display: flex; flex-direction: column; gap: 22px; }
+.zxr-card { background: var(--zx-paper); border: 1px solid var(--zx-line); padding: 22px 24px; }
+.zxr-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.zxr-card .sub { margin: 0 0 16px; font-size: 13px; color: var(--zx-muted); }
+.zxr-plot { height: 240px; position: relative; }
+
+.zxr-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.zxr-legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--zx-muted); }
+.zxr-key { width: 16px; height: 2px; border-radius: 1px; display: inline-block; }
+
+/* ---------- best posts ---------- */
+.zxr-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.zxr-post { border: 1px solid var(--zx-line); background: var(--zx-surface); display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+.zxr-post:hover { border-color: var(--zx-ink); }
+.zxr-post-media { position: relative; aspect-ratio: 4 / 5; background: var(--zx-ink); overflow: hidden; }
+.zxr-post-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.zxr-post-media .stripes {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, rgba(242,243,241,0.07) 0, rgba(242,243,241,0.07) 10px, transparent 10px, transparent 20px);
+}
+.zxr-post-media .fmt {
+  position: absolute; top: 9px; left: 9px;
+  font-family: var(--zx-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(242,243,241,0.9); background: rgba(4,17,26,0.55); padding: 2px 7px; border-radius: 2px;
+}
+.zxr-post-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; }
+.zxr-post-cap { font-size: 12.5px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.zxr-post-num { font-family: var(--zx-mono); font-size: 11px; color: var(--zx-muted); }
+
+/* ---------- ads ---------- */
+.zxr-ads { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+.zxr-ad .k { display: block; font-family: var(--zx-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--zx-muted); }
+.zxr-ad .v { display: block; margin-top: 4px; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+
+.zxr-foot {
+  max-width: 1000px; margin: 0 auto; padding: 0 32px 48px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  font-size: 12px; color: var(--zx-muted);
+}
+.zxr-foot .zxr-serif { font-family: var(--zx-serif); font-style: italic; }
+
+.zxr-state { max-width: 1000px; margin: 0 auto; padding: 80px 32px; text-align: center; color: var(--zx-muted); }
+.zxr-state strong { display: block; font-size: 19px; color: var(--zx-ink); margin-bottom: 8px; font-weight: 600; }
+
+@media (max-width: 700px) {
+  .zxr-top { padding: 22px 18px 0; }
+  .zxr-body { padding: 22px 18px 56px; }
+  .zxr-foot { padding: 0 18px 36px; }
+  .zxr-plot { height: 200px; }
+}
