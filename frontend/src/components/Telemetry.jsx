@@ -15,16 +15,19 @@ const fmt = (v) => {
  * monospace, zero-padded, aligned — and colored only when the number carries
  * urgency (brass = in flight, crit = broken).
  *
- * items: [{ k: "Programadas", v: 12, tone: "brass" | "crit" }]
+ * items: [{ k: "Programadas", v: 12, tone: "brass" | "crit",
+ *           delta: { text: "↑ 23%", dir: "up" | "down" | "flat" } }]
+ * `delta` is optional — a period-over-period reading rendered as a small chip.
  */
 const Telemetry = ({ items }) => (
   <div className="zx-tele">
-    {items.map(({ k, v, tone }) => (
+    {items.map(({ k, v, tone, delta }) => (
       <span className="zx-tele-item" key={k}>
         <span className="k">{k}</span>
         <span className={`v${v === 0 ? " zero" : tone ? ` ${tone}` : ""}`}>
           {fmt(v)}
         </span>
+        {delta && <span className={`zx-delta ${delta.dir}`}>{delta.text}</span>}
       </span>
     ))}
   </div>

@@ -98,7 +98,11 @@ const Analytics = () => {
   const [syncing, setSyncing] = useState(false);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
-  const days = useMemo(() => dayRange(range), [range]);
+  // Twice the window: the second half is the chart, the first half is the
+  // baseline every "vs período anterior" reading compares against.
+  const daysAll = useMemo(() => dayRange(range * 2), [range]);
+  const days = useMemo(() => daysAll.slice(range), [daysAll, range]);
+  const prevDays = useMemo(() => daysAll.slice(0, range), [daysAll, range]);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/customers`, { headers })
@@ -108,12 +112,12 @@ const Analytics = () => {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const params = { from: days[0], to: days[days.length - 1] };
+    const params = { from: daysAll[0], to: daysAll[daysAll.length - 1] };
     if (customerFilter !== "all") params.customer_id = customerFilter;
     const [s, a, p, st] = await Promise.all([
       axios.get(`${API_BASE_URL}/api/social/analytics/series`, { headers, params }).catch(() => ({ data: {} })),
       axios.get(`${API_BASE_URL}/api/ads/spend/series`, { headers, params }).catch(() => ({ data: {} })),
-      axios.get(`${API_BASE_URL}/api/social/analytics/posts`, { headers, params: { ...params, limit: 60, sort: "views" } }).catch(() => ({ data: {} })),
+      axios.get(`${API_BASE_URL}/api/social/analytics/posts`, { headers, params: { from: days[0], to: days[days.length - 1], ...(customerFilter !== "all" ? { customer_id: customerFilter } : {}), limit: 60, sort: "views" } }).catch(() => ({ data: {} })),
       axios.get(`${API_BASE_URL}/api/social/analytics/status`, { headers }).catch(() => ({ data: {} })),
     ]);
     setSocial(Array.isArray(s.data?.series) ? s.data.series : []);
@@ -121,7 +125,7 @@ const Analytics = () => {
     setPosts(Array.isArray(p.data?.posts) ? p.data.posts : []);
     setStatus(Array.isArray(st.data?.jobs) ? st.data.jobs : []);
     setLoading(false);
-  }, [headers, days, customerFilter]);
+  }, [headers, daysAll, days, customerFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -149,6 +153,17 @@ const Analytics = () => {
     }
   };
 
+  // Period-over-period reading. Null when there is no baseline — a delta
+  // against nothing is a made-up number.
+  const deltaOf = (curr, prev) => {
+    if (!prev) return null;
+    const pct = ((curr - prev) / prev) * 100;
+    if (Math.abs(pct) < 0.5) return { text: "· 0%", dir: "flat" };
+    const arrow = pct > 0 ? "↑" : "↓";
+    return { text: `${arrow} ${Math.abs(pct) >= 200 ? ">200" : Math.abs(pct).toFixed(0)}%`, dir: pct > 0 ? "up" : "down" };
+  };
+  const deltaText = (d) => (d ? ` · ${d.text} vs anterior` : "");
+
   // ---- series aligned to the shared axis ----
   const viewsSeries = useMemo(() => align(days, social, "day", "views"), [days, social]);
   const reachSeries = useMemo(() => align(days, social, "day", "reach"), [days, social]);
@@ -156,6 +171,19 @@ const Analytics = () => {
   const spendSeries = useMemo(() => align(days, spend, "day", "spend"), [days, spend]);
   const dmSeries = useMemo(() => align(days, spend, "day", "conversations_started"), [days, spend]);
   const labels = useMemo(() => days.map(fmtDay), [days]);
+  // Interaction components ride the tooltip — the chart stays one honest series.
+  const likesSeries = useMemo(() => align(days, social, "day", "likes"), [days, social]);
+  const commentsSeries = useMemo(() => align(days, social, "day", "comments"), [days, social]);
+  const sharesSeries = useMemo(() => align(days, social, "day", "shares"), [days, social]);
+  const savesSeries = useMemo(() => align(days, social, "day", "saves"), [days, social]);
+
+  const prevOf = useCallback((rows, key) => sum(align(prevDays, rows, "day", key)), [prevDays]);
+  const dViews = deltaOf(sum(viewsSeries), prevOf(social, "views"));
+  const dReach = deltaOf(sum(reachSeries), prevOf(social, "reach"));
+  const dInteractions = deltaOf(sum(interactionSeries), prevOf(social, "interactions"));
+  const dSpend = deltaOf(sum(spendSeries), prevOf(spend, "spend"));
+  const dDms = deltaOf(sum(dmSeries), prevOf(spend, "conversations_started"));
+  const netFollowers = sum(align(days, social, "day", "followers_gained")) - sum(align(days, social, "day", "followers_lost"));
 
   const currency = spend.find((r) => r.currency)?.currency || "MXN";
   const followers = social.length ? Number(social[social.length - 1].followers) || 0 : 0;
@@ -219,7 +247,11 @@ const Analytics = () => {
     borderWidth: 2,
     tension: 0.25,
     spanGaps: false,
-    pointRadius: 0,
+    // A history a few days old is dots, not a line — make the dots visible
+    // instead of rendering an apparently empty chart.
+    pointRadius: data.filter((v) => v != null).length <= 3 ? 4 : 0,
+    pointBorderColor: PAPER,
+    pointBorderWidth: 2,
     pointHoverRadius: 5,          // ≥8px across, with a surface ring
     pointHoverBorderColor: PAPER,
     pointHoverBorderWidth: 2,
@@ -298,18 +330,19 @@ const Analytics = () => {
             </div>
             <Telemetry
               items={[
-                { k: "Vistas", v: sum(viewsSeries) },
-                { k: "Alcance", v: sum(reachSeries) },
-                { k: "Interacciones", v: sum(interactionSeries) },
-                { k: "Seguidores", v: followers },
-                { k: "Conversaciones", v: sum(dmSeries), tone: "brass" },
+                { k: "Vistas", v: sum(viewsSeries), delta: dViews },
+                { k: "Alcance", v: sum(reachSeries), delta: dReach },
+                { k: "Interacciones", v: sum(interactionSeries), delta: dInteractions },
+                { k: "Seguidores", v: followers,
+                  delta: netFollowers !== 0 ? { text: `${netFollowers > 0 ? "+" : "−"}${Math.abs(netFollowers)}`, dir: netFollowers > 0 ? "up" : "down" } : null },
+                { k: "Conversaciones", v: sum(dmSeries), tone: "brass", delta: dDms },
               ]}
             />
           </div>
         </header>
 
         <div className="zx-canvas">
-          {loading ? (
+          {loading && !hasSocial && !hasSpend && posts.length === 0 ? (
             <div className="zx-empty">Cargando métricas…</div>
           ) : (
             <>
@@ -318,7 +351,7 @@ const Analytics = () => {
                 <section className="zxa-card">
                   <div className="zxa-card-head">
                     <h2>Vistas y alcance</h2>
-                    <span className="sub">{fmtNum(sum(viewsSeries))} vistas · {fmtNum(sum(reachSeries))} alcance</span>
+                    <span className="sub">{fmtNum(sum(viewsSeries))} vistas · {fmtNum(sum(reachSeries))} alcance{deltaText(dViews)}</span>
                   </div>
                   <div className="zxa-legend">
                     <span><i className="zxa-key" style={{ background: COLOR.views }} /> Vistas</span>
@@ -341,13 +374,36 @@ const Analytics = () => {
                 <section className="zxa-card">
                   <div className="zxa-card-head">
                     <h2>Interacciones</h2>
-                    <span className="sub">reacciones, comentarios, compartidos y guardados</span>
+                    <span className="sub">reacciones, comentarios, compartidos y guardados{deltaText(dInteractions)}</span>
                   </div>
                   <div className="zxa-plot">
                     {hasSocial ? (
                       <Bar
                         data={{ labels, datasets: [barSet("interacciones", interactionSeries, COLOR.interactions)] }}
-                        options={baseOptions(fmtNum)}
+                        options={{
+                          ...baseOptions(fmtNum),
+                          plugins: {
+                            ...baseOptions(fmtNum).plugins,
+                            tooltip: {
+                              ...baseOptions(fmtNum).plugins.tooltip,
+                              callbacks: {
+                                label: (ctx) => `${fmtNum(ctx.parsed.y)}  interacciones`,
+                                // The components live in the same rows — surface
+                                // them where the reader is already looking.
+                                afterBody: (items) => {
+                                  const i = items[0]?.dataIndex ?? -1;
+                                  if (i < 0) return [];
+                                  return [
+                                    `${fmtNum(likesSeries[i] || 0)}  reacciones`,
+                                    `${fmtNum(commentsSeries[i] || 0)}  comentarios`,
+                                    `${fmtNum(sharesSeries[i] || 0)}  compartidos`,
+                                    `${fmtNum(savesSeries[i] || 0)}  guardados`,
+                                  ];
+                                },
+                              },
+                            },
+                          },
+                        }}
                       />
                     ) : empty("Aún no hay interacciones guardadas para este período.")}
                   </div>
@@ -358,7 +414,7 @@ const Analytics = () => {
                 <section className="zxa-card">
                   <div className="zxa-card-head">
                     <h2>Inversión publicitaria</h2>
-                    <span className="sub">{fmtMoney(sum(spendSeries), currency)} en {range} días</span>
+                    <span className="sub">{fmtMoney(sum(spendSeries), currency)} en {range} días{deltaText(dSpend)}</span>
                   </div>
                   <div className="zxa-plot">
                     {hasSpend ? (
@@ -373,7 +429,7 @@ const Analytics = () => {
                 <section className="zxa-card">
                   <div className="zxa-card-head">
                     <h2>Conversaciones iniciadas</h2>
-                    <span className="sub">mensajes que abrieron los anuncios</span>
+                    <span className="sub">mensajes que abrieron los anuncios{deltaText(dDms)}</span>
                   </div>
                   <div className="zxa-plot">
                     {hasSpend ? (
@@ -429,7 +485,7 @@ const Analytics = () => {
                                    style={{ position: "relative" }}
                                    onError={(e) => { e.currentTarget.style.display = "none"; }} />
                             )}
-                            <span className="fmt">{fmtLabel(p.media_type)}</span>
+                            <span className="fmt">{p.platform === "facebook" ? "FB" : "IG"} · {fmtLabel(p.media_type)}</span>
                             {!p.organic && <span className="zx-mark" title="Publicado desde ZIONX"><PixelMark size={9} /></span>}
                           </div>
                           <div className="zxa-postcard-body">
@@ -536,7 +592,13 @@ const Analytics = () => {
                   ["Tasa", `${Number(selectedPost.engagement_rate || 0).toFixed(1)}%`],
                   ["Likes", fmtNum(selectedPost.likes)],
                   ["Comentarios", fmtNum(selectedPost.comments)],
-                  ["Guardados", fmtNum(selectedPost.saves)],
+                  // The sixth cell follows the format: a reel is judged by how
+                  // long people stayed, a story by who answered.
+                  selectedPost.media_type === "REELS" && Number(selectedPost.avg_watch_time) > 0
+                    ? ["Ver. promedio", `${(Number(selectedPost.avg_watch_time) / 1000).toFixed(1)}s`]
+                    : selectedPost.media_type === "STORY"
+                    ? ["Respuestas", fmtNum(selectedPost.replies)]
+                    : ["Guardados", fmtNum(selectedPost.saves)],
                 ].map(([k, v]) => (
                   <div className="zx-field" key={k}>
                     <span className="k">{k}</span>
