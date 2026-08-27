@@ -62,6 +62,7 @@ const EmployeeDashboardClean = lazyWithReload(() => import("./pages/EmployeeDash
 const SocialHub = lazyWithReload(() => import("./pages/SocialHub"));
 const Analytics = lazyWithReload(() => import("./pages/Analytics"));
 const Connections = lazyWithReload(() => import("./pages/Connections"));
+const PublicReport = lazyWithReload(() => import("./pages/PublicReport"));
 const ContentPlanningCenter = lazyWithReload(() => import("./pages/ContentPlanningCenter"));
 const ApprovalsHub = lazyWithReload(() => import("./pages/ApprovalsHub"));
 const MyWork = lazyWithReload(() => import("./pages/MyWork"));
@@ -170,6 +171,7 @@ const AppRouter = () => (
         <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
         <Route path="/client-approval/:token" element={<PublicClientApproval />} />
         <Route path="/capturar/:token" element={<PublicCapture />} />
+        <Route path="/reporte/:token" element={<PublicReport />} />
         <Route path="/privacy" element={<PublicLegal kind="privacy" />} />
         <Route path="/data-deletion" element={<PublicLegal kind="deletion" />} />
 

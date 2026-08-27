@@ -216,3 +216,14 @@
 }
 .zxp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--zx-ok); flex: none; }
 .zxp-dot.bad { background: var(--zx-crit); }
+
+/* The month's report link, once generated. */
+.zxp-report {
+  background: var(--zx-paper); border: 1px solid var(--zx-line);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.zxp-report .k {
+  font-family: var(--zx-mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--zx-muted);
+}
+.zxp-report a { font-size: 13px; color: var(--zx-ink); word-break: break-all; }

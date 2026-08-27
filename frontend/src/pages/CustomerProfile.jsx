@@ -51,6 +51,7 @@ const CustomerProfile = () => {
   // The cockpit layer: what the client's month actually looks like right now.
   const [pulse, setPulse] = useState({ views: 0, prevViews: 0, posts: [], tasks: [], connections: [] });
   const [uploading, setUploading] = useState({});
+  const [report, setReport] = useState({ url: null, working: false });
   const [pinBoard, setPinBoard] = useState("");
   const [pinSaved, setPinSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -145,6 +146,25 @@ const CustomerProfile = () => {
       .then((r) => setRoster(r.data || {}))
       .catch(() => setRoster({}));
   }, [id, headers]);
+
+  // The month's report as a link the client can open without an account.
+  // Idempotent per month, so pressing it twice doesn't invalidate the link
+  // already sitting in their inbox.
+  const makeReport = async () => {
+    setReport((r) => ({ ...r, working: true }));
+    try {
+      const r = await axios.post(`${API_BASE_URL}/api/reports/generate`, { customer_id: Number(id) }, { headers });
+      const url = r.data?.url;
+      if (url) {
+        try { await navigator.clipboard.writeText(url); } catch { /* clipboard may be blocked */ }
+        setReport({ url, working: false });
+      } else {
+        setReport({ url: null, working: false });
+      }
+    } catch {
+      setReport({ url: null, working: false });
+    }
+  };
 
   const saveRoster = async (key, memberId) => {
     const value = memberId === "" ? null : Number(memberId);
@@ -349,6 +369,10 @@ const CustomerProfile = () => {
             <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>
             <Link to={`/portal?customer_id=${id}`} className="zx-btn on-ink ghost" title="Ver el portal de este cliente como lo vería él">Ver portal</Link>
             <button className="zx-btn on-ink ghost" onClick={invitePortal} title="Crear acceso para que el cliente vea su propio funnel">Invitar al portal</button>
+            <button className="zx-btn on-ink ghost" onClick={makeReport} disabled={report.working}
+                    title="Genera el enlace del reporte mensual para este cliente y lo copia">
+              {report.working ? "Generando…" : report.url ? "Enlace copiado ✓" : "Reporte del mes"}
+            </button>
             <button className="zx-btn on-ink" onClick={() => setActiveTab("recursos")}>Subir archivos</button>
           </>
         }
@@ -372,6 +396,13 @@ const CustomerProfile = () => {
             <>
               {/* Anything broken about this client's plumbing comes first —
                   every number below it is downstream of these connections. */}
+              {report.url && (
+                <div className="zxp-report">
+                  <span className="k">Reporte del mes · enlace copiado</span>
+                  <a href={report.url} target="_blank" rel="noreferrer">{report.url}</a>
+                </div>
+              )}
+
               {brokenConns.length > 0 && (
                 <Link to="/conexiones" className="zxp-alert">
                   <strong>{brokenConns.length} conexión{brokenConns.length > 1 ? "es" : ""} sin datos.</strong>

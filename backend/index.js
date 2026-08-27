@@ -228,6 +228,7 @@ async function start() {
     const messagesRoutes = require('./routes/messages');
     const socialMediaRoutes = require('./routes/social-media');
     const approvalsRoutes = require('./routes/approvals');
+    const { router: reportsRoutes, buildReport } = require('./routes/reports');
     const expensesRoutes = require('./routes/expenses');
     const bancosRoutes = require('./routes/bancos-routes');
     const creativeBriefsRoutes = require('./routes/creative-briefs');
@@ -246,6 +247,35 @@ async function start() {
     // WhatsApp & Leads (mounted at root, have their own auth)
     app.use(whatsappRoutes);
     app.use(leadsRoutes);
+
+    // Monthly client report. The public read is deliberately unauthenticated —
+    // the token IS the credential, the way the approval links already work —
+    // and is mounted before the authenticated generate/list routes.
+    app.get('/api/public/report/:token', withPool, async (req, res) => {
+      try {
+        const row = await pool.query(
+          'SELECT customer_id, period_month, headline FROM client_reports WHERE token = $1',
+          [req.params.token]
+        );
+        if (!row.rows.length) return res.status(404).json({ error: 'Reporte no encontrado' });
+        const { customer_id, period_month, headline } = row.rows[0];
+
+        const report = await buildReport(pool, customer_id, period_month);
+        if (!report) return res.status(404).json({ error: 'Reporte no encontrado' });
+
+        // Best-effort read receipt: the agency can see the client opened it.
+        pool.query(
+          'UPDATE client_reports SET last_viewed_at = NOW(), view_count = COALESCE(view_count, 0) + 1 WHERE token = $1',
+          [req.params.token]
+        ).catch(() => {});
+
+        res.json({ ...report, headline });
+      } catch (e) {
+        console.error('Error serving public report:', e);
+        res.status(500).json({ error: 'No se pudo cargar el reporte' });
+      }
+    });
+
 
     // Income management (finance — ingresos section)
     app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomeRoutes);
@@ -272,6 +302,9 @@ async function start() {
     }, socialMediaRoutes);
 
     // Approvals (public /client/* endpoints; auth + social_media section for rest)
+
+    app.use('/api/reports', withPool, authenticateToken, requireSection('social_media'), reportsRoutes);
+
     app.use('/api/approvals', (req, res, next) => {
       req.pool = pool;
       if (req.path.startsWith('/client/')) return next();
