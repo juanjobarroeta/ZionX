@@ -1,173 +1,157 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API_BASE_URL } from '../utils/constants';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { API_BASE_URL } from "../utils/constants";
+import { customerName } from "../utils/customerName";
+import "./GlobalSearch.css";
 
+// Command-K palette. Fetches customers + team once per open, filters locally as
+// the user types, and supports full keyboard use (arrows + Enter + Esc).
 const GlobalSearch = ({ isOpen, onClose }) => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState({ customers: [], projects: [], team: [] });
-  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [data, setData] = useState({ customers: [], team: [], loaded: false });
+  const [active, setActive] = useState(0);
   const navigate = useNavigate();
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (!isOpen) return;
+    setQuery("");
+    setActive(0);
+    // Focus after the modal paints.
+    const t = setTimeout(() => inputRef.current?.focus(), 30);
+
+    const headers = { Authorization: `Bearer ${localStorage.getItem("token")}` };
+    Promise.all([
+      axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] })),
+      axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: {} })),
+    ]).then(([c, t2]) => {
+      setData({
+        customers: Array.isArray(c.data) ? c.data : [],
+        team: t2.data?.team_members || [],
+        loaded: true,
+      });
+    });
+    return () => clearTimeout(t);
   }, [isOpen]);
 
-  useEffect(() => {
-    if (query.length >= 2) {
-      searchGlobal();
-    } else {
-      setResults({ customers: [], projects: [], team: [] });
-    }
-  }, [query]);
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return { customers: [], team: [] };
+    const customers = data.customers
+      .map((c) => ({ ...c, display: customerName(c) }))
+      .filter(
+        (c) =>
+          c.display?.toLowerCase().includes(q) ||
+          c.business_name?.toLowerCase().includes(q) ||
+          c.commercial_name?.toLowerCase().includes(q) ||
+          c.contact_email?.toLowerCase().includes(q) ||
+          c.contact_phone?.includes(q) ||
+          c.phone?.includes(q)
+      )
+      .slice(0, 6);
+    const team = data.team
+      .filter((m) => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q))
+      .slice(0, 4);
+    return { customers, team };
+  }, [query, data]);
 
-  const searchGlobal = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
+  // Flat list drives keyboard navigation across both sections.
+  const flat = useMemo(
+    () => [
+      ...results.customers.map((c) => ({ type: "customer", item: c })),
+      ...results.team.map((m) => ({ type: "team", item: m })),
+    ],
+    [results]
+  );
 
-      // Search customers
-      const customersRes = await axios.get(`${API_BASE_URL}/customers`, { headers }).catch(() => ({ data: [] }));
-      const teamRes = await axios.get(`${API_BASE_URL}/team-members`, { headers }).catch(() => ({ data: { team_members: [] } }));
-
-      const searchLower = query.toLowerCase();
-
-      // Filter customers
-      const matchedCustomers = (customersRes.data || []).filter(c =>
-        c.business_name?.toLowerCase().includes(searchLower) ||
-        c.commercial_name?.toLowerCase().includes(searchLower) ||
-        c.contact_email?.toLowerCase().includes(searchLower)
-      ).slice(0, 5);
-
-      // Filter team members
-      const matchedTeam = (teamRes.data.team_members || []).filter(t =>
-        t.name?.toLowerCase().includes(searchLower) ||
-        t.email?.toLowerCase().includes(searchLower)
-      ).slice(0, 3);
-
-      setResults({
-        customers: matchedCustomers,
-        team: matchedTeam,
-        projects: []
-      });
-    } catch (error) {
-      console.error('Global search error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelect = (type, item) => {
-    if (type === 'customer') {
-      navigate(`/customer/${item.id}`);
-    } else if (type === 'team') {
-      navigate(`/employee/${item.id}`);
-    }
-    onClose();
-    setQuery('');
-  };
+  useEffect(() => setActive(0), [query]);
 
   if (!isOpen) return null;
 
+  const select = (entry) => {
+    if (!entry) return;
+    navigate(entry.type === "customer" ? `/customer/${entry.item.id}` : `/employee/${entry.item.id}`);
+    setQuery("");
+    onClose();
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "Escape") return onClose();
+    if (e.key === "ArrowDown") { e.preventDefault(); setActive((i) => Math.min(i + 1, flat.length - 1)); }
+    if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
+    if (e.key === "Enter") { e.preventDefault(); select(flat[active] || flat[0]); }
+  };
+
+  const Row = ({ entry, index }) => {
+    const isCustomer = entry.type === "customer";
+    const label = isCustomer ? entry.item.display : entry.item.name;
+    const sub = isCustomer ? entry.item.contact_email || entry.item.phone || "" : entry.item.role || "";
+    return (
+      <button
+        className={`zxgs-row${index === active ? " active" : ""}`}
+        onMouseEnter={() => setActive(index)}
+        onClick={() => select(entry)}
+      >
+        <span className="zxgs-avatar">{(label || "?").charAt(0).toUpperCase()}</span>
+        <span className="zxgs-rowmain">
+          <span className="zxgs-rowtitle">{label}</span>
+          {sub && <span className="zxgs-rowsub">{sub}</span>}
+        </span>
+        <span className="zxgs-go">→</span>
+      </button>
+    );
+  };
+
+  const empty = query.trim().length >= 2 && flat.length === 0;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-32">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-96 overflow-hidden">
-        {/* Search Input */}
-        <div className="p-4 border-b border-gray-200">
+    <div className="zxgs-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="zxgs-modal" onKeyDown={onKeyDown}>
+        <div className="zxgs-inputrow">
           <input
             ref={inputRef}
             type="text"
-            placeholder="Buscar clientes, equipo, proyectos..."
+            placeholder="Buscar clientes, equipo…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && onClose()}
-            className="w-full text-lg px-4 py-2 border-0 focus:outline-none"
+            className="zxgs-input"
           />
         </div>
 
-        {/* Results */}
-        <div className="overflow-y-auto max-h-80 p-4">
-          {loading && (
-            <div className="text-center py-8 text-gray-500">Buscando...</div>
-          )}
-
-          {!loading && query.length < 2 && (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              Escribe al menos 2 caracteres para buscar
-            </div>
-          )}
-
-          {!loading && query.length >= 2 && (
+        <div className="zxgs-body">
+          {query.trim().length < 2 ? (
+            <div className="zxgs-hint">Escribe al menos 2 caracteres para buscar</div>
+          ) : !data.loaded ? (
+            <div className="zxgs-hint">Buscando…</div>
+          ) : empty ? (
+            <div className="zxgs-hint">Sin resultados para “{query.trim()}”</div>
+          ) : (
             <>
-              {/* Customers */}
               {results.customers.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Clientes</h3>
-                  <div className="space-y-2">
-                    {results.customers.map(customer => (
-                      <button
-                        key={customer.id}
-                        onClick={() => handleSelect('customer', customer)}
-                        className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
-                      >
-                        <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
-                          {customer.business_name?.charAt(0) || customer.commercial_name?.charAt(0) || 'C'}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-black">{customer.business_name || customer.commercial_name}</p>
-                          <p className="text-sm text-gray-500">{customer.contact_email}</p>
-                        </div>
-                        <span className="text-gray-400">→</span>
-                      </button>
-                    ))}
-                  </div>
+                <div className="zxgs-section">
+                  <div className="zxgs-label">Clientes</div>
+                  {results.customers.map((c, i) => (
+                    <Row key={`c${c.id}`} entry={{ type: "customer", item: c }} index={i} />
+                  ))}
                 </div>
               )}
-
-              {/* Team Members */}
               {results.team.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Equipo</h3>
-                  <div className="space-y-2">
-                    {results.team.map(member => (
-                      <button
-                        key={member.id}
-                        onClick={() => handleSelect('team', member)}
-                        className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
-                      >
-                        <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
-                          {member.name?.charAt(0) || 'T'}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-black">{member.name}</p>
-                          <p className="text-sm text-gray-500">{member.role}</p>
-                        </div>
-                        <span className="text-gray-400">→</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* No Results */}
-              {results.customers.length === 0 && results.team.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No se encontraron resultados para "{query}"
+                <div className="zxgs-section">
+                  <div className="zxgs-label">Equipo</div>
+                  {results.team.map((m, i) => (
+                    <Row key={`t${m.id}`} entry={{ type: "team", item: m }} index={results.customers.length + i} />
+                  ))}
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Footer Hint */}
-        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
-            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs">Esc</kbd> para cerrar
-          </p>
+        <div className="zxgs-foot">
+          <span><kbd>↑↓</kbd> navegar</span>
+          <span><kbd>Enter</kbd> abrir</span>
+          <span><kbd>Esc</kbd> cerrar</span>
         </div>
       </div>
     </div>
@@ -175,8 +159,3 @@ const GlobalSearch = ({ isOpen, onClose }) => {
 };
 
 export default GlobalSearch;
-
-
-
-
-
