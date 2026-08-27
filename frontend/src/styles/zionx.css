@@ -224,6 +224,19 @@
 .zx-pill.v-warn { background: var(--zx-brass); color: var(--zx-paper); }
 .zx-pill.v-bad { background: var(--zx-crit); color: var(--zx-paper); }
 
+/* Period-over-period delta: a small mono chip beside a number. Status colors
+   are earned here — a delta is a judgement, not an identity. */
+.zx-delta {
+  font-family: var(--zx-mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.zx-delta.up { color: var(--zx-ok); }
+.zx-delta.down { color: var(--zx-crit); }
+.zx-delta.flat { color: var(--zx-muted); }
+.zx-cmd .zx-delta.up, .on-ink .zx-delta.up { color: var(--zx-ok-ink); }
+.zx-cmd .zx-delta.down, .on-ink .zx-delta.down { color: var(--zx-crit-ink); }
+.zx-cmd .zx-delta.flat { color: var(--zx-muted-ink); }
+
 /* Countdown to an automatic publish: T-2 D, T-6 H, T-45 M. */
 .zx-tmin {
   font-family: var(--zx-mono); font-size: 10.5px; font-weight: 500;
