@@ -32,6 +32,7 @@ const TeamDashboardClean = lazy(() => import("./pages/TeamDashboardClean"));
 const EmployeeDashboardClean = lazy(() => import("./pages/EmployeeDashboardClean"));
 const SocialHub = lazy(() => import("./pages/SocialHub"));
 const Analytics = lazy(() => import("./pages/Analytics"));
+const Connections = lazy(() => import("./pages/Connections"));
 const ContentPlanningCenter = lazy(() => import("./pages/ContentPlanningCenter"));
 const ApprovalsHub = lazy(() => import("./pages/ApprovalsHub"));
 const MyWork = lazy(() => import("./pages/MyWork"));
@@ -156,6 +157,7 @@ const AppRouter = () => (
         {/* Social Media */}
         <Route path="/social-hub" element={<SocialMediaRoute><SocialHub /></SocialMediaRoute>} />
         <Route path="/social-analytics" element={<SocialMediaRoute><Analytics /></SocialMediaRoute>} />
+        <Route path="/conexiones" element={<SocialMediaRoute><Connections /></SocialMediaRoute>} />
         <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
         <Route path="/approvals" element={<SocialMediaRoute><ApprovalsHub /></SocialMediaRoute>} />
         <Route path="/my-work" element={<ProtectedRoute><MyWork /></ProtectedRoute>} />

@@ -46,6 +46,7 @@ export const MARKETING_ROLES = {
       '/content-calendar',
       '/team-dashboard',
       '/social-analytics',
+      '/conexiones',
       '/social-hub',
       '/notifications',
       '/messages',
@@ -74,6 +75,7 @@ export const MARKETING_ROLES = {
       '/content-calendar',
       '/social-hub',
       '/social-analytics',
+      '/conexiones',
       '/team-dashboard',
       '/social/accounts',
       '/notifications',
@@ -200,6 +202,7 @@ export const SIDEBAR_SECTIONS = {
       { href: '/content-calendar', label: 'Calendario de Contenido', icon: '📅' },
       { href: '/team-dashboard', label: 'Tareas del Equipo', icon: '✅' },
       { href: '/social-analytics', label: 'Analíticas', icon: '📊' },
+      { href: '/conexiones', label: 'Conexiones', icon: '🔗' },
     ],
   },
   clients: {

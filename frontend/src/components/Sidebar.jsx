@@ -21,25 +21,42 @@ const PixelMark = ({ size = 10, fill = "currentColor" }) => (
 // so design grouping and role visibility stay independent.
 const NAV_GROUPS = [
   {
+    // What goes out: planning it, approving it, and how it did.
     label: "Contenido",
     links: [
-      { href: "/social-hub", label: "Hub de Publicaciones", section: "social_media" },
+      { href: "/social-hub", label: "Hub de publicaciones", section: "social_media" },
       { href: "/content-calendar", label: "Calendario", section: "social_media" },
-      { href: "/social-analytics", label: "Rendimiento", section: "social_media" },
       { href: "/approvals", label: "Aprobaciones", section: "social_media" },
-      { href: "/ads/accounts", label: "Publicidad", section: "social_media" },
-      { href: "/projects", label: "Proyectos", section: "social_media" },
+      { href: "/social-analytics", label: "Rendimiento", section: "social_media" },
+    ],
+  },
+  {
+    // Who is doing what. Separate from content: a task is work, not a post.
+    label: "Trabajo",
+    links: [
+      { href: "/my-work", label: "Mi trabajo", section: "social_media" },
       { href: "/tareas", label: "Tareas", section: "social_media" },
+      { href: "/projects", label: "Proyectos", section: "social_media" },
     ],
   },
   {
     label: "Clientes",
     links: [
+      { href: "/crm", label: "Directorio", section: "clients" },
       { href: "/funnel", label: "Funnel", section: "leads" },
       { href: "/leads-inbox", label: "Leads", section: "leads", badge: "leads" },
-      { href: "/crm", label: "Directorio", section: "clients" },
-      { href: "/briefs", label: "Creative Briefs", section: "clients" },
-      { href: "/customers/import", label: "Importar Clientes", section: "clients" },
+      { href: "/briefs", label: "Creative briefs", section: "clients" },
+      { href: "/customers/import", label: "Importar clientes", section: "clients" },
+    ],
+  },
+  {
+    // Paid media and the plumbing that feeds every number in the product.
+    // "Cuentas Meta" is no longer its own entry: connecting and reconnecting
+    // both start from Conexiones, which is where you look when data stops.
+    label: "Publicidad",
+    links: [
+      { href: "/ads/accounts", label: "Campañas", section: "social_media" },
+      { href: "/conexiones", label: "Conexiones", section: "social_media" },
     ],
   },
   {
@@ -57,24 +74,26 @@ const NAV_GROUPS = [
       { href: "/admin/expenses", label: "Gastos", section: "finanzas" },
       { href: "/bancos", label: "Bancos", section: "finanzas" },
       { href: "/admin/budgets", label: "Presupuestos", section: "finanzas" },
-      { href: "/hr/financials", label: "Estados Financieros", section: "finanzas" },
-      { href: "/finance/estados", label: "Estados Fiscales", section: "finanzas" },
+      { href: "/hr/financials", label: "Estados financieros", section: "finanzas" },
+      { href: "/finance/estados", label: "Estados fiscales", section: "finanzas" },
     ],
   },
   {
     label: "Equipo",
     links: [
-      { href: "/people", label: "Gestión de Equipo", section: "hr" },
-      { href: "/team-management", label: "Miembros", section: "hr" },
+      // Named after what each page calls itself — the two used to be labelled
+      // the other way round, so "Gestión de Equipo" opened a page titled
+      // "Equipo" and "Miembros" opened one titled "Gestión de equipo".
+      { href: "/people", label: "Empleados", section: "hr" },
+      { href: "/team-management", label: "Gestión de equipo", section: "hr" },
       { href: "/hr/payroll", label: "Nómina", section: "hr" },
-      { href: "/hr/nomina-fiscal", label: "Nómina Fiscal", section: "hr" },
+      { href: "/hr/nomina-fiscal", label: "Nómina fiscal", section: "hr" },
     ],
   },
   {
     label: "Configuración",
     links: [
-      { href: "/social/accounts", label: "Cuentas Meta", section: "social_media" },
-      { href: "/admin/create-user", label: "Crear Usuario", section: "settings" },
+      { href: "/admin/create-user", label: "Crear usuario", section: "settings" },
     ],
   },
 ];
@@ -207,9 +226,6 @@ const Sidebar = () => {
             <Link to="/dashboard" className={`zxs-dash${isActive("/dashboard") ? " active" : ""}`}>
               <PixelMark size={10} />
               Dashboard
-            </Link>
-            <Link to="/my-work" className={`zxs-link${isActive("/my-work") ? " active" : ""}`}>
-              Mi trabajo
             </Link>
             <Link to="/messages" className={`zxs-link${isActive("/messages") ? " active" : ""}`}>
               Mensajes
