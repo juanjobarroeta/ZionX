@@ -10,19 +10,11 @@ const { seedStagesForPost, recomputeDueDates } = require('../services/pipeline')
 const publicBase = (req) =>
   process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`;
 
-// Multer setup for file uploads
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+// Multer setup for file uploads — destination and naming come from
+// config/storage so uploads land on the persistent volume in production.
+const { diskStorage } = require('../config/storage');
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  }
-});
+const storage = diskStorage(multer);
 
 const upload = multer({ storage });
 

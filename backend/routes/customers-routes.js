@@ -1,22 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const { diskStorage } = require('../config/storage');
 const path = require('path');
 const fs = require('fs');
 
-// Multer setup for file uploads
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  }
-});
+// Multer setup for file uploads — see config/storage.
+const storage = diskStorage(multer);
 
 const upload = multer({ storage });
 
@@ -115,16 +105,7 @@ router.post("/customers/upload", async (req, res) => {
   try {
     // Handle file uploads using multer
     const uploadWithFields = multer({
-      storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-          cb(null, 'uploads/');
-        },
-        filename: (req, file, cb) => {
-          const timestamp = Date.now();
-          const randomId = Math.floor(Math.random() * 1000000);
-          cb(null, `${timestamp}-${randomId}-${file.originalname}`);
-        }
-      })
+      storage: diskStorage(multer)
     }).fields([
       { name: 'ine', maxCount: 1 },
       { name: 'bureau', maxCount: 1 },
