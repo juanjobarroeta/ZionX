@@ -25,7 +25,58 @@ const MAX_CATCHUP_MIN = parseInt(process.env.SCHEDULER_MAX_DELAY_MINUTES, 10) ||
 // A post left in `publishing` longer than this is assumed crashed and recovered.
 const STUCK_MIN = parseInt(process.env.SCHEDULER_STUCK_MINUTES, 10) || 15;
 const BATCH_SIZE = 10;
-const MAX_RETRIES = 3;
+
+/**
+ * How long to wait before each retry. A publish fails for two very different
+ * reasons and they deserve different patience:
+ *
+ *   · transient — Meta is rate-limiting us, timing out, or briefly down. Worth
+ *     retrying, but not every five minutes: back off across half a day so a
+ *     30-minute outage doesn't burn every attempt in the first quarter hour.
+ *   · permanent — the token is dead, the account lost its permission, the media
+ *     is unusable. No number of retries fixes those; retrying only delays the
+ *     moment a human finds out.
+ */
+const RETRY_DELAYS_MIN = [5, 20, 60, 180, 360];
+const MAX_RETRIES = RETRY_DELAYS_MIN.length;
+// Meta's rate limits reset hourly, so there is no point trying again in five
+// minutes when that is what we were told.
+const RATE_LIMIT_FIRST_DELAY_MIN = 60;
+
+/**
+ * Is this failure worth retrying?
+ *
+ * Meta's error codes are the reliable signal; the message text is the fallback
+ * for our own pre-flight refusals (missing media, unsupported format), which
+ * never come from Meta at all.
+ */
+const PERMANENT_CODES = new Set([
+  190, // access token invalid or expired
+  200, // permission denied
+  10,  // permission denied (app-level)
+  3,   // capability disabled for this app
+  368, // temporarily blocked for policy violations — needs a human either way
+  100, // invalid parameter: bad media URL, bad aspect ratio, unusable file
+]);
+const RATE_LIMIT_CODES = new Set([4, 17, 32, 613, 80001, 80002, 80004]);
+
+function classifyFailure(error, message) {
+  const code = error?.response?.data?.error?.code ?? error?.code ?? null;
+  const text = String(message || error?.message || '').toLowerCase();
+
+  if (RATE_LIMIT_CODES.has(code) || /rate limit|too many calls|request limit/.test(text)) {
+    return { permanent: false, rateLimited: true };
+  }
+  if (PERMANENT_CODES.has(code)) return { permanent: true };
+  // Our own refusals before Meta is ever called.
+  if (/necesita al menos|no está soportado|unsupported platform|token expired|reconnect|expiró/.test(text)) {
+    return { permanent: true };
+  }
+  if (/permission|not authorized|administrator, editor, or moderator|does not exist|invalid/.test(text)) {
+    return { permanent: true };
+  }
+  return { permanent: false, rateLimited: false };
+}
 
 class PostScheduler {
   constructor(pool) {
@@ -76,12 +127,24 @@ class PostScheduler {
     const type = (post.content_type || '').toLowerCase();
 
     if (post.platform === 'facebook') {
-      if (type === 'story' || type === 'reel') {
-        return { skipped: true, error: `Publicar ${type} en Facebook aún no está soportado — usa Instagram` };
+      const media = post.media_urls || [];
+      if (type === 'story') {
+        if (!media.length) return { skipped: true, error: 'Una historia necesita imagen o video' };
+        return metaService.postStoryToFacebookPage(post.platform_account_id, post.access_token, {
+          mediaUrl: media[0],
+          isVideo: isVideoUrl(media[0]),
+        });
+      }
+      if (type === 'reel' || type === 'video' || isVideoUrl(media[0])) {
+        if (!media.length) return { skipped: true, error: 'Un reel necesita un video' };
+        return metaService.postReelToFacebookPage(post.platform_account_id, post.access_token, {
+          videoUrl: media[0],
+          description: post.message,
+        });
       }
       return metaService.postToFacebookPage(post.platform_account_id, post.access_token, {
         message: post.message,
-        photoUrl: post.media_urls?.[0],
+        photoUrl: media[0],
         link: post.link_url,
       });
     }
@@ -237,19 +300,19 @@ class PostScheduler {
       const overdueMin = (Date.now() - new Date(post.scheduled_for).getTime()) / 60000;
       if (overdueMin > MAX_CATCHUP_MIN) {
         const overdueH = Math.max(1, Math.round(overdueMin / 60));
-        await this.markFailed(postId, `Missed publish window — was due ~${overdueH}h ago`);
+        await this.markFailed(postId, `Missed publish window — was due ~${overdueH}h ago`, post);
         return;
       }
 
       // Check token expiration
       if (post.token_expires_at && new Date(post.token_expires_at) < new Date()) {
-        await this.markFailed(postId, 'Token expired — reconnect the account');
+        await this.markFailed(postId, 'Token expired — reconnect the account', post);
         return;
       }
 
       const result = await this.publishToPlatform(post);
       if (result.skipped) {
-        await this.markFailed(postId, result.error);
+        await this.markFailed(postId, result.error, post);
         return;
       }
 
@@ -274,38 +337,53 @@ class PostScheduler {
 
         console.log(`✅ Published post #${postId} to ${post.platform}: ${result.postId || result.mediaId}`);
       } else {
-        await this.handleFailure(postId, post, result.error);
+        await this.handleFailure(postId, post, result.error, result.errorObject || null);
       }
     } catch (error) {
-      await this.handleFailure(postId, post, error.message);
+      await this.handleFailure(postId, post, error.message, error);
     }
   }
 
   /**
-   * Handle a failed post — retry up to MAX_RETRIES, then mark as failed
+   * Decide what happens to a post that didn't publish: back off and try again,
+   * or stop and tell someone.
    */
-  async handleFailure(postId, post, errorMessage) {
-    const retryCount = (post.retry_count || 0) + 1;
+  async handleFailure(postId, post, errorMessage, error = null) {
+    const verdict = classifyFailure(error, errorMessage);
 
-    if (retryCount < MAX_RETRIES) {
-      // Put back to scheduled with incremented retry count and 5-minute delay
-      await this.pool.query(`
-        UPDATE scheduled_posts SET
-          status = 'scheduled',
-          retry_count = $1,
-          error_message = $2,
-          scheduled_for = NOW() + INTERVAL '5 minutes',
-          updated_at = NOW()
-        WHERE id = $3
-      `, [retryCount, errorMessage, postId]);
-
-      console.log(`⚠️ Post #${postId} failed (attempt ${retryCount}/${MAX_RETRIES}), retrying in 5min: ${errorMessage}`);
-    } else {
-      await this.markFailed(postId, errorMessage);
+    if (verdict.permanent) {
+      await this.markFailed(postId, errorMessage, post);
+      return;
     }
+
+    const attempt = (post.retry_count || 0) + 1;
+    if (attempt > MAX_RETRIES) {
+      await this.markFailed(postId, `${errorMessage} (tras ${MAX_RETRIES} reintentos)`, post);
+      return;
+    }
+
+    const delay = verdict.rateLimited
+      ? Math.max(RATE_LIMIT_FIRST_DELAY_MIN, RETRY_DELAYS_MIN[attempt - 1])
+      : RETRY_DELAYS_MIN[attempt - 1];
+
+    await this.pool.query(`
+      UPDATE scheduled_posts SET
+        status = 'scheduled',
+        retry_count = $1,
+        error_message = $2,
+        scheduled_for = NOW() + make_interval(mins => $3),
+        updated_at = NOW()
+      WHERE id = $4
+    `, [attempt, errorMessage, delay, postId]);
+
+    console.log(`⚠️ Post #${postId} failed (intento ${attempt}/${MAX_RETRIES}), reintenta en ${delay}min: ${errorMessage}`);
   }
 
-  async markFailed(postId, errorMessage) {
+  /**
+   * Stop trying, and make sure a person hears about it. A failed post that
+   * nobody is told about is a post that silently didn't happen.
+   */
+  async markFailed(postId, errorMessage, post = null) {
     await this.pool.query(`
       UPDATE scheduled_posts SET
         status = 'failed',
@@ -315,6 +393,14 @@ class PostScheduler {
     `, [errorMessage, postId]);
 
     console.error(`❌ Post #${postId} permanently failed: ${errorMessage}`);
+
+    const userId = post?.created_by;
+    if (!userId) return;
+    await this.pool.query(
+      `INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
+       VALUES ($1, 'post_failed', $2, '/social-hub', $3, 'scheduled_post')`,
+      [userId, `❌ No se pudo publicar: ${String(errorMessage).slice(0, 160)}`, postId]
+    ).catch((e) => console.error('Could not notify about failed post:', e.message));
   }
 }
 
