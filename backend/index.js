@@ -61,8 +61,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Static uploads directory
-const uploadDir = path.join(__dirname, 'uploads');
+// Static uploads directory — shared with every upload route (config/storage).
+const { UPLOAD_DIR: uploadDir } = require('./config/storage');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 app.use('/uploads', express.static(uploadDir));
 
