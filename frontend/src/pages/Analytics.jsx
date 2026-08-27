@@ -419,7 +419,16 @@ const Analytics = () => {
                       return (
                         <button className="zxa-postcard" key={p.platform_post_id} onClick={() => setSelectedPost(p)}>
                           <div className="zxa-postmedia">
-                            {img ? <img src={img} alt="" loading="lazy" /> : <span className="stripes" />}
+                            {/* Stripes sit underneath so a failed image degrades
+                                to the brand placeholder. IG's CDN 403s requests
+                                that carry a cross-site Referer, and its signed
+                                URLs expire — the sweep refreshes them each pass. */}
+                            <span className="stripes" />
+                            {img && (
+                              <img src={img} alt="" loading="lazy" referrerPolicy="no-referrer"
+                                   style={{ position: "relative" }}
+                                   onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                            )}
                             <span className="fmt">{fmtLabel(p.media_type)}</span>
                             {!p.organic && <span className="zx-mark" title="Publicado desde ZIONX"><PixelMark size={9} /></span>}
                           </div>
@@ -509,7 +518,8 @@ const Analytics = () => {
             <div className="zxa-drawer-body">
               {postMediaUrl(selectedPost.thumbnail_url) && (
                 <div className="zxa-drawer-media">
-                  <img src={postMediaUrl(selectedPost.thumbnail_url)} alt="" />
+                  <img src={postMediaUrl(selectedPost.thumbnail_url)} alt="" referrerPolicy="no-referrer"
+                       onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }} />
                 </div>
               )}
               <div className="zx-field">
