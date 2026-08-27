@@ -69,4 +69,56 @@ async function refreshExpiringTokens(pool) {
   return { refreshed, failed, total: expiring.rows.length };
 }
 
-module.exports = { refreshExpiringTokens };
+/**
+ * Ad-account tokens expire too — and nothing refreshed them, so spend sync went
+ * quiet roughly 60 days after each connection. Same exchange, different table.
+ */
+async function refreshExpiringAdTokens(pool) {
+  const { appId, appSecret } = metaCreds();
+  if (!appId || !appSecret) {
+    return { skipped: true, reason: 'Meta credentials not configured', refreshed: 0, failed: 0, total: 0 };
+  }
+
+  const expiring = await pool.query(`
+    SELECT * FROM ad_accounts
+    WHERE is_active = true
+      AND access_token IS NOT NULL
+      AND token_expires_at IS NOT NULL
+      AND token_expires_at < NOW() + INTERVAL '7 days'
+      AND token_expires_at > NOW()
+  `);
+
+  let refreshed = 0;
+  let failed = 0;
+
+  for (const account of expiring.rows) {
+    const result = await metaService.refreshLongLivedToken(account.access_token, appId, appSecret);
+    if (result.success) {
+      await pool.query(
+        `UPDATE ad_accounts SET
+           access_token = $1,
+           token_expires_at = NOW() + ($2 || ' seconds')::interval,
+           updated_at = NOW()
+         WHERE id = $3`,
+        [result.accessToken, String(Math.floor(result.expiresIn || 5184000)), account.id]
+      );
+      refreshed++;
+    } else {
+      failed++;
+      console.error(`Token refresh failed for ad_account ${account.id}:`, result.error);
+      if (account.user_id) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
+           VALUES ($1, 'ads_token', $2, '/ads/accounts', $3, 'ad_account')`,
+          [account.user_id,
+           `⚠️ La conexión de la cuenta publicitaria ${account.account_name || account.platform_account_id} está por expirar. Reconéctala para no perder el registro de inversión.`,
+           account.id]
+        ).catch((e) => console.error('Could not notify about ad token expiry:', e.message));
+      }
+    }
+  }
+
+  return { refreshed, failed, total: expiring.rows.length };
+}
+
+module.exports = { refreshExpiringTokens, refreshExpiringAdTokens };

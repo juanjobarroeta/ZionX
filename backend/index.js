@@ -331,6 +331,12 @@ async function start() {
     const postScheduler = new PostScheduler(pool);
     postScheduler.start();
 
+    // Pull Meta metrics on a schedule so the analytics tables build history
+    // instead of waiting for someone to press a button.
+    const MetricsScheduler = require('./services/metricsScheduler');
+    const metricsScheduler = new MetricsScheduler(pool);
+    metricsScheduler.start();
+
     // Start server
     app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Backend live at http://0.0.0.0:${port}`);

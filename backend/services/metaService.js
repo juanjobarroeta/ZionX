@@ -5,10 +5,55 @@
 
 const axios = require('axios');
 
+// Metrics Meta has rejected this process-lifetime. Meta retires metrics on its
+// own schedule and errors the *whole* request when one is unknown, which is how
+// a single deprecation used to take down an entire sync. We learn the bad ones
+// at runtime and stop asking for them.
+const rejectedMetrics = new Set();
+
 class MetaService {
   constructor() {
-    this.apiVersion = 'v21.0';
+    // Pinned deliberately, overridable without a deploy. v21.0 expires
+    // 2027-01-21; v25.0 (Feb 2026) runs to 2028-07 and is past its teething.
+    this.apiVersion = process.env.META_API_VERSION || 'v25.0';
     this.baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+  }
+
+  /**
+   * Request insight metrics, degrading gracefully instead of failing whole.
+   *
+   * Meta returns an error for the entire request if any single metric name is
+   * unknown or newly deprecated. So: ask for everything once; if that fails,
+   * ask for each metric on its own, keep what answers, and remember what
+   * didn't so later calls skip it. One dead metric costs one metric, not the
+   * whole sync.
+   */
+  async fetchInsights(url, baseParams, metrics) {
+    const wanted = metrics.filter((m) => !rejectedMetrics.has(m));
+    if (!wanted.length) return { success: true, data: [], dropped: metrics.slice() };
+
+    try {
+      const r = await axios.get(url, { params: { ...baseParams, metric: wanted.join(',') } });
+      return { success: true, data: r.data.data || [], dropped: [] };
+    } catch (err) {
+      const first = err.response?.data?.error?.message || err.message;
+      // Fall back to one call per metric to isolate the offender(s).
+      const data = [];
+      const dropped = [];
+      for (const metric of wanted) {
+        try {
+          const r = await axios.get(url, { params: { ...baseParams, metric } });
+          data.push(...(r.data.data || []));
+        } catch (e) {
+          dropped.push(metric);
+          rejectedMetrics.add(metric);
+          console.warn(`⚠️  Meta rejected metric "${metric}" — skipping it from now on:`,
+            e.response?.data?.error?.message || e.message);
+        }
+      }
+      if (!data.length) return { success: false, error: first, data: [], dropped };
+      return { success: true, data, dropped };
+    }
   }
 
   /**
@@ -119,45 +164,59 @@ class MetaService {
   }
 
   /**
-   * Get Facebook Page Insights
-   * @param {string} pageId - Facebook Page ID
-   * @param {string} pageAccessToken - Page access token
-   * @param {string} period - 'day', 'week', 'days_28'
+   * Facebook Page insights, one snapshot per day.
+   *
+   * Metric names follow Meta's post-deprecation set: `page_impressions`,
+   * `page_impressions_unique`, `page_engaged_users` and `page_fans` were all
+   * retired between March 2024 and November 2025. Views now come from
+   * `page_media_view` and followers from `page_follows`.
+   *
+   * @returns {Object} normalized metrics — never throws, never partial-fails
    */
-  async getFacebookPageInsights(pageId, pageAccessToken, period = 'days_28') {
-    try {
-      const metrics = [
-        'page_impressions',
-        'page_impressions_unique',
-        'page_engaged_users',
-        'page_post_engagements',
-        'page_fans',
-        'page_fans_online',
-        'page_views_total'
-      ].join(',');
+  async getFacebookPageInsights(pageId, pageAccessToken, period = 'day') {
+    const METRICS = [
+      'page_media_view',              // replaced page_impressions (Nov 2025)
+      'page_total_media_view_unique', // replaced page_impressions_unique (Jun 2025)
+      'page_post_engagements',
+      'page_follows',                 // replaced page_fans (Nov 2025)
+      'page_daily_follows_unique',
+      'page_daily_unfollows_unique',
+      'page_views_total',
+      'page_total_actions',
+      'page_video_views',
+    ];
 
-      const response = await axios.get(
-        `${this.baseUrl}/${pageId}/insights`,
-        {
-          params: {
-            metric: metrics,
-            period: period,
-            access_token: pageAccessToken
-          }
-        }
-      );
-      
-      return {
-        success: true,
-        insights: response.data.data || []
-      };
-    } catch (error) {
-      console.error('Error fetching page insights:', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data?.error?.message || error.message
-      };
-    }
+    const res = await this.fetchInsights(
+      `${this.baseUrl}/${pageId}/insights`,
+      { period, access_token: pageAccessToken },
+      METRICS
+    );
+    if (!res.success) return { success: false, error: res.error };
+
+    const val = (name) => {
+      const m = res.data.find((d) => d.name === name);
+      if (!m) return 0;
+      // Page insights are a time series; the latest bucket is the snapshot.
+      const values = m.values || [];
+      return Number(values[values.length - 1]?.value) || 0;
+    };
+
+    return {
+      success: true,
+      dropped: res.dropped,
+      metrics: {
+        views: val('page_media_view'),
+        reach: val('page_total_media_view_unique'),
+        engagements: val('page_post_engagements'),
+        followers: val('page_follows'),
+        followers_gained: val('page_daily_follows_unique'),
+        followers_lost: val('page_daily_unfollows_unique'),
+        profile_views: val('page_views_total'),
+        actions: val('page_total_actions'),
+        video_views: val('page_video_views'),
+      },
+      raw: res.data,
+    };
   }
 
   /**
@@ -410,45 +469,175 @@ class MetaService {
   }
 
   /**
-   * Get Instagram Insights for the account
-   * @param {string} igAccountId - Instagram Business Account ID
-   * @param {string} accessToken - Access token
+   * Instagram account insights, one snapshot per day.
+   *
+   * Two calls, because Meta splits them: most account metrics only answer to
+   * `metric_type=total_value`, while `follower_count` is a time series. Asking
+   * for both in one request is an error — as is asking for `impressions`,
+   * deprecated across all API versions on 2025-04-21 and replaced by `views`.
+   *
+   * @returns {Object} normalized metrics — never throws
    */
   async getInstagramInsights(igAccountId, accessToken, period = 'day') {
-    try {
-      // v21.0 uses metric_type parameter; 'impressions' and 'reach' require period='day'
-      // 'follower_count' requires period='day' and metric_type='time_series'
-      const metrics = [
-        'impressions',
-        'reach',
-        'profile_views',
-        'accounts_engaged',
-        'follower_count'
-      ].join(',');
+    const TOTAL_VALUE = [
+      'views',              // replaced impressions (Apr 2025)
+      'reach',
+      'accounts_engaged',
+      'total_interactions',
+      'likes',
+      'comments',
+      'shares',
+      'saves',
+      'replies',
+      'profile_links_taps',
+    ];
+    const TIME_SERIES = ['follower_count'];
 
-      const response = await axios.get(
-        `${this.baseUrl}/${igAccountId}/insights`,
-        {
-          params: {
-            metric: metrics,
-            period: period,
-            metric_type: 'time_series',
-            access_token: accessToken
-          }
-        }
-      );
+    const url = `${this.baseUrl}/${igAccountId}/insights`;
+    const totals = await this.fetchInsights(
+      url,
+      { period, metric_type: 'total_value', access_token: accessToken },
+      TOTAL_VALUE
+    );
+    const series = await this.fetchInsights(
+      url,
+      { period: 'day', access_token: accessToken },
+      TIME_SERIES
+    );
 
-      return {
-        success: true,
-        insights: response.data.data || []
-      };
-    } catch (error) {
-      console.error('Error fetching Instagram insights:', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data?.error?.message || error.message
-      };
+    if (!totals.success && !series.success) {
+      return { success: false, error: totals.error || series.error };
     }
+
+    const total = (name) => {
+      const m = (totals.data || []).find((d) => d.name === name);
+      return Number(m?.total_value?.value) || 0;
+    };
+    const latest = (name) => {
+      const m = (series.data || []).find((d) => d.name === name);
+      const values = m?.values || [];
+      return Number(values[values.length - 1]?.value) || 0;
+    };
+
+    return {
+      success: true,
+      dropped: [...(totals.dropped || []), ...(series.dropped || [])],
+      metrics: {
+        views: total('views'),
+        reach: total('reach'),
+        accounts_engaged: total('accounts_engaged'),
+        total_interactions: total('total_interactions'),
+        likes: total('likes'),
+        comments: total('comments'),
+        shares: total('shares'),
+        saves: total('saves'),
+        replies: total('replies'),
+        link_clicks: total('profile_links_taps'),
+        followers_gained: latest('follower_count'),
+      },
+      raw: [...(totals.data || []), ...(series.data || [])],
+    };
+  }
+
+  /**
+   * Per-media insights. Which metrics exist depends on the media type, so ask
+   * only for what that type supports — a story has replies and navigation, a
+   * reel has watch time, a feed post has neither.
+   *
+   * @param {string} mediaType - IMAGE | VIDEO | CAROUSEL_ALBUM | REELS | STORY
+   */
+  async getInstagramMediaInsights(mediaId, accessToken, mediaType = 'IMAGE') {
+    const type = String(mediaType || '').toUpperCase();
+    let metrics;
+    if (type === 'STORY') {
+      metrics = ['views', 'reach', 'replies', 'navigation', 'profile_visits', 'follows', 'link_clicks'];
+    } else if (type === 'REELS' || type === 'VIDEO') {
+      metrics = ['views', 'reach', 'likes', 'comments', 'shares', 'saved', 'total_interactions',
+                 'ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'];
+    } else {
+      metrics = ['views', 'reach', 'likes', 'comments', 'shares', 'saved', 'total_interactions',
+                 'profile_visits', 'follows'];
+    }
+
+    const res = await this.fetchInsights(
+      `${this.baseUrl}/${mediaId}/insights`,
+      { access_token: accessToken },
+      metrics
+    );
+    if (!res.success) return { success: false, error: res.error };
+
+    const val = (name) => {
+      const m = res.data.find((d) => d.name === name);
+      if (!m) return 0;
+      if (m.total_value) return Number(m.total_value.value) || 0;
+      return Number((m.values || [])[0]?.value) || 0;
+    };
+
+    return {
+      success: true,
+      dropped: res.dropped,
+      metrics: {
+        views: val('views'),
+        reach: val('reach'),
+        likes: val('likes'),
+        comments: val('comments'),
+        shares: val('shares'),
+        saves: val('saved'),
+        total_interactions: val('total_interactions'),
+        replies: val('replies'),
+        navigation: val('navigation'),
+        profile_visits: val('profile_visits'),
+        follows: val('follows'),
+        link_clicks: val('link_clicks'),
+        avg_watch_time: val('ig_reels_avg_watch_time'),
+        total_watch_time: val('ig_reels_video_view_total_time'),
+      },
+      raw: res.data,
+    };
+  }
+
+  /**
+   * Per-post metrics for a Facebook Page post. Reaction/comment/share counts
+   * come from the post's own fields (stable); anything else is an insight and
+   * goes through the resilient fetcher.
+   */
+  async getFacebookPostInsights(postId, pageAccessToken) {
+    const out = {
+      views: 0, reach: 0, likes: 0, comments: 0, shares: 0, saves: 0,
+      total_interactions: 0, link_clicks: 0, video_views: 0,
+    };
+
+    try {
+      const r = await axios.get(`${this.baseUrl}/${postId}`, {
+        params: {
+          fields: 'reactions.summary(true).limit(0),comments.summary(true).limit(0),shares',
+          access_token: pageAccessToken,
+        },
+      });
+      out.likes = Number(r.data?.reactions?.summary?.total_count) || 0;
+      out.comments = Number(r.data?.comments?.summary?.total_count) || 0;
+      out.shares = Number(r.data?.shares?.count) || 0;
+      out.total_interactions = out.likes + out.comments + out.shares;
+    } catch (error) {
+      return { success: false, error: error.response?.data?.error?.message || error.message };
+    }
+
+    const res = await this.fetchInsights(
+      `${this.baseUrl}/${postId}/insights`,
+      { access_token: pageAccessToken },
+      ['post_media_view', 'post_clicks', 'post_video_views']
+    );
+    if (res.success) {
+      const val = (name) => {
+        const m = res.data.find((d) => d.name === name);
+        return Number((m?.values || [])[0]?.value) || 0;
+      };
+      out.views = val('post_media_view');
+      out.link_clicks = val('post_clicks');
+      out.video_views = val('post_video_views');
+    }
+
+    return { success: true, metrics: out, dropped: res.dropped || [] };
   }
 
   /**
@@ -510,6 +699,66 @@ class MetaService {
         error: error.response?.data?.error?.message || error.message
       };
     }
+  }
+
+  /**
+   * Daily ad-account insights for a date range — one row per day, so spend can
+   * be charted and re-synced without losing history.
+   *
+   * `actions` is where the outcomes live: link clicks, leads, purchases and
+   * `onsite_conversion.messaging_conversation_started_7d` — the DMs an ad
+   * actually started, which is the number most clients ask about.
+   */
+  async getAdAccountInsightsDaily(adAccountId, accessToken, since, until) {
+    const act = String(adAccountId).startsWith('act_') ? adAccountId : `act_${adAccountId}`;
+    const rows = [];
+    let url = `${this.baseUrl}/${act}/insights`;
+    let params = {
+      fields: 'date_start,date_stop,spend,impressions,clicks,reach,frequency,cpc,cpm,ctr,actions',
+      level: 'account',
+      time_increment: 1,
+      time_range: JSON.stringify({ since, until }),
+      limit: 500,
+      access_token: accessToken,
+    };
+
+    try {
+      // Follow paging — a long range with time_increment=1 spills over one page.
+      for (let page = 0; page < 20; page++) {
+        const response = await axios.get(url, { params });
+        rows.push(...(response.data.data || []));
+        const next = response.data.paging?.next;
+        if (!next) break;
+        url = next;
+        params = undefined; // the `next` URL already carries every parameter
+      }
+    } catch (error) {
+      console.error(`Error fetching daily insights for ${act}:`, error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error?.message || error.message, days: [] };
+    }
+
+    const actionValue = (actions, type) =>
+      Number((actions || []).find((a) => a.action_type === type)?.value) || 0;
+
+    return {
+      success: true,
+      days: rows.map((r) => ({
+        date: r.date_start,
+        spend: Number(r.spend) || 0,
+        impressions: Number(r.impressions) || 0,
+        clicks: Number(r.clicks) || 0,
+        reach: Number(r.reach) || 0,
+        frequency: Number(r.frequency) || 0,
+        cpc: Number(r.cpc) || 0,
+        cpm: Number(r.cpm) || 0,
+        ctr: Number(r.ctr) || 0,
+        link_clicks: actionValue(r.actions, 'link_click'),
+        leads: actionValue(r.actions, 'lead'),
+        purchases: actionValue(r.actions, 'purchase'),
+        post_engagements: actionValue(r.actions, 'post_engagement'),
+        conversations_started: actionValue(r.actions, 'onsite_conversion.messaging_conversation_started_7d'),
+      })),
+    };
   }
 
   /**

@@ -7,6 +7,10 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const metaService = require('../services/metaService');
+const { syncAccountInsights, syncPostInsights } = require('../services/metricsSync');
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const defaultFrom = () => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 const { refreshExpiringTokens } = require('../services/tokenRefresh');
 
 // Meta App credentials - read at request time to ensure dotenv is loaded
@@ -861,79 +865,151 @@ router.get('/accounts/:id/posts', async (req, res) => {
 
 /**
  * POST /api/social/sync-analytics
- * Sync analytics for all active accounts
+ * Pull a fresh snapshot of account and post metrics from Meta. This runs
+ * automatically every few hours (services/metricsScheduler); the endpoint is
+ * the manual "do it now" and the way to backfill after reconnecting a client.
+ *
+ * Body: { posts: false } to skip the per-post pass, { windowDays } to widen it.
  */
 router.post('/sync-analytics', async (req, res) => {
   try {
-    const accounts = await req.pool.query(
-      `SELECT * FROM social_accounts
-       WHERE is_active = true
-         AND (token_expires_at IS NULL OR token_expires_at > NOW())`
-    );
+    const accounts = await syncAccountInsights(req.pool);
+    const posts = req.body?.posts === false
+      ? { skipped: true }
+      : await syncPostInsights(req.pool, {
+          windowDays: Math.min(90, parseInt(req.body?.windowDays, 10) || 30),
+        });
 
-    let synced = 0;
-    const today = new Date().toISOString().split('T')[0];
-
-    for (const account of accounts.rows) {
-      try {
-        let insights;
-
-        if (account.platform === 'facebook') {
-          insights = await metaService.getFacebookPageInsights(
-            account.platform_account_id,
-            account.access_token,
-            'day'
-          );
-        } else if (account.platform === 'instagram') {
-          const accountInfo = await metaService.getInstagramAccount(
-            account.platform_account_id,
-            account.access_token
-          );
-
-          if (accountInfo.success) {
-            await req.pool.query(`
-              UPDATE social_accounts SET
-                followers_count = $1,
-                last_synced_at = NOW()
-              WHERE id = $2
-            `, [accountInfo.account.followers_count, account.id]);
-          }
-
-          insights = await metaService.getInstagramInsights(
-            account.platform_account_id,
-            account.access_token,
-            'day'
-          );
-        }
-
-        if (insights?.success) {
-          let impressions = 0, reach = 0;
-
-          for (const metric of insights.insights || []) {
-            if (metric.name.includes('impressions')) impressions = metric.values?.[0]?.value || 0;
-            if (metric.name.includes('reach')) reach = metric.values?.[0]?.value || 0;
-          }
-
-          await req.pool.query(`
-            INSERT INTO account_analytics (social_account_id, snapshot_date, total_impressions, total_reach)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (social_account_id, snapshot_date) DO UPDATE SET
-              total_impressions = $3,
-              total_reach = $4
-          `, [account.id, today, impressions, reach]);
-
-          synced++;
-        }
-      } catch (err) {
-        console.error(`Error syncing account ${account.id}:`, err.message);
-      }
-    }
-
-    console.log(`📊 Synced analytics for ${synced}/${accounts.rows.length} accounts`);
-    res.json({ message: `Synced ${synced} accounts`, total: accounts.rows.length });
+    res.json({
+      success: true,
+      accounts,
+      posts,
+      message: `Cuentas: ${accounts.synced}/${accounts.total}` +
+        (posts.skipped ? '' : ` · Publicaciones: ${posts.synced}/${posts.total}`),
+    });
   } catch (error) {
     console.error('Error syncing analytics:', error);
     res.status(500).json({ error: 'Failed to sync analytics' });
+  }
+});
+
+/**
+ * GET /api/social/analytics/series?account_id&customer_id&from&to
+ * Daily account metrics for charting. Without an account_id it sums every
+ * account (optionally for one client) so a client's whole presence charts as
+ * one line.
+ */
+router.get('/analytics/series', async (req, res) => {
+  try {
+    const { account_id: accountId, customer_id: customerId, from, to } = req.query;
+    const params = [from || defaultFrom(), to || todayIso()];
+    let where = 'aa.snapshot_date BETWEEN $1::date AND $2::date';
+    if (accountId) { params.push(accountId); where += ` AND sa.id = $${params.length}`; }
+    if (customerId) { params.push(customerId); where += ` AND sa.customer_id = $${params.length}`; }
+
+    const r = await req.pool.query(`
+      SELECT aa.snapshot_date AS day,
+             SUM(aa.views) AS views,
+             SUM(aa.total_reach) AS reach,
+             SUM(aa.accounts_engaged) AS accounts_engaged,
+             SUM(aa.total_interactions) AS interactions,
+             SUM(aa.likes) AS likes,
+             SUM(aa.comments) AS comments,
+             SUM(aa.shares) AS shares,
+             SUM(aa.saves) AS saves,
+             SUM(aa.replies) AS replies,
+             SUM(aa.link_clicks) AS link_clicks,
+             SUM(aa.profile_views) AS profile_views,
+             SUM(aa.followers_count) AS followers,
+             SUM(aa.followers_gained) AS followers_gained,
+             SUM(aa.followers_lost) AS followers_lost
+        FROM account_analytics aa
+        JOIN social_accounts sa ON sa.id = aa.social_account_id
+       WHERE ${where}
+       GROUP BY aa.snapshot_date
+       ORDER BY aa.snapshot_date
+    `, params);
+
+    res.json({ series: r.rows });
+  } catch (error) {
+    console.error('Error fetching analytics series:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics series' });
+  }
+});
+
+/**
+ * GET /api/social/analytics/posts?customer_id&from&to&limit&sort
+ * Latest snapshot per published post — the leaderboard behind "what worked".
+ */
+router.get('/analytics/posts', async (req, res) => {
+  try {
+    const { customer_id: customerId, from, to } = req.query;
+    const limit = Math.min(200, parseInt(req.query.limit, 10) || 50);
+    const SORTS = { views: 'views', reach: 'reach', interactions: 'total_interactions', rate: 'engagement_rate' };
+    const sort = SORTS[req.query.sort] || 'views';
+
+    const params = [from || defaultFrom(), to || todayIso()];
+    let where = 'sp.published_at::date BETWEEN $1::date AND $2::date';
+    if (customerId) { params.push(customerId); where += ` AND sp.customer_id = $${params.length}`; }
+    params.push(limit);
+
+    // DISTINCT ON keeps the most recent snapshot per post; the history stays in
+    // the table for the per-post chart.
+    const r = await req.pool.query(`
+      SELECT DISTINCT ON (pa.platform_post_id)
+             pa.platform_post_id, pa.scheduled_post_id, pa.snapshot_date,
+             pa.views, pa.reach, pa.likes, pa.comments, pa.shares, pa.saves,
+             pa.total_interactions, pa.engagement_rate, pa.media_type, pa.platform,
+             sp.message, sp.published_at, sp.platform_post_url, sp.customer_id,
+             sa.account_username
+        FROM post_analytics pa
+        JOIN scheduled_posts sp ON sp.id = pa.scheduled_post_id
+        LEFT JOIN social_accounts sa ON sa.id = pa.social_account_id
+       WHERE ${where}
+       ORDER BY pa.platform_post_id, pa.snapshot_date DESC
+       LIMIT $${params.length}
+    `, params);
+
+    const posts = r.rows.sort((a, b) => Number(b[sort] || 0) - Number(a[sort] || 0));
+    res.json({ posts });
+  } catch (error) {
+    console.error('Error fetching post analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch post analytics' });
+  }
+});
+
+/**
+ * GET /api/social/analytics/posts/:platformPostId
+ * One post's snapshots over time — how it accumulated views after publishing.
+ */
+router.get('/analytics/posts/:platformPostId', async (req, res) => {
+  try {
+    const r = await req.pool.query(`
+      SELECT snapshot_date AS day, views, reach, likes, comments, shares, saves,
+             total_interactions, engagement_rate
+        FROM post_analytics
+       WHERE platform_post_id = $1
+       ORDER BY snapshot_date
+    `, [req.params.platformPostId]);
+    res.json({ series: r.rows });
+  } catch (error) {
+    console.error('Error fetching post analytics history:', error);
+    res.status(500).json({ error: 'Failed to fetch post history' });
+  }
+});
+
+/**
+ * GET /api/social/analytics/status
+ * When each sync last ran and how it went — so a stale number is visibly stale
+ * instead of quietly wrong.
+ */
+router.get('/analytics/status', async (req, res) => {
+  try {
+    const r = await req.pool.query('SELECT job, last_run_at, last_success_at, last_status, last_detail FROM sync_runs ORDER BY job');
+    res.json({ jobs: r.rows });
+  } catch (error) {
+    console.error('Error fetching sync status:', error);
+    res.status(500).json({ error: 'Failed to fetch sync status' });
   }
 });
 
