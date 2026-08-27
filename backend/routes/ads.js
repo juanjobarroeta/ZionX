@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const metaService = require('../services/metaService');
+const { syncAdSpend } = require('../services/metricsSync');
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const defaultFrom = () => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
 // Month boundaries in the server's local time. period_month is stored as the
 // first day of the month; the insights range covers month-start → today.
@@ -67,43 +70,59 @@ router.patch('/accounts/:id/customer', async (req, res) => {
 
 /**
  * POST /api/ads/sync
- * Pull month-to-date spend/impressions/clicks for every active Meta ad account
- * and cache it in ad_spend_monthly. Defensive: one bad account doesn't abort
- * the batch.
+ * Pull daily spend/performance for every active Meta ad account and roll it up
+ * into the monthly table the portal reads. Runs automatically every few hours
+ * (services/metricsScheduler); this endpoint is the manual "do it now".
+ *
+ * Body: { lookbackDays } — how far back to re-pull. Meta keeps attributing
+ * conversions for days after the fact, so recent days are re-fetched rather
+ * than trusted once.
  */
 router.post('/sync', async (req, res) => {
   try {
-    const { since, until, periodMonth } = monthBounds();
-    const accounts = await req.pool.query(
-      `SELECT id, platform, platform_account_id, access_token, currency
-         FROM ad_accounts WHERE is_active = true AND platform = 'meta' AND access_token IS NOT NULL`
-    );
-
-    let synced = 0;
-    const errors = [];
-    for (const acct of accounts.rows) {
-      try {
-        const ins = await metaService.getAdAccountInsights(
-          acct.platform_account_id, acct.access_token, since, until
-        );
-        if (!ins.success) { errors.push({ id: acct.id, error: ins.error }); continue; }
-        await req.pool.query(`
-          INSERT INTO ad_spend_monthly (ad_account_id, period_month, spend, impressions, clicks, currency, fetched_at)
-          VALUES ($1, $2::date, $3, $4, $5, $6, NOW())
-          ON CONFLICT (ad_account_id, period_month) DO UPDATE SET
-            spend = $3, impressions = $4, clicks = $5, currency = $6, fetched_at = NOW()
-        `, [acct.id, periodMonth, ins.spend, ins.impressions, ins.clicks, acct.currency || null]);
-        await req.pool.query('UPDATE ad_accounts SET last_synced_at = NOW() WHERE id = $1', [acct.id]);
-        synced++;
-      } catch (err) {
-        errors.push({ id: acct.id, error: err.message });
-      }
-    }
-
-    res.json({ success: true, synced, total: accounts.rows.length, errors });
+    const lookbackDays = Math.min(400, parseInt(req.body?.lookbackDays, 10) || 14);
+    const result = await syncAdSpend(req.pool, { lookbackDays });
+    res.json({ success: true, ...result });
   } catch (e) {
     console.error('Error syncing ad spend:', e);
     res.status(500).json({ error: 'Error al sincronizar inversión publicitaria' });
+  }
+});
+
+/**
+ * GET /api/ads/spend/series?from&to&customer_id&ad_account_id
+ * Daily spend series for charting. Returns one row per day with the platform's
+ * own outcome counts (link clicks, leads, conversations started).
+ */
+router.get('/spend/series', async (req, res) => {
+  try {
+    const { from, to, customer_id: customerId, ad_account_id: adAccountId } = req.query;
+    const params = [from || defaultFrom(), to || todayIso()];
+    let where = 'd.day BETWEEN $1::date AND $2::date';
+    if (customerId) { params.push(customerId); where += ` AND a.customer_id = $${params.length}`; }
+    if (adAccountId) { params.push(adAccountId); where += ` AND a.id = $${params.length}`; }
+
+    const r = await req.pool.query(`
+      SELECT d.day,
+             SUM(d.spend)::numeric(14,2) AS spend,
+             SUM(d.impressions) AS impressions,
+             SUM(d.reach) AS reach,
+             SUM(d.clicks) AS clicks,
+             SUM(d.link_clicks) AS link_clicks,
+             SUM(d.leads) AS leads,
+             SUM(d.conversations_started) AS conversations_started,
+             MAX(d.currency) AS currency
+        FROM ad_spend_daily d
+        JOIN ad_accounts a ON a.id = d.ad_account_id
+       WHERE ${where}
+       GROUP BY d.day
+       ORDER BY d.day
+    `, params);
+
+    res.json({ series: r.rows });
+  } catch (e) {
+    console.error('Error fetching ad spend series:', e);
+    res.status(500).json({ error: 'Error al obtener la serie de inversión' });
   }
 });
 

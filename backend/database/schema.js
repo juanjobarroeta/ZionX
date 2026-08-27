@@ -598,6 +598,116 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Advertising tables created");
 
+    // ---- Analytics history -------------------------------------------------
+    // The original analytics tables predate the metrics we actually collect and
+    // held a single overwritten row. These widen them to Meta's current metric
+    // set and make every write a dated snapshot, so the numbers accumulate into
+    // a series instead of replacing yesterday.
+    const accountMetricColumns = [
+      ['views', 'BIGINT DEFAULT 0'],              // replaces impressions (deprecated by Meta)
+      ['accounts_engaged', 'BIGINT DEFAULT 0'],
+      ['total_interactions', 'BIGINT DEFAULT 0'],
+      ['likes', 'BIGINT DEFAULT 0'],
+      ['comments', 'BIGINT DEFAULT 0'],
+      ['shares', 'BIGINT DEFAULT 0'],
+      ['saves', 'BIGINT DEFAULT 0'],
+      ['replies', 'BIGINT DEFAULT 0'],
+      ['link_clicks', 'BIGINT DEFAULT 0'],
+      ['video_views', 'BIGINT DEFAULT 0'],
+      ['page_actions', 'BIGINT DEFAULT 0'],
+      ['raw', 'JSONB'],
+      ['fetched_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'],
+    ];
+    for (const [col, type] of accountMetricColumns) {
+      await pool.query(`ALTER TABLE account_analytics ADD COLUMN IF NOT EXISTS ${col} ${type};`);
+    }
+
+    const postMetricColumns = [
+      ['snapshot_date', 'DATE'],
+      ['views', 'BIGINT DEFAULT 0'],
+      ['total_interactions', 'BIGINT DEFAULT 0'],
+      ['replies', 'BIGINT DEFAULT 0'],
+      ['navigation', 'BIGINT DEFAULT 0'],
+      ['profile_visits', 'BIGINT DEFAULT 0'],
+      ['follows', 'BIGINT DEFAULT 0'],
+      ['link_clicks', 'BIGINT DEFAULT 0'],
+      ['avg_watch_time', 'NUMERIC(12,2) DEFAULT 0'],
+      ['total_watch_time', 'NUMERIC(14,2) DEFAULT 0'],
+      ['media_type', 'VARCHAR(30)'],
+      ['platform', 'VARCHAR(20)'],
+      ['customer_id', 'INTEGER'],
+      ['raw', 'JSONB'],
+    ];
+    for (const [col, type] of postMetricColumns) {
+      await pool.query(`ALTER TABLE post_analytics ADD COLUMN IF NOT EXISTS ${col} ${type};`);
+    }
+    // Existing rows have no snapshot date; backfill from when they were pulled
+    // so the unique index below can be created.
+    await pool.query(`
+      UPDATE post_analytics SET snapshot_date = COALESCE(fetched_at::date, CURRENT_DATE)
+      WHERE snapshot_date IS NULL;
+    `);
+    await pool.query(`ALTER TABLE post_analytics ALTER COLUMN snapshot_date SET DEFAULT CURRENT_DATE;`);
+    // One snapshot per post per day — re-running a sync updates today's row
+    // instead of appending a duplicate.
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS post_analytics_post_day_idx
+        ON post_analytics (platform_post_id, snapshot_date);
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS post_analytics_account_day_idx
+        ON post_analytics (social_account_id, snapshot_date);
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ad_spend_daily (
+        id SERIAL PRIMARY KEY,
+        ad_account_id INTEGER REFERENCES ad_accounts(id) ON DELETE CASCADE,
+        day DATE NOT NULL,
+        spend NUMERIC(14,2) DEFAULT 0,
+        impressions BIGINT DEFAULT 0,
+        clicks BIGINT DEFAULT 0,
+        reach BIGINT DEFAULT 0,
+        frequency NUMERIC(10,4) DEFAULT 0,
+        cpc NUMERIC(14,4) DEFAULT 0,
+        cpm NUMERIC(14,4) DEFAULT 0,
+        ctr NUMERIC(10,4) DEFAULT 0,
+        link_clicks BIGINT DEFAULT 0,
+        leads BIGINT DEFAULT 0,
+        purchases BIGINT DEFAULT 0,
+        post_engagements BIGINT DEFAULT 0,
+        conversations_started BIGINT DEFAULT 0,
+        currency VARCHAR(10),
+        fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(ad_account_id, day)
+      );
+      CREATE INDEX IF NOT EXISTS ad_spend_daily_day_idx ON ad_spend_daily (day);
+    `);
+
+    // Monthly stays as the portal's summary surface, now rolled up from the
+    // daily rows rather than fetched separately.
+    for (const [col, type] of [
+      ['reach', 'BIGINT DEFAULT 0'],
+      ['link_clicks', 'BIGINT DEFAULT 0'],
+      ['leads', 'BIGINT DEFAULT 0'],
+      ['conversations_started', 'BIGINT DEFAULT 0'],
+    ]) {
+      await pool.query(`ALTER TABLE ad_spend_monthly ADD COLUMN IF NOT EXISTS ${col} ${type};`);
+    }
+
+    // Bookkeeping for the metrics scheduler: what ran, when, and how it went.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sync_runs (
+        job VARCHAR(60) PRIMARY KEY,
+        last_run_at TIMESTAMP,
+        last_success_at TIMESTAMP,
+        last_status VARCHAR(20),
+        last_detail TEXT
+      );
+    `);
+    console.log("✅ Analytics history tables ready");
+
+
     // Client approval tokens for public content review links
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_approval_tokens (
@@ -1284,7 +1394,6 @@ const createTables = async (pool) => {
       -- CFDI is required. Defaults to the requires_invoice value on backfill.
       ALTER TABLE customer_subscriptions ADD COLUMN IF NOT EXISTS applies_iva BOOLEAN DEFAULT true;
       UPDATE customer_subscriptions SET applies_iva = requires_invoice WHERE applies_iva IS NULL;
-      ALTER TABLE subscription_charges ADD COLUMN IF NOT EXISTS applies_iva BOOLEAN DEFAULT true;
     `);
 
     // Subscription charges = the monthly "cobro" tracker, SEPARATE from invoices.
@@ -1308,6 +1417,13 @@ const createTables = async (pool) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (subscription_id, period_month)
       );
+    `);
+    // Moved down from the customer_subscriptions block above: this ALTER used to
+    // run *before* subscription_charges existed, so on any database where the
+    // table hadn't been created yet, schema init threw here and every statement
+    // after it — including later ALTERs — silently never ran.
+    await pool.query(`
+      ALTER TABLE subscription_charges ADD COLUMN IF NOT EXISTS applies_iva BOOLEAN DEFAULT true;
     `);
     console.log("✅ Subscription charges (cobros) table created");
 

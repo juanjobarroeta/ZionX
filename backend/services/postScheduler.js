@@ -14,7 +14,7 @@
  */
 
 const metaService = require('./metaService');
-const { refreshExpiringTokens } = require('./tokenRefresh');
+const { refreshExpiringTokens, refreshExpiringAdTokens } = require('./tokenRefresh');
 
 // How often to refresh Meta tokens expiring within the next week.
 const TOKEN_REFRESH_MS = 24 * 60 * 60 * 1000; // daily
@@ -68,8 +68,14 @@ class PostScheduler {
   async refreshTokensSafe() {
     try {
       const r = await refreshExpiringTokens(this.pool);
-      if (r.skipped) return;
-      if (r.total > 0) console.log(`🔄 Token refresh: ${r.refreshed} refreshed, ${r.failed} failed of ${r.total} expiring`);
+      if (!r.skipped && r.total > 0) {
+        console.log(`🔄 Token refresh: ${r.refreshed} refreshed, ${r.failed} failed of ${r.total} expiring`);
+      }
+      // Ad-account tokens live in their own table and expire on the same clock.
+      const a = await refreshExpiringAdTokens(this.pool);
+      if (!a.skipped && a.total > 0) {
+        console.log(`🔄 Ad token refresh: ${a.refreshed} refreshed, ${a.failed} failed of ${a.total} expiring`);
+      }
     } catch (e) {
       console.error('Token refresh pass failed:', e.message);
     }
