@@ -233,5 +233,69 @@ router.post('/test', async (req, res) => {
   }
 });
 
+/**
+ * Web push subscription management.
+ *
+ * The browser hands us an endpoint and two keys; we store them against the
+ * person. Nothing here decides *when* to notify — that stays in services/notify.
+ */
+
+// What the browser needs to subscribe, plus whether push is configured at all
+// (so the UI can stay quiet instead of offering a button that cannot work).
+router.get('/push/key', (req, res) => {
+  const { pushEnabled, VAPID_PUBLIC_KEY } = require('../services/notify');
+  res.json({ enabled: pushEnabled(), key: VAPID_PUBLIC_KEY || null });
+});
+
+router.post('/push/subscribe', async (req, res) => {
+  try {
+    const { endpoint, keys } = req.body || {};
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      return res.status(400).json({ error: 'Suscripción incompleta' });
+    }
+    await req.pool.query(
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, last_used_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (endpoint) DO UPDATE SET
+         user_id = EXCLUDED.user_id, p256dh = EXCLUDED.p256dh,
+         auth = EXCLUDED.auth, last_used_at = NOW()`,
+      [req.user.id, endpoint, keys.p256dh, keys.auth, (req.headers['user-agent'] || '').slice(0, 300)]
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error saving push subscription:', e);
+    res.status(500).json({ error: 'No se pudo activar los avisos' });
+  }
+});
+
+router.post('/push/unsubscribe', async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    if (!endpoint) return res.status(400).json({ error: 'endpoint es obligatorio' });
+    await req.pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2', [endpoint, req.user.id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error removing push subscription:', e);
+    res.status(500).json({ error: 'No se pudo desactivar los avisos' });
+  }
+});
+
+/** Send a test push to the caller's own devices, so setup is verifiable. */
+router.post('/push/test', async (req, res) => {
+  try {
+    const { notifyUser } = require('../services/notify');
+    await notifyUser(req.pool, req.user.id, {
+      type: 'push_test',
+      title: 'ZIONX',
+      message: 'Los avisos están activos en este dispositivo.',
+      link: '/notifications',
+    });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error sending test push:', e);
+    res.status(500).json({ error: 'No se pudo enviar la prueba' });
+  }
+});
+
 module.exports = router;
 

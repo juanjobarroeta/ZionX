@@ -9,6 +9,7 @@
  */
 
 const metaService = require('./metaService');
+const { notifyUser } = require('./notify');
 
 const metaCreds = () => ({
   appId: process.env.META_APP_ID || process.env.FACEBOOK_APP_ID,
@@ -55,13 +56,14 @@ async function refreshExpiringTokens(pool) {
       console.error(`Token refresh failed for social_account ${account.id} (${account.platform}):`, result.error);
       // Alert the account owner to reconnect before it fully expires.
       if (account.user_id) {
-        await pool.query(
-          `INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-           VALUES ($1, 'social_token', $2, '/social/accounts', $3, 'social_account')`,
-          [account.user_id,
-           `⚠️ La conexión de ${account.platform || 'la cuenta'} está por expirar y no se pudo renovar automáticamente. Reconéctala para no perder publicaciones.`,
-           account.id]
-        ).catch((e) => console.error('Could not notify about token expiry:', e.message));
+        await notifyUser(pool, account.user_id, {
+          type: 'social_token',
+          title: 'Conexión por expirar',
+          message: `La conexión de ${account.platform || 'la cuenta'} no se pudo renovar. Reconéctala para no perder publicaciones.`,
+          link: '/conexiones',
+          itemId: account.id,
+          itemType: 'social_account',
+        });
       }
     }
   }
@@ -107,13 +109,14 @@ async function refreshExpiringAdTokens(pool) {
       failed++;
       console.error(`Token refresh failed for ad_account ${account.id}:`, result.error);
       if (account.user_id) {
-        await pool.query(
-          `INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-           VALUES ($1, 'ads_token', $2, '/ads/accounts', $3, 'ad_account')`,
-          [account.user_id,
-           `⚠️ La conexión de la cuenta publicitaria ${account.account_name || account.platform_account_id} está por expirar. Reconéctala para no perder el registro de inversión.`,
-           account.id]
-        ).catch((e) => console.error('Could not notify about ad token expiry:', e.message));
+        await notifyUser(pool, account.user_id, {
+          type: 'ads_token',
+          title: 'Conexión publicitaria por expirar',
+          message: `La cuenta ${account.account_name || account.platform_account_id} no se pudo renovar. Reconéctala para no perder el registro de inversión.`,
+          link: '/conexiones',
+          itemId: account.id,
+          itemType: 'ad_account',
+        });
       }
     }
   }

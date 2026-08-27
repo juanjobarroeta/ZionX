@@ -15,6 +15,7 @@
 
 const metaService = require('./metaService');
 const { refreshExpiringTokens, refreshExpiringAdTokens } = require('./tokenRefresh');
+const { notifyUser } = require('./notify');
 
 // How often to refresh Meta tokens expiring within the next week.
 const TOKEN_REFRESH_MS = 24 * 60 * 60 * 1000; // daily
@@ -396,11 +397,16 @@ class PostScheduler {
 
     const userId = post?.created_by;
     if (!userId) return;
-    await this.pool.query(
-      `INSERT INTO notifications (user_id, type, message, link, item_id, item_type)
-       VALUES ($1, 'post_failed', $2, '/social-hub', $3, 'scheduled_post')`,
-      [userId, `❌ No se pudo publicar: ${String(errorMessage).slice(0, 160)}`, postId]
-    ).catch((e) => console.error('Could not notify about failed post:', e.message));
+    // A publish that failed is the definition of something worth interrupting
+    // someone for — it goes to the bell and to their device.
+    await notifyUser(this.pool, userId, {
+      type: 'post_failed',
+      title: 'No se pudo publicar',
+      message: String(errorMessage).slice(0, 160),
+      link: '/social-hub',
+      itemId: postId,
+      itemType: 'scheduled_post',
+    });
   }
 }
 

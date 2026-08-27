@@ -1,0 +1,43 @@
+/* ===== ZIONX — push opt-in card ===== */
+.zxpush {
+  --ink: #04111A; --paper: #F2F3F1; --surface: #FFFFFF;
+  --line: rgba(4,17,26,0.14); --muted: rgba(4,17,26,0.55);
+  --ok: #235B44; --bad: #8A1C1C; --chip: rgba(4,17,26,0.05);
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 16px 20px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif;
+}
+.zxpush.is-on { border-left: 3px solid var(--ok); }
+.zxpush-mark {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper); border: 1px solid var(--line); color: var(--ink);
+}
+.zxpush.is-on .zxpush-mark { color: var(--ok); }
+.zxpush-body { flex: 1; min-width: 200px; }
+.zxpush-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+.zxpush-state {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700;
+  padding: 3px 8px; border-radius: 2px; background: var(--chip); color: var(--muted);
+}
+.zxpush-state.on { background: var(--ok); color: var(--paper); }
+.zxpush-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.zxpush-msg { margin: 8px 0 0; font-size: 13px; font-weight: 600; }
+.zxpush-msg.ok { color: var(--ok); }
+.zxpush-msg.bad { color: var(--bad); }
+.zxpush-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.zxpush-btn {
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 9px 16px; border-radius: 3px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); white-space: nowrap;
+  transition: background 0.14s, opacity 0.14s;
+}
+.zxpush-btn:hover:not(:disabled) { background: var(--chip); }
+.zxpush-btn.solid { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.zxpush-btn.solid:hover:not(:disabled) { opacity: 0.9; }
+.zxpush-btn:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 640px) {
+  .zxpush-actions { width: 100%; }
+  .zxpush-btn { flex: 1; }
+}

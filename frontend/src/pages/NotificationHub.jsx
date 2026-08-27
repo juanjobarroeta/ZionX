@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../components/Layout";
+import PushSetup from "../components/PushSetup";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { useNavigate } from "react-router-dom";
@@ -89,20 +90,6 @@ const NotificationHub = () => {
     }
   };
 
-  const createTestNotifications = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.post(`${API_BASE_URL}/api/notifications/test`, {}, { headers });
-      
-      alert("✅ Se crearon notificaciones de prueba");
-      fetchNotifications();
-    } catch (error) {
-      console.error("Error creating test notifications:", error);
-      alert("Error al crear notificaciones de prueba");
-    }
-  };
-
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
     
@@ -132,13 +119,12 @@ const NotificationHub = () => {
     return date.toLocaleDateString('es-MX');
   };
 
-  const getTypeTone = (type) => {
-    const tones = {
-      success: 'is-ok',
-      warning: 'is-warn',
-      error: 'is-bad'
-    };
-    return tones[type] || '';
+  const getTypeTone = (type = '') => {
+    const t = String(type);
+    if (/fail|error|reject|denied|vencid/i.test(t)) return 'is-bad';
+    if (/token|expir|warn|pending|revision|cambios/i.test(t)) return 'is-warn';
+    if (/success|publish|approved|aprobad|complet|paid|pagad/i.test(t)) return 'is-ok';
+    return '';
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -163,12 +149,6 @@ const NotificationHub = () => {
             </div>
             <div className="zxntf-actions">
               <button
-                onClick={createTestNotifications}
-                className="zxntf-btn"
-              >
-                Crear pruebas
-              </button>
-              <button
                 onClick={() => navigate('/messages')}
                 className="zxntf-btn"
               >
@@ -184,6 +164,9 @@ const NotificationHub = () => {
               )}
             </div>
           </div>
+
+          {/* Avisos on this device */}
+          <PushSetup />
 
           {/* Filters */}
           <div className="zxntf-filters">
@@ -230,9 +213,9 @@ const NotificationHub = () => {
                     <div className="zxntf-top">
                       <div>
                         <div className={`zxntf-title ${notification.is_read ? 'read' : ''}`}>
-                          {notification.title}
+                          {notification.title || notification.message}
                         </div>
-                        <p className="zxntf-msg">{notification.message}</p>
+                        {notification.title && <p className="zxntf-msg">{notification.message}</p>}
                         <div className="zxntf-meta">
                           <span>{formatTimeAgo(notification.created_at)}</span>
                           {notification.from_user_name && (
