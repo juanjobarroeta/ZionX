@@ -9,6 +9,9 @@ const router = express.Router();
 const metaService = require('../services/metaService');
 const { syncAccountInsights, syncPostInsights } = require('../services/metricsSync');
 
+const CUSTOMER_NAME_SQL =
+  `COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''))`;
+
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const defaultFrom = () => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 const { refreshExpiringTokens } = require('../services/tokenRefresh');
@@ -302,6 +305,62 @@ router.post('/callback', async (req, res) => {
   } catch (error) {
     console.error('Error in OAuth callback:', error);
     res.status(500).json({ error: 'Failed to connect accounts' });
+  }
+});
+
+/**
+ * GET /api/social/connections
+ * Every Meta connection the agency has, social and advertising, grouped by
+ * client — with the one thing that actually matters about each: is data still
+ * flowing through it?
+ *
+ * A connection can fail three ways, and each needs a different human action:
+ *   · no client assigned  → the numbers exist but land nowhere (assign it)
+ *   · token expired/expiring → reconnect before publishing and metrics stop
+ *   · last sync gone stale  → Meta is refusing us; the error says why
+ * The page that reads this exists so "¿por qué no hay datos?" has one answer
+ * instead of two screens and a log.
+ */
+router.get('/connections', async (req, res) => {
+  try {
+    const social = await req.pool.query(`
+      SELECT sa.id, sa.platform, sa.account_name, sa.account_username,
+             sa.platform_account_id, sa.customer_id, sa.followers_count,
+             sa.last_synced_at, sa.token_expires_at,
+             ${CUSTOMER_NAME_SQL} AS customer_name,
+             (SELECT MAX(aa.snapshot_date) FROM account_analytics aa
+               WHERE aa.social_account_id = sa.id) AS last_metrics_day,
+             (SELECT COUNT(*)::int FROM scheduled_posts sp
+               WHERE sp.social_account_id = sa.id AND sp.status = 'scheduled') AS queued_posts,
+             (SELECT COUNT(*)::int FROM scheduled_posts sp
+               WHERE sp.social_account_id = sa.id AND sp.status = 'failed') AS failed_posts
+        FROM social_accounts sa
+        LEFT JOIN customers c ON c.id = sa.customer_id
+       WHERE sa.is_active = true
+       ORDER BY customer_name NULLS FIRST, sa.platform
+    `);
+
+    const ads = await req.pool.query(`
+      SELECT a.id, a.platform_account_id, a.account_name, a.currency,
+             a.customer_id, a.last_synced_at, a.token_expires_at,
+             ${CUSTOMER_NAME_SQL} AS customer_name,
+             (SELECT MAX(d.day) FROM ad_spend_daily d WHERE d.ad_account_id = a.id) AS last_spend_day
+        FROM ad_accounts a
+        LEFT JOIN customers c ON c.id = a.customer_id
+       WHERE a.is_active = true AND a.platform = 'meta'
+       ORDER BY customer_name NULLS FIRST, a.account_name
+    `);
+
+    const runs = await req.pool.query('SELECT job, last_success_at, last_status, last_detail FROM sync_runs');
+
+    res.json({
+      social: social.rows,
+      ads: ads.rows,
+      jobs: runs.rows,
+    });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    res.status(500).json({ error: 'Failed to fetch connections' });
   }
 });
 
