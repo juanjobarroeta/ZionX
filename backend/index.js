@@ -1,3 +1,5 @@
+// Sentry must load before express/http so it can instrument them.
+const Sentry = require('./instrument');
 /**
  * ZIONX Marketing Platform — Backend Entry Point
  * Slim server setup that imports modular route files.
@@ -338,6 +340,10 @@ async function start() {
     metricsScheduler.start();
 
     // Start server
+    // Sentry's express error handler — after every route, before listen, so
+    // an unhandled route error is reported with its request context.
+    if (process.env.SENTRY_DSN) Sentry.setupExpressErrorHandler(app);
+
     app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 Backend live at http://0.0.0.0:${port}`);
       console.log('📡 Server is listening and ready to accept connections');

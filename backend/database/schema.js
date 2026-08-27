@@ -10,7 +10,9 @@ const runSqlFile = async (pool, filename) => {
     await pool.query(sql);
     console.log(`✅ Loaded ${filename}`);
   } catch (err) {
-    console.log(`⚠️ ${filename} skipped: ${err.message}`);
+    // Non-fatal so one broken file can't stop boot — but loud: each file runs
+    // as a single all-or-nothing batch, so "skipped" means NONE of it applied.
+    console.error(`❌ ${filename} failed (no statement applied): ${err.message}`);
   }
 };
 
@@ -1132,6 +1134,32 @@ const createTables = async (pool) => {
     `);
     console.log("✅ Tasks table created");
 
+    // Two different modules create `tasks` (this file and the project-management
+    // sql), and whichever runs first on a given database wins — production got
+    // this file's shape, fresh databases got the other. Align them: these are
+    // the columns the task board reads and writes.
+    await pool.query(`
+      ALTER TABLE tasks
+        ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS customer_id INTEGER,
+        ADD COLUMN IF NOT EXISTS assignee_kind VARCHAR(20) DEFAULT 'team',
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    `);
+
+    // The task routes upsert assignments with ON CONFLICT (task_id, assignee_id,
+    // assignment_type) — which errors outright on databases where the table came
+    // from the project-management sql and has no unique constraint. Dedupe any
+    // rows that accumulated, then guarantee the constraint as a named index.
+    await pool.query(`
+      DELETE FROM task_assignments a USING task_assignments b
+       WHERE a.ctid < b.ctid
+         AND a.task_id = b.task_id
+         AND a.assignee_id = b.assignee_id
+         AND a.assignment_type IS NOT DISTINCT FROM b.assignment_type;
+      CREATE UNIQUE INDEX IF NOT EXISTS task_assignments_task_assignee_type_idx
+        ON task_assignments (task_id, assignee_id, assignment_type);
+    `).catch((e) => console.error('task_assignments constraint:', e.message));
+
     // Add missing columns to tasks table
     await pool.query(`
       DO $$
@@ -1603,6 +1631,33 @@ const createTables = async (pool) => {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_tx_fecha ON bank_transactions(fecha);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_bank_tx_matched ON bank_transactions(matched_type, matched_id);`);
     console.log("✅ Bancos (bank reconciliation) tables created");
+
+    // ---- Approval workflow columns ------------------------------------------
+    // approval-workflow-schema.sql has never successfully applied: module .sql
+    // files run as one all-or-nothing batch, this one depends on tables created
+    // after it runs (and has failures of its own), and runSqlFile logged the
+    // abort as a quiet "skipped". Production served /api/approvals 500s for
+    // months as a result. The columns the approvals routes query are therefore
+    // guaranteed inline, guarded on the table existing.
+    // Belt and braces: the columns the approvals routes actually query, inline
+    // and guarded, so /api/approvals works even if the sql file regresses.
+    const ccExists = await pool.query("SELECT to_regclass('content_calendar') AS r");
+    if (ccExists.rows[0].r) {
+      await pool.query(`
+        ALTER TABLE content_calendar
+          ADD COLUMN IF NOT EXISTS assigned_approver INTEGER,
+          ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) DEFAULT 'pending',
+          ADD COLUMN IF NOT EXISTS submitted_for_review_at TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS submitted_by INTEGER,
+          ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS approved_by INTEGER,
+          ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS rejected_by INTEGER,
+          ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+          ADD COLUMN IF NOT EXISTS current_revision INTEGER DEFAULT 1;
+      `);
+      console.log("✅ Approval workflow columns verified");
+    }
 
     console.log("✅ All tables ready");
 
