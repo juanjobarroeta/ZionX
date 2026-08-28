@@ -1,0 +1,95 @@
+/* ===== ZIONX — publicación rápida (cajón) ===== */
+.zxq-scrim {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(4,17,26,0.55); border: none; cursor: pointer;
+}
+.zxq {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 201;
+  width: min(460px, 100vw); display: flex; flex-direction: column;
+  background: #F2F3F1; color: #04111A;
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif;
+  box-shadow: -20px 0 60px rgba(4,17,26,0.2);
+}
+.zxq, .zxq * { box-sizing: border-box; }
+.zxq form { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.zxq-serif { font-family: 'Nyght', Georgia, serif; font-style: italic; font-weight: 300; }
+
+.zxq-head {
+  flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 22px 24px; background: #04111A; color: #F2F3F1;
+}
+.zxq-eyebrow { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.55; font-weight: 600; }
+.zxq-h2 { margin: 6px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.zxq-x {
+  background: none; border: none; color: #F2F3F1; font-size: 24px; line-height: 1;
+  cursor: pointer; opacity: 0.6; padding: 0 4px;
+}
+.zxq-x:hover { opacity: 1; }
+
+.zxq-body { flex: 1 1 auto; overflow-y: auto; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+.zxq-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.zxq-field { display: flex; flex-direction: column; gap: 6px; }
+.zxq-field > span {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: rgba(4,17,26,0.55);
+}
+.zxq select, .zxq textarea, .zxq-datetime {
+  font-family: inherit; font-size: 14px; color: #04111A;
+  padding: 10px 12px; border: 1px solid rgba(4,17,26,0.18);
+  border-radius: 3px; background: #FFF; width: 100%;
+}
+.zxq textarea { resize: vertical; line-height: 1.5; }
+.zxq select:focus, .zxq textarea:focus, .zxq-datetime:focus {
+  outline: none; border-color: #04111A; box-shadow: 0 0 0 3px rgba(4,17,26,0.08);
+}
+
+.zxq-drop {
+  border: 1px dashed rgba(4,17,26,0.28); border-radius: 4px; background: #FFF;
+  min-height: 150px; cursor: pointer; padding: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; width: 100%;
+  font-family: inherit; transition: border-color 0.14s, background 0.14s;
+}
+.zxq-drop:hover { border-color: #04111A; background: rgba(4,17,26,0.03); }
+.zxq-drop.has { border-style: solid; background: #04111A; }
+.zxq-drop-hint { font-size: 13px; font-weight: 600; color: rgba(4,17,26,0.55); text-align: center; line-height: 1.7; }
+.zxq-drop-hint em { font-style: normal; font-size: 11px; opacity: 0.7; }
+.zxq-prev { max-width: 100%; max-height: 300px; display: block; }
+.zxq-filename { font-size: 11px; color: rgba(4,17,26,0.55); word-break: break-all; }
+.zxq-note { margin: 0; font-size: 13px; color: rgba(4,17,26,0.55); }
+
+.zxq-when { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.zxq-when button {
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 10px 8px; border: 1px solid rgba(4,17,26,0.18); background: #FFF; color: #04111A;
+}
+.zxq-when button:first-child { border-radius: 3px 0 0 3px; }
+.zxq-when button:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+.zxq-when button.on { background: #04111A; color: #F2F3F1; border-color: #04111A; }
+.zxq-when button:last-child.on { border-left: 1px solid #04111A; }
+.zxq-datetime { margin-top: 8px; }
+
+.zxq-error {
+  padding: 12px 14px; border-radius: 3px; font-size: 13px; font-weight: 600;
+  color: #8A1C1C; background: rgba(138,28,28,0.07); border-left: 3px solid #8A1C1C;
+}
+.zxq-error ul { margin: 8px 0 0; padding-left: 18px; font-weight: 500; }
+
+.zxq-foot {
+  flex: 0 0 auto; display: flex; gap: 8px; justify-content: flex-end;
+  padding: 16px 24px; border-top: 1px solid rgba(4,17,26,0.12); background: #F2F3F1;
+}
+.zxq-btn {
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 10px 18px; border-radius: 3px; border: 1px solid rgba(4,17,26,0.18);
+  background: #FFF; color: #04111A;
+}
+.zxq-btn:hover:not(:disabled) { background: rgba(4,17,26,0.05); }
+.zxq-btn.solid { background: #04111A; color: #F2F3F1; border-color: #04111A; }
+.zxq-btn.solid:hover:not(:disabled) { opacity: 0.9; }
+.zxq-btn:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 520px) {
+  .zxq { width: 100vw; }
+  .zxq-row { grid-template-columns: 1fr; }
+}

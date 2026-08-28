@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import QuickPost from "../components/QuickPost";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import PageShell from "../components/PageShell";
@@ -75,6 +76,7 @@ const SocialHub = () => {
   const [platformFilter, setPlatformFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 
@@ -185,7 +187,8 @@ const SocialHub = () => {
             <select className="zx-select inline on-ink" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mes">
               {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
-            <button className="zx-btn on-ink" onClick={() => navigate("/content-calendar")}>Programar publicación</button>
+            <button className="zx-btn on-ink ghost" onClick={() => navigate("/content-calendar")}>Programar publicación</button>
+            <button className="zx-btn on-ink" onClick={() => setQuickOpen(true)}>Publicación rápida</button>
           </>
         }
         telemetry={[
@@ -267,6 +270,17 @@ const SocialHub = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {quickOpen && (
+        <QuickPost
+          customers={customers}
+          onClose={() => setQuickOpen(false)}
+          onDone={() => {
+            // La lista es la prueba de que pasó: recargarla es la confirmación.
+            fetchHub();
+          }}
+        />
       )}
     </>
   );

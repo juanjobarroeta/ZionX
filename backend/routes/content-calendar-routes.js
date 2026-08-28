@@ -154,6 +154,95 @@ router.post("/content-calendar/:id/schedule", async (req, res) => {
 
 // Remove a plan entry from the publish queue.
 /**
+ * POST /quick-post — publicación rápida
+ *
+ * The pipeline exists because most work is planned ahead. This is the other
+ * case: something has to go out now, or this afternoon, and walking the whole
+ * calendar → arte → aprobación → programar path is too many steps for it.
+ *
+ * One request does everything: the art comes up with the form, the calendar
+ * entry is created already approved, and it either goes into the queue for a
+ * time you pick or straight out. The entry is still created — skipping it would
+ * cost the post its place in the calendar, its client history and its metrics.
+ */
+router.post("/quick-post", upload.single("file"), async (req, res) => {
+  try {
+    const {
+      customer_id, platform = "instagram", content_type = "post",
+      title, message, when = "schedule", scheduled_for,
+    } = req.body;
+
+    if (!customer_id) return res.status(400).json({ message: "Elige un cliente" });
+
+    const isStory = String(content_type).toLowerCase() === "story";
+    if (!req.file) return res.status(400).json({ message: "Sube el arte o el video" });
+    if (!isStory && !String(message || "").trim()) {
+      return res.status(400).json({ message: "Escribe el copy" });
+    }
+
+    // A story carries no caption, so it has nothing to name itself with.
+    const name =
+      String(title || "").trim() ||
+      String(message || "").trim().split("\n")[0].slice(0, 60) ||
+      `${content_type} · ${new Date().toISOString().slice(0, 10)}`;
+
+    const at = when === "now" ? new Date() : new Date(scheduled_for);
+    if (Number.isNaN(at.getTime())) return res.status(400).json({ message: "La fecha no es válida" });
+    if (when !== "now" && at.getTime() < Date.now() - 60000) {
+      return res.status(400).json({ message: "Esa fecha ya pasó" });
+    }
+
+    // The form sends an instant; the calendar stores the wall clock the team
+    // reads. Splitting it in UTC would file a 3pm post under 9pm, and promote()
+    // would then read that 9pm back as local. Let Postgres do the conversion.
+    const local = await req.pool.query(
+      `SELECT ($1::timestamptz AT TIME ZONE $2)::date AS d,
+              ($1::timestamptz AT TIME ZONE $2)::time AS t`,
+      [at.toISOString(), publishSync.SCHEDULE_TZ]
+    );
+    const { d: localDate, t: localTime } = local.rows[0];
+
+    const arte = `/uploads/${req.file.filename}`;
+    const inserted = await req.pool.query(
+      `INSERT INTO content_calendar
+         (customer_id, title, content_type, platform, scheduled_date, scheduled_time,
+          status, copy_out, arte, created_by, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'aprobado',$7,$8,$9,NOW(),NOW())
+       RETURNING id`,
+      [customer_id, name, content_type, platform, localDate, localTime,
+       message || null, arte, req.user?.id || null]
+    );
+    const entryId = inserted.rows[0].id;
+
+    const promoted = await publishSync.promote(req.pool, entryId, publicBase(req));
+    if (!promoted.ok) {
+      // Keep the entry — the art is already uploaded and the work is not lost;
+      // it shows up in the calendar with exactly what it still needs.
+      return res.status(422).json({
+        message: "Se guardó, pero aún no se puede publicar",
+        id: entryId, missing: promoted.readiness.missing,
+      });
+    }
+
+    if (when !== "now") {
+      return res.json({ success: true, id: entryId, scheduled_for: promoted.scheduled_post.scheduled_for });
+    }
+
+    const PostScheduler = require("../services/postScheduler");
+    const result = await new PostScheduler(req.pool).publishOne(promoted.scheduled_post.id);
+    if (result.ok) return res.json({ success: true, id: entryId, published: true, url: result.url });
+
+    return res.status(502).json({
+      message: result.error || "Se guardó y quedó en la cola, pero no se pudo publicar ahora",
+      id: entryId,
+    });
+  } catch (error) {
+    console.error("Error in quick post:", error);
+    res.status(500).json({ message: "No se pudo crear la publicación" });
+  }
+});
+
+/**
  * POST /content-calendar/:id/publish-now
  *
  * Publish this minute, ahead of the schedule. The plan is to work ahead — but
