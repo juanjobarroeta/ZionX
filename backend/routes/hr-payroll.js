@@ -1,4 +1,5 @@
 const express = require('express');
+const { linkTeamMemberToUser } = require('../services/identity');
 const router = express.Router();
 const { createNotification, notifyAllUsers, NotificationTemplates } = require('../utils/notifications');
 const { calculateQuincenalPayroll } = require('../utils/mexicanTaxCalculations');
@@ -166,6 +167,9 @@ router.post('/employees', async (req, res) => {
       imss_number, phone, address, notes,
       capacity_hours_per_week || 40, max_daily_tasks || 5
     ]);
+
+    // An employee added here is the same person as their login.
+    await linkTeamMemberToUser(req.pool, result.rows[0].id);
     
     console.log(`✅ Created employee: ${name}`);
     res.status(201).json(result.rows[0]);
