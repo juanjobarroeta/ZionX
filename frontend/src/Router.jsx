@@ -64,6 +64,7 @@ const Analytics = lazyWithReload(() => import("./pages/Analytics"));
 const Connections = lazyWithReload(() => import("./pages/Connections"));
 const PublicReport = lazyWithReload(() => import("./pages/PublicReport"));
 const ContentPlanningCenter = lazyWithReload(() => import("./pages/ContentPlanningCenter"));
+const PostDetail = lazyWithReload(() => import("./pages/PostDetail"));
 const ApprovalsHub = lazyWithReload(() => import("./pages/ApprovalsHub"));
 const MyWork = lazyWithReload(() => import("./pages/MyWork"));
 const ProjectManagement = lazyWithReload(() => import("./pages/ProjectManagement"));
@@ -189,6 +190,7 @@ const AppRouter = () => (
         <Route path="/social-analytics" element={<SocialMediaRoute><Analytics /></SocialMediaRoute>} />
         <Route path="/conexiones" element={<SocialMediaRoute><Connections /></SocialMediaRoute>} />
         <Route path="/content-calendar" element={<SocialMediaRoute><ContentPlanningCenter /></SocialMediaRoute>} />
+        <Route path="/post/:id" element={<SocialMediaRoute><PostDetail /></SocialMediaRoute>} />
         <Route path="/approvals" element={<SocialMediaRoute><ApprovalsHub /></SocialMediaRoute>} />
         <Route path="/my-work" element={<ProtectedRoute><MyWork /></ProtectedRoute>} />
         <Route path="/tareas" element={<ProtectedRoute><TasksBoard /></ProtectedRoute>} />

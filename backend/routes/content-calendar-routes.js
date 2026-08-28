@@ -385,4 +385,91 @@ router.post("/content/:postId/upload", upload.array('files', 10), async (req, re
   }
 });
 
+/**
+ * GET /content-calendar/:id
+ *
+ * Everything about one post, in one request: the idea and the artwork, the
+ * production ladder with who owns each rung, where the client stands, the
+ * queued publication, and — once it is out — how it did.
+ *
+ * This exists because a post had no home. Its pieces lived across the
+ * calendar, the approvals queue, the publishing hub and Rendimiento, and
+ * moving one post meant finding it again on each of them.
+ */
+router.get("/content-calendar/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "id inválido" });
+
+    const post = await req.pool.query(
+      `SELECT cc.*,
+              COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''),
+                       NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') AS customer_name,
+              designer.name AS designer_name,
+              cm.name AS cm_name,
+              approver.name AS approver_name
+         FROM content_calendar cc
+         LEFT JOIN customers c ON c.id = cc.customer_id
+         LEFT JOIN team_members designer ON designer.id = cc.assigned_designer
+         LEFT JOIN team_members cm ON cm.id = cc.assigned_community_manager
+         LEFT JOIN team_members approver ON approver.id = cc.assigned_approver
+        WHERE cc.id = $1`,
+      [id]
+    );
+    if (!post.rows.length) return res.status(404).json({ error: "La publicación no existe" });
+    const row = post.rows[0];
+
+    // The ladder. `ready` means every required rung below it is done, so it is
+    // genuinely this person's turn rather than merely assigned to them.
+    const stages = await req.pool.query(
+      `SELECT s.id, s.stage_key, s.status, s.optional, s.position, s.owner_id, s.due_date,
+              tm.name AS owner_name, tm.user_id AS owner_user_id,
+              NOT EXISTS (
+                SELECT 1 FROM post_pipeline_stages p
+                 WHERE p.content_calendar_id = s.content_calendar_id
+                   AND p.optional = false AND p.position < s.position AND p.status <> 'listo'
+              ) AS ready
+         FROM post_pipeline_stages s
+         LEFT JOIN team_members tm ON tm.id = s.owner_id
+        WHERE s.content_calendar_id = $1
+        ORDER BY s.position ASC`,
+      [id]
+    );
+
+    let publication = null;
+    if (row.scheduled_post_id) {
+      const pub = await req.pool.query(
+        `SELECT sp.id, sp.status, sp.scheduled_for, sp.published_at, sp.platform_post_url,
+                sp.error_message, sp.retry_count, sp.content_type, sp.message,
+                sa.account_username, sa.account_name, sa.platform
+           FROM scheduled_posts sp
+           LEFT JOIN social_accounts sa ON sa.id = sp.social_account_id
+          WHERE sp.id = $1`,
+        [row.scheduled_post_id]
+      );
+      publication = pub.rows[0] || null;
+    }
+
+    // Only meaningful once it is live; the newest snapshot is the current truth.
+    let metrics = null;
+    if (publication?.id) {
+      const m = await req.pool.query(
+        `SELECT views, reach, likes, comments, shares, saves, total_interactions,
+                permalink, snapshot_date
+           FROM post_analytics
+          WHERE scheduled_post_id = $1
+          ORDER BY snapshot_date DESC NULLS LAST, id DESC
+          LIMIT 1`,
+        [publication.id]
+      );
+      metrics = m.rows[0] || null;
+    }
+
+    res.json({ post: row, stages: stages.rows, publication, metrics });
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    res.status(500).json({ error: "No se pudo cargar la publicación" });
+  }
+});
+
 module.exports = router;

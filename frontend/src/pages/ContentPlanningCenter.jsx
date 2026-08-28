@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import PageShell from "../components/PageShell";
 import PixelMark from "../components/PixelMark";
@@ -690,6 +690,7 @@ const ContentPlanningCenter = () => {
             <div className="zxc-drawer-head">
               <span className="plat">{capitalize(selected.platform) || "Contenido"} · {capitalize(selected.content_type) || "Post"}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {!editing && <Link className="zx-btn on-ink ghost" to={`/post/${selected.id}`}>Abrir</Link>}
                 {!editing && <button className="zx-btn on-ink ghost" onClick={openEdit}>Editar</button>}
                 <button className="zxc-x" onClick={() => { setSelected(null); setEditing(false); }} aria-label="Cerrar">×</button>
               </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import PageShell from "../components/PageShell";
 import ApprovalModal from "../components/ApprovalModal";
@@ -106,6 +107,7 @@ const ApprovalsHub = () => {
                     </div>
                     <div className="zxap-row-side">
                       <span className={`zxap-pill ${pill.cls}`}>{pill.label}</span>
+                      <Link className="zxap-btn ghost" to={`/post/${item.id}`} onClick={(e) => e.stopPropagation()}>Abrir</Link>
                       <button className="zxap-btn" onClick={(e) => { e.stopPropagation(); openReview(item); }}>Revisar →</button>
                     </div>
                   </div>

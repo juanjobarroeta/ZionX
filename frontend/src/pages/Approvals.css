@@ -62,3 +62,12 @@
   .zxap-row { flex-direction: column; }
   .zxap-row-side { flex-direction: row; align-items: center; }
 }
+
+/* Secondary way out of the queue: the whole post, when the thumbnail is not
+   enough to decide. */
+.zxap-btn.ghost {
+  background: transparent; color: var(--zx-ink, #04111A);
+  border: 1px solid var(--zx-line, rgba(4,17,26,0.14));
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+.zxap-btn.ghost:hover { background: rgba(4,17,26,0.05); }

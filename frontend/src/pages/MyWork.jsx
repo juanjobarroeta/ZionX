@@ -94,10 +94,9 @@ const MyWork = () => {
 
   const actionable = groupedQueue.cambios.length + groupedQueue.en_progreso.length + groupedQueue.ready.length;
 
-  const openHref = (item) =>
-    item.roles.includes("approver") && bucketOf(item) === "action"
-      ? "/approvals"
-      : `/content-calendar?customer=${item.customer_id}`;
+  // Every card opens the post itself. Before this, "Ver" dropped you on a
+  // filtered calendar and you had to find the post again by eye.
+  const openHref = (item) => `/post/${item.id}`;
 
   // Advance one of my stages right from here. Completing (listo) auto-advances
   // the next stage on the backend, so we refetch the queue + supervision after.
@@ -167,7 +166,7 @@ const MyWork = () => {
           ) : (
             <button className="zxw-act" disabled={busy} onClick={() => patchMyStage(stage, "en_progreso")}>Empezar</button>
           )}
-          <Link className="zxw-act link" to={`/content-calendar?customer=${stage.customer_id}`}>Ver</Link>
+          <Link className="zxw-act link" to={`/post/${stage.post_id}`}>Ver</Link>
         </div>
       </div>
     );
@@ -180,7 +179,7 @@ const MyWork = () => {
     return (
       <Link
         className={`zxw-sup-row${stuck ? " stuck" : ""}${needsMe ? " mine" : ""}`}
-        to={`/content-calendar?customer=${post.customer_id}`}
+        to={`/post/${post.id}`}
       >
         <div className="zxw-sup-main">
           <div className="zxw-sup-title">{postTitle(post)}</div>
