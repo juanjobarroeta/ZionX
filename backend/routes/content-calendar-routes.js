@@ -465,7 +465,19 @@ router.get("/content-calendar/:id", async (req, res) => {
       metrics = m.rows[0] || null;
     }
 
-    res.json({ post: row, stages: stages.rows, publication, metrics });
+    const account = await publishSync.resolveAccount(req.pool, row.customer_id, row.platform);
+    const readiness = publishSync.computeReadiness(row, !!account);
+
+    res.json({
+      post: row,
+      stages: stages.rows,
+      publication,
+      metrics,
+      readiness,
+      account: account
+        ? { id: account.id, username: account.account_username, name: account.account_name, platform: account.platform }
+        : null,
+    });
   } catch (error) {
     console.error("Error fetching post:", error);
     res.status(500).json({ error: "No se pudo cargar la publicación" });
