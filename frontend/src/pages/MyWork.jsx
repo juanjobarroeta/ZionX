@@ -15,7 +15,7 @@ import "./MyWork.css";
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const fmtDate = (s) => (s ? new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "Sin fecha");
 const platLabel = (p) => cap(p) || "Contenido";
-const postTitle = (it) => it.campaign || it.idea_tema || it.title || "Sin título";
+const postTitle = (it) => it.title || it.idea_tema || it.campaign || "Sin título";
 
 const ROLE_LABEL = { designer: "Diseño", cm: "CM", approver: "Aprobar" };
 
@@ -205,7 +205,7 @@ const MyWork = () => {
           <span className="plat">{platLabel(item.platform)} · {cap(item.content_type) || "Post"}</span>
           <span className={`zxw-pill v-${st.variant}`}>{st.label}</span>
         </div>
-        <div className="title">{item.campaign || item.idea_tema || "Sin título"}</div>
+        <div className="title">{postTitle(item)}</div>
         <div className="client">{item.customer_name || "—"}{item.current_revision > 1 ? ` · Rev. #${item.current_revision}` : ""}</div>
         {item.rejection_reason && bucketOf(item) === "action" && (
           <div className="reject">{item.rejection_reason.slice(0, 130)}</div>

@@ -28,7 +28,7 @@ router.get("/api/team/my-work", async (req, res) => {
     }
     const { rows } = await pool.query(
       `SELECT
-         cc.id, cc.customer_id, cc.campaign, cc.platform, cc.content_type,
+         cc.id, cc.customer_id, cc.title, cc.campaign, cc.platform, cc.content_type,
          cc.scheduled_date, cc.status, cc.approval_status, cc.idea_tema,
          cc.copy_out, cc.arte, cc.rejection_reason, cc.current_revision,
          cc.assigned_designer, cc.assigned_community_manager, cc.assigned_approver,

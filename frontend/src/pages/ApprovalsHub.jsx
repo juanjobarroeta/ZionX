@@ -90,7 +90,7 @@ const ApprovalsHub = () => {
                     <div className="zxap-row-main">
                       <div className="zxap-row-title">
                         <span>{platIcon(item.platform)}</span>
-                        <span className="t">{item.campaign || item.idea_tema || "Sin título"}</span>
+                        <span className="t">{item.title || item.idea_tema || item.campaign || "Sin título"}</span>
                         {item.current_revision > 1 && <span className="zxap-rev">Rev. #{item.current_revision}</span>}
                       </div>
                       <div className="zxap-row-meta">{item.customer_name || "—"} · {item.content_type || "Post"}</div>

@@ -334,7 +334,7 @@ const ContentPlanningCenter = () => {
 
   const postTitle = useCallback((post) => {
     const type = post.content_type ? capitalize(post.content_type) : "Post";
-    const subject = post.idea_tema || post.campaign || customerName(post);
+    const subject = post.title || post.idea_tema || post.campaign || customerName(post);
     return `${type} — ${subject}`;
   }, [customerName]);
 

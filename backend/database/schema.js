@@ -984,6 +984,26 @@ const createTables = async (pool) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    // team_members is created twice in this repo: here, and in
+    // project-management-simple.sql without a user_id. CREATE TABLE IF NOT
+    // EXISTS means whichever runs first wins, and on a real database that was
+    // the SQL file — so `teamMemberIdForUser` threw "column user_id does not
+    // exist" and took /api/team/my-work, the approvals queue and the pipeline
+    // routes down with it. Guarantee the bridge between the login and the
+    // person, and reconnect existing rows by email.
+    await pool.query(`
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE team_members ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
+      CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id);
+    `);
+    const linked = await pool.query(`
+      UPDATE team_members tm SET user_id = u.id
+        FROM users u
+       WHERE tm.user_id IS NULL AND u.email IS NOT NULL
+         AND LOWER(tm.email) = LOWER(u.email)
+      RETURNING tm.id
+    `);
+    if (linked.rowCount > 0) console.log(`✅ Linked ${linked.rowCount} team member(s) to their login`);
     console.log("✅ Team members table created");
 
     // Add missing columns to team_members table

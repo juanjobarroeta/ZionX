@@ -98,7 +98,7 @@ router.get("/content-calendar-range", async (req, res) => {
     const params = [from, to];
     let query = `
       SELECT
-        cc.id, cc.customer_id, cc.campaign, cc.platform, cc.pilar, cc.content_type,
+        cc.id, cc.customer_id, cc.title, cc.campaign, cc.platform, cc.pilar, cc.content_type,
         cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_in, cc.copy_out, cc.arte,
         cc.priority, cc.client_status, cc.scheduled_post_id,
         (SELECT COUNT(*)::int FROM post_pipeline_stages pps

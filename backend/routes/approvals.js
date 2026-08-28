@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
-const { resolveNotifyUserIds } = require('../services/identity');
+const { resolveNotifyUserIds, teamMemberIdForUser } = require('../services/identity');
 const { setStageStatus, advanceAfter } = require('../services/pipeline');
 const publishSync = require('../services/publishSync');
 
@@ -44,9 +44,9 @@ router.get('/client/:token', async (req, res) => {
           SELECT
             cc.id, cc.post_number, cc.campaign, cc.platform, cc.content_type,
             cc.scheduled_date, cc.status, cc.copy_in, cc.copy_out,
-            cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
+            cc.title, cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
             cc.client_status, cc.client_feedback_text, cc.client_reviewed_at,
-            cc.revision_count
+            cc.current_revision
           FROM content_calendar cc
           WHERE cc.id = $1
         `, [tokenData.content_calendar_id])
@@ -54,9 +54,9 @@ router.get('/client/:token', async (req, res) => {
           SELECT
             cc.id, cc.post_number, cc.campaign, cc.platform, cc.content_type,
             cc.scheduled_date, cc.status, cc.copy_in, cc.copy_out,
-            cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
+            cc.title, cc.arte, cc.arte_files, cc.idea_tema, cc.pilar,
             cc.client_status, cc.client_feedback_text, cc.client_reviewed_at,
-            cc.revision_count
+            cc.current_revision
           FROM content_calendar cc
           WHERE cc.customer_id = $1
             AND cc.month_year = $2
@@ -152,7 +152,7 @@ router.post('/client/:token/request-changes/:postId', async (req, res) => {
         client_reviewed_at = NOW(),
         status = 'en_diseño',
         approval_status = 'revision_requested',
-        revision_count = COALESCE(revision_count, 0) + 1,
+        current_revision = COALESCE(current_revision, 1) + 1,
         updated_at = NOW()
       WHERE id = $1
     `, [postId, feedback]);
@@ -321,12 +321,13 @@ router.post('/generate-post-link', async (req, res) => {
 router.get('/queue', async (req, res) => {
   try {
     const { status, approver_id } = req.query;
-    const userId = req.user.id;
+    const myMemberId = await teamMemberIdForUser(req.pool, req.user.id);
 
     let query = `
       SELECT
         cc.id,
         cc.customer_id,
+        cc.title,
         COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), NULLIF(TRIM(c.first_name || ' ' || c.last_name),''), 'Cliente') as customer_name,
         cc.campaign,
         cc.platform,
@@ -338,7 +339,6 @@ router.get('/queue', async (req, res) => {
         cc.submitted_for_review_at,
         cc.submitted_by,
         cc.current_revision,
-        cc.revision_count,
         cc.rejection_reason,
         cc.arte,
         cc.arte_files,
@@ -377,7 +377,7 @@ router.get('/queue', async (req, res) => {
       total: result.rows.length,
       pending: result.rows.filter(r => r.approval_status === 'pending_review').length,
       in_review: result.rows.filter(r => r.approval_status === 'in_review').length,
-      my_queue: result.rows.filter(r => r.assigned_approver === userId).length
+      my_queue: myMemberId ? result.rows.filter(r => r.assigned_approver === myMemberId).length : 0
     };
 
     res.json({ items: result.rows, stats });
@@ -529,7 +529,6 @@ router.post('/reject/:contentId', async (req, res) => {
         rejection_reason = $3,
         client_approved = false,
         client_feedback = COALESCE(client_feedback, '') || E'\n[Revision Solicitada] ' || $3,
-        revision_count = COALESCE(revision_count, 0) + 1,
         current_revision = COALESCE(current_revision, 1) + 1,
         assigned_designer = COALESCE($5, assigned_designer),
         updated_at = CURRENT_TIMESTAMP
@@ -668,7 +667,7 @@ router.get('/approvers', async (req, res) => {
 // Get approval stats for dashboard
 router.get('/stats', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const myMemberId = await teamMemberIdForUser(req.pool, req.user.id);
 
     const result = await req.pool.query(`
       SELECT
@@ -677,7 +676,7 @@ router.get('/stats', async (req, res) => {
         COUNT(*) FILTER (WHERE approval_status = 'revision_requested' AND rejected_at > CURRENT_DATE - INTERVAL '7 days') as revisions_this_week,
         COUNT(*) FILTER (WHERE assigned_approver = $1 AND (status = 'revision' OR approval_status = 'pending_review')) as my_pending
       FROM content_calendar
-    `, [userId]);
+    `, [myMemberId]);
 
     res.json(result.rows[0]);
   } catch (error) {
