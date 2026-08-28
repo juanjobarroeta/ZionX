@@ -68,4 +68,36 @@ async function resolveNotifyUserIds(pool, { memberIds = [], userIds = [] } = {})
   return [...out];
 }
 
-module.exports = { teamMemberIdForUser, userIdsForTeamMembers, resolveNotifyUserIds };
+/**
+ * Point a team_members row at the login with the same email, if there is one.
+ *
+ * Without this a person added through the team screen is never connected to
+ * their account, so Mi trabajo and the approvals queue stay empty for them —
+ * quietly, which is worse than an error. Safe to call on every write.
+ *
+ * @returns {Promise<number|null>} the users.id it linked to, or null
+ */
+async function linkTeamMemberToUser(pool, teamMemberId) {
+  if (teamMemberId == null) return null;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE team_members tm
+          SET user_id = u.id
+         FROM users u
+        WHERE tm.id = $1
+          AND tm.user_id IS NULL
+          AND u.email IS NOT NULL
+          AND LOWER(tm.email) = LOWER(u.email)
+       RETURNING u.id`,
+      [teamMemberId]
+    );
+    return rows.length ? rows[0].id : null;
+  } catch (err) {
+    // Never let the link fail the thing that was actually being saved.
+    console.error('linkTeamMemberToUser:', err.message);
+    return null;
+  }
+}
+
+module.exports = {
+  linkTeamMemberToUser, teamMemberIdForUser, userIdsForTeamMembers, resolveNotifyUserIds };

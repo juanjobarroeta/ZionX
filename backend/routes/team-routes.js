@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { diskStorage } = require('../config/storage');
 const path = require('path');
-const { userIdsForTeamMembers, teamMemberIdForUser } = require('../services/identity');
+const { userIdsForTeamMembers, teamMemberIdForUser, linkTeamMemberToUser } = require('../services/identity');
 
 // Multer setup for task file uploads
 const storage = diskStorage(multer);
@@ -401,6 +401,7 @@ router.post("/team-members", async (req, res) => {
       RETURNING *
     `, [name, email, role, 'Marketing', skills, monthly_wage, max_daily_tasks, phone, status === 'active']);
 
+    await linkTeamMemberToUser(pool, result.rows[0].id);
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error creating team member:', error);
