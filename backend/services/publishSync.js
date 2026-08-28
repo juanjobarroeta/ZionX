@@ -58,6 +58,28 @@ function computeReadiness(entry, hasAccount) {
   return { ready: missing.length === 0, missing };
 }
 
+// The wall-clock zone the team schedules in. Their 10:00 is 10:00 in this zone;
+// the queue stores the UTC instant that corresponds to it.
+const SCHEDULE_TZ = process.env.SCHEDULE_TZ || 'America/Mexico_City';
+
+/**
+ * The exact instant a plan entry should go out.
+ *
+ * Postgres does the conversion because it owns the timezone database — doing it
+ * in JS would mean hand-rolling DST, and Mexico's rules have changed recently.
+ * A missing time defaults to 09:00 rather than midnight: an entry with only a
+ * date means "that day", and nobody means 00:00 by that.
+ */
+async function queueInstant(pool, entry) {
+  const day = entry.scheduled_date || entry.publish_date;
+  if (!day) return null;
+  const { rows } = await pool.query(
+    `SELECT (($1::date + COALESCE($2::time, '09:00'::time)) AT TIME ZONE $3) AT TIME ZONE 'UTC' AS at`,
+    [day, entry.scheduled_time || null, SCHEDULE_TZ]
+  );
+  return rows[0]?.at || day;
+}
+
 // Promote a plan entry into the publish queue. Returns { ok, readiness, scheduled_post }.
 async function promote(pool, entryId, publicBase) {
   const { rows } = await pool.query("SELECT * FROM content_calendar WHERE id = $1", [entryId]);
@@ -70,7 +92,12 @@ async function promote(pool, entryId, publicBase) {
 
   const message = entry.copy_out || entry.copy_in || "";
   const media = [entry.arte, entry.fotos_video].filter(Boolean).map((u) => absolutize(u, publicBase));
-  const when = entry.scheduled_date || entry.publish_date;
+  // The plan holds the day and the time in two columns, and only the day was
+  // being queued — so a post set for 19:00 went into the queue for 00:00 and
+  // either published at midnight or missed its window and failed. Combine them,
+  // and read the clock the team actually uses: they type 10:00 meaning 10:00
+  // here, not 10:00 UTC.
+  const when = await queueInstant(pool, entry);
   const contentType = entry.content_type || entry.formato || "post";
 
   let post;
@@ -122,4 +149,4 @@ async function unschedule(pool, entryId) {
   return { ok: true };
 }
 
-module.exports = { promote, unschedule, resolveAccount, computeReadiness, absolutize };
+module.exports = { promote, unschedule, resolveAccount, computeReadiness, absolutize, queueInstant, SCHEDULE_TZ };

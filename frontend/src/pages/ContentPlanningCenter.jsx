@@ -432,12 +432,24 @@ const ContentPlanningCenter = () => {
   };
 
   const openCreate = (date) => {
-    const f = { customer_id: "", scheduled_date: "", platform: "instagram", content_type: "post", campaign: "", idea_tema: "", status: "planificado" };
+    // The date field must never open empty. It is a controlled
+    // <input type="datetime-local">, and a half-typed value reads as "" — so
+    // React keeps writing "" back while the segments show what you typed, and
+    // `required` blocks the form with "Fill out this field" over a box that
+    // visibly has a date in it. Opening on a real value means every edit from
+    // there is complete.
+    const d = date ? new Date(date) : new Date();
     if (date) {
-      const d = new Date(date); d.setHours(9, 0, 0, 0);
-      f.scheduled_date = `${dayKey(d)}T09:00`;
+      d.setHours(9, 0, 0, 0);
+    } else {
+      // No day was clicked: the next round hour, at least a few minutes out.
+      d.setMinutes(0, 0, 0);
+      d.setHours(d.getHours() + 1);
     }
-    setForm(f);
+    setForm({
+      customer_id: "", scheduled_date: `${dayKey(d)}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      platform: "instagram", content_type: "post", campaign: "", idea_tema: "", status: "planificado",
+    });
     setShowCreate(true);
   };
 
