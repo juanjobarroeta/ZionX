@@ -38,6 +38,9 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null);
+  // An art URL can point at a file that is gone. A broken-image icon in front
+  // of a client is worse than saying there is no art.
+  const [artBroken, setArtBroken] = useState(false);
   const [note, setNote] = useState(null);
 
   const headers = useMemo(
@@ -57,7 +60,7 @@ export default function PostDetail() {
     }
   }, [id, headers]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setArtBroken(false); load(); }, [load]);
 
   const act = async (key, fn, msg) => {
     setBusy(key); setNote(null);
@@ -76,6 +79,18 @@ export default function PostDetail() {
     `stage-${stage.id}`,
     () => axios.patch(`${API_BASE_URL}/content-calendar/${id}/pipeline/${stage.stage_key}`, { status }, { headers }),
     status === "listo" ? `${STAGE_LABELS[stage.stage_key] || stage.stage_key}: listo.` : "Etapa actualizada."
+  );
+
+  const schedule = () => act(
+    "schedule",
+    () => axios.post(`${API_BASE_URL}/content-calendar/${id}/schedule`, {}, { headers }),
+    "Programada."
+  );
+
+  const unschedule = () => act(
+    "unschedule",
+    () => axios.delete(`${API_BASE_URL}/content-calendar/${id}/schedule`, { headers }),
+    "Quitada de la cola."
   );
 
   const sendToClient = () => act(
@@ -103,7 +118,7 @@ export default function PostDetail() {
     </PageShell>;
   }
 
-  const { post, stages, publication, metrics } = data;
+  const { post, stages, publication, metrics, readiness, account } = data;
   const state = contentStatusInfo(post.status);
   const pub = publication ? publishStatusInfo(publication.status) : null;
   const client = CLIENT_STATE[post.client_status] || null;
@@ -138,9 +153,9 @@ export default function PostDetail() {
       {/* ---- The work: what it looks like and what it says ---- */}
       <section className="zxpd-work">
         <div className="zxpd-art">
-          {cover
-            ? <img src={cover} alt="Arte de la publicación" />
-            : <div className="zxpd-art-empty">Sin arte todavía</div>}
+          {cover && !artBroken
+            ? <img src={cover} alt="Arte de la publicación" onError={() => setArtBroken(true)} />
+            : <div className="zxpd-art-empty">{cover ? "No se pudo cargar el arte" : "Sin arte todavía"}</div>}
         </div>
 
         <div className="zxpd-side">
@@ -259,6 +274,33 @@ export default function PostDetail() {
         ) : (
           <p className="zxpd-muted">No está en la cola de publicación todavía.</p>
         )}
+
+        {/* What is standing between this post and going out. The list comes
+            from the server — the same check that runs when you press Programar,
+            so it cannot promise something the queue will refuse. */}
+        {readiness && !readiness.ready && (
+          <div className="zxpd-ready">
+            <div className="head">Falta para poder programarla</div>
+            <ul>
+              {readiness.missing.map((m) => <li key={m}>{m}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <div className="zxpd-actions">
+          {readiness?.ready && publication?.status !== "published" && (
+            <button className="zxpd-btn solid" onClick={schedule} disabled={busy === "schedule"}>
+              {busy === "schedule"
+                ? "Programando…"
+                : publication ? "Actualizar la programación" : `Programar${account?.username ? ` en @${account.username}` : ""}`}
+            </button>
+          )}
+          {publication && publication.status !== "published" && (
+            <button className="zxpd-btn" onClick={unschedule} disabled={busy === "unschedule"}>
+              {busy === "unschedule" ? "Quitando…" : "Quitar de la cola"}
+            </button>
+          )}
+        </div>
       </section>
 
       {/* ---- How it did ---- */}
