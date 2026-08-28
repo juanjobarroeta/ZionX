@@ -291,10 +291,12 @@ router.post('/:id/generate-link', async (req, res) => {
     const publicToken = crypto.randomBytes(32).toString('hex');
     
     // Store token in brief
-    await req.pool.query(`
-      ALTER TABLE creative_briefs ADD COLUMN IF NOT EXISTS public_token VARCHAR(255);
-      UPDATE creative_briefs SET public_token = $1 WHERE id = $2
-    `, [publicToken, id]);
+    // The column is guaranteed in database/schema.js; a parameterised query
+    // cannot carry an ALTER alongside the UPDATE anyway.
+    await req.pool.query(
+      'UPDATE creative_briefs SET public_token = $1 WHERE id = $2',
+      [publicToken, id]
+    );
     
     const publicLink = `${req.protocol}://${req.get('host')}/public-brief/${publicToken}`;
     
@@ -431,9 +433,13 @@ router.post('/public/:token/submit', async (req, res) => {
     paramCount++;
     values.push(token);
     
+    // With nothing to write, `updates.join(', ')` left `SET , status = …` and
+    // Postgres rejected the whole statement. Marking it completed is still a
+    // valid thing to do on its own.
+    const setFields = updates.length ? `${updates.join(', ')},` : '';
     const query = `
       UPDATE creative_briefs SET 
-        ${updates.join(', ')},
+        ${setFields}
         status = 'completed',
         completed_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP

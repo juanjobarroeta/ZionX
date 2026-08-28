@@ -759,6 +759,16 @@ const createTables = async (pool) => {
       );
       CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id);
     `);
+    // The public brief questionnaire is opened with this token. It used to be
+    // added lazily by an ALTER inside POST /briefs/:id/generate-link, so until
+    // somebody generated a link the public page answered 500.
+    await pool.query(`
+      ALTER TABLE creative_briefs ADD COLUMN IF NOT EXISTS public_token VARCHAR(255);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_creative_briefs_public_token
+        ON creative_briefs(public_token) WHERE public_token IS NOT NULL;
+    `);
+    console.log("✅ Creative brief public token ready");
+
     console.log("✅ Push subscription table ready");
 
     console.log("✅ Client report tables ready");
