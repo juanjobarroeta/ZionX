@@ -34,11 +34,12 @@ const CONTENT_BY_VALUE = Object.fromEntries(CONTENT_STATUSES.map((s) => [s.value
 // Tolerant alias map (Spanish/English + publish states that bleed in) → canonical value.
 const CONTENT_ALIASES = {
   publicado: "publicado", published: "publicado", completed: "publicado",
-  aprobado: "aprobado", approved: "aprobado", listo: "aprobado",
+  aprobado: "aprobado", approved: "aprobado", listo: "aprobado", ready: "aprobado",
   revision: "revision", en_revision: "revision", "en revisión": "revision", review: "revision",
   cliente: "cliente", client: "cliente",
   en_diseño: "en_diseño", "en diseño": "en_diseño", diseno: "en_diseño", in_progress: "en_diseño",
   planificado: "planificado", pending: "planificado", programado: "planificado",
+  planned: "planificado", planeado: "planificado", draft: "planificado", borrador: "planificado",
   fallido: "fallido", failed: "fallido", error: "fallido",
 };
 
