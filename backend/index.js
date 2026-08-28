@@ -282,6 +282,26 @@ async function start() {
     app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomeInvoicesRoutes);
     app.use('/api/income', withPool, authenticateToken, requireSection('ingresos'), incomePaymentsRoutes);
 
+    // ---- Public, token-authenticated pages ----------------------------------
+    // The client's approval link and the brief questionnaire are opened by
+    // people who have no ZIONX login — the token in the URL is the credential,
+    // exactly like the public report above.
+    //
+    // They must be mounted HERE, above `app.use('/api', …, authenticateToken,
+    // customerImportRoutes)`, because that middleware matches EVERY /api path.
+    // It was answering the client's link with 403 "Access denied" long before
+    // the approvals router's own public/private gate could run.
+    //
+    // Only the public prefixes are routed here. Everything else falls through
+    // to the authenticated mounts below, so this cannot widen access: a request
+    // for /api/briefs (list them all) does not start with /public/ and is
+    // simply passed on.
+    const publicSubset = (router, prefix) => (req, res, next) =>
+      req.path.startsWith(prefix) ? router(req, res, next) : next();
+
+    app.use('/api/approvals', withPool, publicSubset(approvalsRoutes, '/client/'));
+    app.use('/api/briefs', withPool, publicSubset(creativeBriefsRoutes, '/public/'));
+
     // Customer import
     app.use('/api', withPool, authenticateToken, customerImportRoutes);
 
@@ -323,7 +343,7 @@ async function start() {
     app.use('/api', withPool, authenticateToken, requireSection('finanzas'), estadosRouter);
 
     // Creative Briefs (has its own public/auth split)
-    app.use('/api/briefs', withPool, creativeBriefsRoutes);
+    app.use('/api/briefs', withPool, authenticateToken, creativeBriefsRoutes);
 
     // --- New modular routes ---
     // Customers (mounted at root since routes include /customers prefix)
