@@ -290,6 +290,67 @@ class PostScheduler {
   }
 
   /**
+   * Publish one post right now, ahead of its slot.
+   *
+   * For the bomberazo: a client asks for something to go out this minute. It
+   * takes the same claim-then-publish path the timer uses — flipping
+   * `scheduled` to `publishing` in one atomic UPDATE — so a manual publish and
+   * the scheduler can never both grab the same row and post it twice.
+   *
+   * `scheduled_for` is pulled to now as part of the claim, otherwise
+   * publishPost would see a slot hours in the future (or long past) and refuse.
+   *
+   * @returns {Promise<{ok: boolean, reason?: string, status?: string, error?: string, url?: string}>}
+   */
+  async publishOne(scheduledPostId) {
+    const claimed = await this.pool.query(
+      `UPDATE scheduled_posts
+          SET status = 'publishing', scheduled_for = NOW(), retry_count = 0,
+              error_message = NULL, updated_at = NOW()
+        WHERE id = $1 AND status IN ('scheduled', 'failed')
+        RETURNING id`,
+      [scheduledPostId]
+    );
+    if (!claimed.rowCount) {
+      const cur = await this.pool.query('SELECT status FROM scheduled_posts WHERE id = $1', [scheduledPostId]);
+      if (!cur.rowCount) return { ok: false, reason: 'not-found' };
+      return {
+        ok: false,
+        reason: cur.rows[0].status === 'published' ? 'already-published' : 'busy',
+        status: cur.rows[0].status,
+      };
+    }
+
+    const { rows } = await this.pool.query(
+      `SELECT sp.*, sa.platform, sa.platform_account_id, sa.access_token,
+              sa.token_expires_at, sa.instagram_account_id
+         FROM scheduled_posts sp
+         JOIN social_accounts sa ON sp.social_account_id = sa.id
+        WHERE sp.id = $1`,
+      [scheduledPostId]
+    );
+    if (!rows.length) {
+      // The account went away between the claim and the hydrate.
+      await this.markFailed(scheduledPostId, 'La cuenta conectada ya no existe');
+      return { ok: false, reason: 'no-account' };
+    }
+
+    await this.publishPost(rows[0]);
+
+    const after = await this.pool.query(
+      'SELECT status, error_message, platform_post_url FROM scheduled_posts WHERE id = $1',
+      [scheduledPostId]
+    );
+    const row = after.rows[0] || {};
+    return {
+      ok: row.status === 'published',
+      status: row.status,
+      error: row.error_message || undefined,
+      url: row.platform_post_url || undefined,
+    };
+  }
+
+  /**
    * Publish a single claimed post (already in `publishing` status).
    */
   async publishPost(post) {

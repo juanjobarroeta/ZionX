@@ -119,3 +119,12 @@
 }
 .zxpd-ready ul { margin: 8px 0 0; padding-left: 18px; }
 .zxpd-ready li { font-size: 14px; line-height: 1.6; color: var(--zx-ink, #04111A); }
+
+/* Publicar ahora: se distingue de Programar sin gritar. El borde latón dice
+   "esto es la excepción, no el camino normal". */
+.zxpd-btn.now {
+  border-color: var(--zx-brass, #9A6B1E);
+  color: var(--zx-brass, #9A6B1E);
+  font-weight: 700;
+}
+.zxpd-btn.now:hover:not(:disabled) { background: rgba(154,107,30,0.08); }

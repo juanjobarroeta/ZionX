@@ -93,14 +93,10 @@ export default function PostDetail() {
     "Quitada de la cola."
   );
 
-  const sendToClient = () => act(
-    "client",
-    async () => {
-      const { data: r } = await axios.post(`${API_BASE_URL}/api/approvals/generate-post-link`,
-        { content_calendar_id: Number(id) }, { headers });
-      if (r?.url || r?.link) await navigator.clipboard?.writeText(r.url || r.link).catch(() => {});
-    },
-    "Liga de aprobación creada y copiada."
+  const publishNow = () => act(
+    "publishNow",
+    () => axios.post(`${API_BASE_URL}/content-calendar/${id}/publish-now`, {}, { headers }),
+    "Publicada."
   );
 
   if (loading) {
@@ -234,20 +230,14 @@ export default function PostDetail() {
         <h2 className="zxpd-h2">El cliente</h2>
         {client
           ? <div className={`zxpd-state v-${client.tone}`}>{client.label}</div>
-          : <p className="zxpd-muted">Todavía no se le ha enviado.</p>}
+          : <p className="zxpd-muted">Sin respuesta todavía. El cliente ve este post en su calendario.</p>}
 
         {post.client_feedback_text && (
           <blockquote className="zxpd-quote">{post.client_feedback_text}</blockquote>
         )}
-        {post.client_reviewed_at && (
+        {client && post.client_reviewed_at && (
           <div className="zxpd-muted small">Respondió el {fmtDate(post.client_reviewed_at)}</div>
         )}
-
-        <div className="zxpd-actions">
-          <button className="zxpd-btn solid" onClick={sendToClient} disabled={busy === "client"}>
-            {busy === "client" ? "Creando…" : post.client_status ? "Nueva liga de aprobación" : "Enviar al cliente"}
-          </button>
-        </div>
       </section>
 
       {/* ---- The publication ---- */}
@@ -289,11 +279,18 @@ export default function PostDetail() {
 
         <div className="zxpd-actions">
           {readiness?.ready && publication?.status !== "published" && (
-            <button className="zxpd-btn solid" onClick={schedule} disabled={busy === "schedule"}>
-              {busy === "schedule"
-                ? "Programando…"
-                : publication ? "Actualizar la programación" : `Programar${account?.username ? ` en @${account.username}` : ""}`}
-            </button>
+            <>
+              <button className="zxpd-btn solid" onClick={schedule} disabled={Boolean(busy)}>
+                {busy === "schedule"
+                  ? "Programando…"
+                  : publication ? "Actualizar la programación" : `Programar${account?.username ? ` en @${account.username}` : ""}`}
+              </button>
+              {/* El bomberazo: sale ahora, no en su horario. */}
+              <button className="zxpd-btn now" onClick={publishNow} disabled={Boolean(busy)}
+                      title="Sale ahora mismo, sin esperar a su horario">
+                {busy === "publishNow" ? "Publicando…" : "Publicar ahora"}
+              </button>
+            </>
           )}
           {publication && publication.status !== "published" && (
             <button className="zxpd-btn" onClick={unschedule} disabled={busy === "unschedule"}>

@@ -153,6 +153,42 @@ router.post("/content-calendar/:id/schedule", async (req, res) => {
 });
 
 // Remove a plan entry from the publish queue.
+/**
+ * POST /content-calendar/:id/publish-now
+ *
+ * Publish this minute, ahead of the schedule. The plan is to work ahead — but
+ * a client asks for something to go out now, and the app should be able to.
+ *
+ * It still goes through the queue rather than around it: promote() applies the
+ * same readiness rules as Programar, and the scheduler's own claim publishes
+ * it. Nothing here is a second way to publish that could drift from the first.
+ */
+router.post("/content-calendar/:id/publish-now", async (req, res) => {
+  try {
+    const promoted = await publishSync.promote(req.pool, req.params.id, publicBase(req));
+    if (promoted.notFound) return res.status(404).json({ message: "Entrada no encontrada" });
+    if (!promoted.ok) {
+      return res.status(422).json({ message: "La publicación aún no está lista", missing: promoted.readiness.missing });
+    }
+
+    const PostScheduler = require("../services/postScheduler");
+    const result = await new PostScheduler(req.pool).publishOne(promoted.scheduled_post.id);
+
+    if (result.ok) return res.json({ success: true, url: result.url });
+
+    if (result.reason === "already-published") {
+      return res.status(409).json({ message: "Esta publicación ya salió" });
+    }
+    if (result.reason === "busy") {
+      return res.status(409).json({ message: "Ya se está publicando en este momento" });
+    }
+    return res.status(502).json({ message: result.error || "No se pudo publicar" });
+  } catch (error) {
+    console.error("Error publishing now:", error);
+    res.status(500).json({ message: "No se pudo publicar" });
+  }
+});
+
 router.delete("/content-calendar/:id/schedule", async (req, res) => {
   try {
     const result = await publishSync.unschedule(req.pool, req.params.id);
