@@ -773,6 +773,13 @@ const createTables = async (pool) => {
 
     console.log("✅ Client report tables ready");
 
+    // Las URLs del CDN de Instagram caducan en ~24h (el parámetro `oe`), así
+    // que la miniatura se guarda también en el volumen y esta columna apunta a
+    // nuestra copia. La de Meta se conserva como origen para poder rebajarla.
+    await pool.query(`
+      ALTER TABLE post_analytics ADD COLUMN IF NOT EXISTS thumbnail_path TEXT;
+    `);
+
     console.log("✅ Analytics history tables ready");
 
 

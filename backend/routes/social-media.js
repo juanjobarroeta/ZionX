@@ -1023,7 +1023,7 @@ router.get('/analytics/posts', async (req, res) => {
              pa.views, pa.reach, pa.likes, pa.comments, pa.shares, pa.saves,
              pa.replies, pa.avg_watch_time,
              pa.total_interactions, pa.engagement_rate, pa.media_type, pa.platform,
-             pa.thumbnail_url,
+             COALESCE(pa.thumbnail_path, pa.thumbnail_url) AS thumbnail_url,
              COALESCE(sp.message, pa.caption) AS message,
              COALESCE(sp.published_at, pa.posted_at) AS published_at,
              COALESCE(sp.platform_post_url, pa.permalink) AS platform_post_url,
