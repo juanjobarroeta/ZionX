@@ -66,7 +66,7 @@ async function buildReport(pool, customerId, periodMonth) {
     SELECT DISTINCT ON (pa.platform_post_id)
            pa.platform_post_id, pa.views, pa.reach, pa.likes, pa.comments,
            pa.shares, pa.saves, pa.total_interactions, pa.engagement_rate,
-           pa.media_type, pa.platform, pa.thumbnail_url,
+           pa.media_type, pa.platform, COALESCE(pa.thumbnail_path, pa.thumbnail_url) AS thumbnail_url,
            COALESCE(sp.message, pa.caption) AS message,
            COALESCE(sp.published_at, pa.posted_at) AS published_at,
            COALESCE(sp.platform_post_url, pa.permalink) AS url

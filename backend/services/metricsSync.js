@@ -14,6 +14,7 @@
  */
 
 const metaService = require('./metaService');
+const { cacheThumbnail } = require('./mediaCache');
 
 const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
@@ -128,14 +129,18 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAc
       || (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0);
     // Engagement rate against reach — the denominator clients recognize.
     const rate = m.reach > 0 ? Math.min(999.99, (interactions / m.reach) * 100) : 0;
+    // Nuestra copia de la miniatura. Sólo baja la que no tengamos, así que un
+    // sync normal no vuelve a descargar nada; y si falla, la fila se guarda
+    // igual — una imagen que falta no puede costar las métricas.
+    const cachedThumb = await cacheThumbnail(row.thumbnail, row.platformPostId);
     await pool.query(`
       INSERT INTO post_analytics (
         scheduled_post_id, social_account_id, platform_post_id, snapshot_date,
         views, reach, likes, comments, shares, saves, clicks, video_views,
         total_interactions, replies, navigation, profile_visits, follows, link_clicks,
         avg_watch_time, total_watch_time, engagement_rate, media_type, platform,
-        customer_id, caption, permalink, thumbnail_url, posted_at, raw, fetched_at
-      ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,NOW())
+        customer_id, caption, permalink, thumbnail_url, thumbnail_path, posted_at, raw, fetched_at
+      ) VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,NOW())
       ON CONFLICT (platform_post_id, snapshot_date) DO UPDATE SET
         views = EXCLUDED.views, reach = EXCLUDED.reach, likes = EXCLUDED.likes,
         comments = EXCLUDED.comments, shares = EXCLUDED.shares, saves = EXCLUDED.saves,
@@ -148,6 +153,7 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAc
         caption = COALESCE(EXCLUDED.caption, post_analytics.caption),
         permalink = COALESCE(EXCLUDED.permalink, post_analytics.permalink),
         thumbnail_url = COALESCE(EXCLUDED.thumbnail_url, post_analytics.thumbnail_url),
+        thumbnail_path = COALESCE(EXCLUDED.thumbnail_path, post_analytics.thumbnail_path),
         posted_at = COALESCE(EXCLUDED.posted_at, post_analytics.posted_at),
         raw = EXCLUDED.raw, fetched_at = NOW()
     `, [
@@ -158,7 +164,7 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAc
       m.follows || 0, m.link_clicks || 0,
       m.avg_watch_time || 0, m.total_watch_time || 0, rate.toFixed(2),
       row.mediaType, row.platform, row.customerId || null,
-      row.caption || null, row.permalink || null, row.thumbnail || null,
+      row.caption || null, row.permalink || null, row.thumbnail || null, cachedThumb,
       row.postedAt || null, JSON.stringify(row.raw || []),
     ]);
     seen.add(row.platformPostId);
