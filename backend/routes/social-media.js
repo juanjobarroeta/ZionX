@@ -322,11 +322,13 @@ router.post('/callback', async (req, res) => {
  * instead of two screens and a log.
  */
 router.get('/connections', async (req, res) => {
+  const { explainSyncError } = require('../services/connectionHealth');
   try {
     const social = await req.pool.query(`
       SELECT sa.id, sa.platform, sa.account_name, sa.account_username,
              sa.platform_account_id, sa.customer_id, sa.followers_count,
              sa.last_synced_at, sa.token_expires_at,
+             sa.last_sync_error, sa.last_sync_ok_at, sa.sync_failures,
              ${CUSTOMER_NAME_SQL} AS customer_name,
              (SELECT MAX(aa.snapshot_date) FROM account_analytics aa
                WHERE aa.social_account_id = sa.id) AS last_metrics_day,
@@ -343,6 +345,7 @@ router.get('/connections', async (req, res) => {
     const ads = await req.pool.query(`
       SELECT a.id, a.platform_account_id, a.account_name, a.currency,
              a.customer_id, a.last_synced_at, a.token_expires_at,
+             a.last_sync_error, a.last_sync_ok_at, a.sync_failures,
              ${CUSTOMER_NAME_SQL} AS customer_name,
              (SELECT MAX(d.day) FROM ad_spend_daily d WHERE d.ad_account_id = a.id) AS last_spend_day
         FROM ad_accounts a
@@ -353,9 +356,16 @@ router.get('/connections', async (req, res) => {
 
     const runs = await req.pool.query('SELECT job, last_success_at, last_status, last_detail FROM sync_runs');
 
+    // El motivo del fallo sale ya traducido, del mismo sitio del que sale el
+    // aviso al teléfono, para que no puedan decir cosas distintas.
+    const withHint = (rows) => rows.map((r) => ({
+      ...r,
+      sync_error_hint: r.last_sync_error ? explainSyncError(r.last_sync_error) : null,
+    }));
+
     res.json({
-      social: social.rows,
-      ads: ads.rows,
+      social: withHint(social.rows),
+      ads: withHint(ads.rows),
       jobs: runs.rows,
     });
   } catch (error) {

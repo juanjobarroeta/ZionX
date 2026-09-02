@@ -15,6 +15,7 @@
 
 const metaService = require('./metaService');
 const { cacheThumbnail } = require('./mediaCache');
+const health = require('./connectionHealth');
 
 const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
@@ -55,6 +56,7 @@ async function syncAccountInsights(pool) {
 
       if (!result.success) {
         errors.push({ account: account.id, platform: account.platform, error: result.error });
+        await health.markFailed(pool, 'social', account.id, result.error);
         continue;
       }
 
@@ -100,9 +102,11 @@ async function syncAccountInsights(pool) {
           [followers, account.id]
         );
       }
+      await health.markHealthy(pool, 'social', account.id);
       synced++;
     } catch (err) {
       errors.push({ account: account.id, error: err.message });
+      await health.markFailed(pool, 'social', account.id, err.message);
     }
   }
 
@@ -226,7 +230,11 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAc
     try {
       if (account.platform === 'instagram') {
         const list = await metaService.getInstagramMedia(account.platform_account_id, account.access_token, mediaPerAccount);
-        if (!list.success) { errors.push({ account: account.id, error: list.error }); continue; }
+        if (!list.success) {
+          errors.push({ account: account.id, error: list.error });
+          await health.markFailed(pool, 'social', account.id, list.error);
+          continue;
+        }
         for (const media of list.media || []) {
           if (seen.has(media.id)) continue;
           if (media.timestamp && new Date(media.timestamp).getTime() < cutoff) continue;
@@ -248,7 +256,11 @@ async function syncPostInsights(pool, { windowDays = 30, limit = 200, mediaPerAc
         }
       } else if (account.platform === 'facebook') {
         const list = await metaService.getFacebookPagePosts(account.platform_account_id, account.access_token, mediaPerAccount);
-        if (!list.success) { errors.push({ account: account.id, error: list.error }); continue; }
+        if (!list.success) {
+          errors.push({ account: account.id, error: list.error });
+          await health.markFailed(pool, 'social', account.id, list.error);
+          continue;
+        }
         for (const post of list.posts || []) {
           if (seen.has(post.id)) continue;
           if (post.created_time && new Date(post.created_time).getTime() < cutoff) continue;
@@ -309,6 +321,7 @@ async function syncAdSpend(pool, { lookbackDays = 14 } = {}) {
       );
       if (!result.success) {
         errors.push({ id: acct.id, error: result.error });
+        await health.markFailed(pool, 'ad', acct.id, result.error);
         continue;
       }
 
@@ -336,9 +349,11 @@ async function syncAdSpend(pool, { lookbackDays = 14 } = {}) {
       }
 
       await pool.query('UPDATE ad_accounts SET last_synced_at = NOW() WHERE id = $1', [acct.id]);
+      await health.markHealthy(pool, 'ad', acct.id);
       synced++;
     } catch (err) {
       errors.push({ id: acct.id, error: err.message });
+      await health.markFailed(pool, 'ad', acct.id, err.message);
     }
   }
 

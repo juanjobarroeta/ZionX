@@ -35,6 +35,17 @@ const healthOf = (c, { isAds = false } = {}) => {
   if (expiresIn !== null && expiresIn < 0) {
     return { dir: "bad", text: "Conexión expirada — reconectar", tone: "bad", fix: "reconnect" };
   }
+  // Meta ya dijo qué pasa: preferirlo a deducirlo de cuánto lleva sin datos.
+  if (c.last_sync_error && (c.sync_failures || 0) > 0) {
+    const repetido = (c.sync_failures || 0) >= 3;
+    return {
+      dir: repetido ? "bad" : "warn",
+      text: c.sync_error_hint || c.last_sync_error,
+      detail: c.sync_failures > 1 ? `${c.sync_failures} intentos fallidos` : null,
+      tone: repetido ? "bad" : "warn",
+      fix: "reconnect",
+    };
+  }
   if (!c.last_synced_at && !c.last_spend_day) {
     return { dir: "warn", text: "Sin sincronizar todavía", tone: "warn" };
   }
@@ -191,6 +202,10 @@ const Connections = () => {
                         </div>
                         <div className="zxcn-state">
                           <span className={c.health.tone || undefined}>{c.health.text}</span>
+                          {c.health.detail && <span className="zxcn-detail">{c.health.detail}</span>}
+                          {c.last_sync_ok_at && c.health.tone === "bad" && (
+                            <span className="zxcn-detail">último dato {fmtAgo(c.last_sync_ok_at)}</span>
+                          )}
                         </div>
                         <div className="zxcn-actions">
                           <select

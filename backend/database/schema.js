@@ -780,6 +780,19 @@ const createTables = async (pool) => {
       ALTER TABLE post_analytics ADD COLUMN IF NOT EXISTS thumbnail_path TEXT;
     `);
 
+    // Salud de cada conexión. Los fallos de sync existían sólo en los logs de
+    // Railway: 22 cuentas llevaban días sin datos y nadie del equipo se
+    // enteraba — el reporte de esos clientes salía corto, sin decir por qué.
+    for (const t of ['social_accounts', 'ad_accounts']) {
+      await pool.query(`
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS last_sync_error TEXT;
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS last_sync_ok_at TIMESTAMP;
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS sync_failures INTEGER DEFAULT 0;
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS sync_alerted_at TIMESTAMP;
+      `);
+    }
+    console.log("✅ Connection health columns ready");
+
     console.log("✅ Analytics history tables ready");
 
 
