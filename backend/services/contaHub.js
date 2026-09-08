@@ -55,6 +55,47 @@ const BACKOFF_MS = 60 * 1000;          // primer fallo: un minuto
 const BACKOFF_MAX_MS = 30 * 60 * 1000; // techo: media hora
 const BACKOFF_429_MS = 15 * 60 * 1000; // si el hub dice «demasiados», se le hace caso
 
+// La espera vivía sólo en memoria, así que cada redespliegue la borraba y el
+// primer request volvía a intentar contra un hub que seguía bloqueando —
+// arrancando una ventana nueva. Se guarda en sync_runs, que ya existe para
+// llevar el ritmo de los trabajos, bajo el nombre `conta_hub_login`.
+const ESTADO_JOB = 'conta_hub_login';
+let _pool = null;
+/** Lo llama index.js una vez: el módulo no crea su propia conexión. */
+function usarPool(pool) {
+  _pool = pool;
+  cargarEstado().catch(() => {});
+}
+
+async function cargarEstado() {
+  if (!_pool) return;
+  const { rows } = await _pool.query(
+    'SELECT last_detail, last_run_at FROM sync_runs WHERE job = $1', [ESTADO_JOB]
+  );
+  if (!rows.length || !rows[0].last_detail) return;
+  try {
+    const g = JSON.parse(rows[0].last_detail);
+    if (g.failUntil && g.failUntil > Date.now()) {
+      _failUntil = g.failUntil;
+      _failError = g.error || 'Fallo previo';
+      _failCount = g.count || 1;
+      const min = Math.ceil((_failUntil - Date.now()) / 60000);
+      console.log(`⏳ contabilidad-os: en espera ${min} min por un fallo anterior (no se reintenta hasta entonces)`);
+    }
+  } catch { /* dato viejo o corrupto: se ignora */ }
+}
+
+async function guardarEstado() {
+  if (!_pool) return;
+  const payload = JSON.stringify({ failUntil: _failUntil, error: _failError, count: _failCount });
+  await _pool.query(
+    `INSERT INTO sync_runs (job, last_run_at, last_status, last_detail)
+     VALUES ($1, NOW(), $2, $3)
+     ON CONFLICT (job) DO UPDATE SET last_run_at = NOW(), last_status = $2, last_detail = $3`,
+    [ESTADO_JOB, _failUntil > Date.now() ? 'esperando' : 'ok', payload]
+  ).catch((e) => console.error('contaHub: no se pudo guardar el estado del login:', e.message));
+}
+
 function anotarFallo(status, mensaje) {
   _failCount += 1;
   const espera = status === 429
@@ -62,6 +103,7 @@ function anotarFallo(status, mensaje) {
     : Math.min(BACKOFF_MS * 2 ** (_failCount - 1), BACKOFF_MAX_MS);
   _failUntil = Date.now() + espera;
   _failError = mensaje;
+  guardarEstado();
 }
 
 async function login() {
@@ -87,6 +129,7 @@ async function login() {
   // Refresh a little before the 7-day expiry; treat as 6 days to be safe.
   _tokenExp = Date.now() + 6 * 24 * 60 * 60 * 1000;
   _failUntil = 0; _failError = null; _failCount = 0;
+  guardarEstado();
   return _token;
 }
 
@@ -99,6 +142,7 @@ function esperaRestante() {
 /** Reintentar ya, sin esperar: para cuando alguien acaba de cambiar la clave. */
 function olvidarFallo() {
   _failUntil = 0; _failError = null; _failCount = 0;
+  guardarEstado();
 }
 
 async function token() {
@@ -117,6 +161,7 @@ async function token() {
 // Authenticated hub request. Retries once after a fresh login on 401.
 async function hub(path, { method = "GET", body, retry = true } = {}) {
   const c = CFG();
+  const eraCacheado = Boolean(_token);
   const res = await fetch(`${c.url}${path}`, {
     method,
     headers: {
@@ -125,7 +170,10 @@ async function hub(path, { method = "GET", body, retry = true } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401 && retry) {
+  // Un 401 sólo significa «token viejo» si el token venía cacheado. Si acabamos
+  // de emitirlo, el 401 es de permisos y reloguear no arregla nada: sólo quema
+  // otro intento contra el mismo login que ya está al límite.
+  if (res.status === 401 && retry && eraCacheado) {
     _token = null;
     return hub(path, { method, body, retry: false });
   }
@@ -460,7 +508,7 @@ module.exports = {
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
-  ceBalanceGeneral, declaraciones, declaracionesCobertura, olvidarFallo, esperaRestante,
+  ceBalanceGeneral, declaraciones, declaracionesCobertura, olvidarFallo, esperaRestante, usarPool,
   cuentaDocumentos, cfdiRepresentacion, cfdiXml, periodos,
   listEmployees, emitNomina,
 };

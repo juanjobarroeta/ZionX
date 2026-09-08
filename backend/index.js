@@ -187,6 +187,9 @@ async function initSchemaWithRetry(attempts = 5) {
   for (let i = 1; i <= attempts; i++) {
     try {
       await createTables(pool);
+      // El puente fiscal lee de aquí su ventana de espera, para que un
+      // redespliegue no reintente contra un hub que sigue bloqueando.
+      require('./services/contaHub').usarPool(pool);
       return;
     } catch (err) {
       const wait = Math.min(2000 * 2 ** (i - 1), 30000);
