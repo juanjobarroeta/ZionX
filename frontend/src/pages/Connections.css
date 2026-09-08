@@ -78,3 +78,10 @@
 .zxcn-hub .q { font-weight: 700; }
 .zxcn-hub .e { color: var(--zx-muted); min-width: 0; }
 .zxcn-hub.bad .e { color: var(--zx-crit); font-weight: 600; }
+.zxcn-reintentar {
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 6px 12px; border-radius: 3px; border: 1px solid var(--zx-line);
+  background: #FFF; color: var(--zx-ink); margin-left: auto; flex: none;
+}
+.zxcn-reintentar:hover:not(:disabled) { background: rgba(4,17,26,0.05); }
+.zxcn-reintentar:disabled { opacity: 0.5; cursor: default; }

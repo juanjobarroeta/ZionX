@@ -66,12 +66,25 @@ const Connections = () => {
   // una contraseña caducada tumbó el timbrado tres días sin que nadie lo viera,
   // porque el único sitio donde se notaba era una ruta con token que nadie abre.
   const [hub, setHub] = useState(null);
+  const [reintentando, setReintentando] = useState(false);
+
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [savingId, setSavingId] = useState(null);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
+
+  // Sin `force` esto respeta la espera del puente: mirar cómo está no puede ser
+  // lo que lo rompa. El botón sí fuerza, porque quien acaba de corregir la
+  // contraseña no debería aguardar la ventana entera.
+  const pedirHub = useCallback((force = false) => {
+    if (force) setReintentando(true);
+    return axios.get(`${API_BASE_URL}/api/finance/hub-health`, { headers, params: force ? { force: 1 } : {} })
+      .then((r) => setHub(r.data))
+      .catch((e) => setHub(e.response?.data || { configured: true, ok: false, error: "No respondió." }))
+      .finally(() => setReintentando(false));
+  }, [headers]);
 
   const load = useCallback(async () => {
     const [c, cust] = await Promise.all([
@@ -81,12 +94,10 @@ const Connections = () => {
     setSocial(Array.isArray(c.data?.social) ? c.data.social : []);
     setAds(Array.isArray(c.data?.ads) ? c.data.ads : []);
     setJobs(Array.isArray(c.data?.jobs) ? c.data.jobs : []);
-    axios.get(`${API_BASE_URL}/api/finance/hub-health`, { headers })
-      .then((r) => setHub(r.data))
-      .catch((e) => setHub(e.response?.data || { configured: true, ok: false, error: "No respondió." }));
+    pedirHub();
     setCustomers(Array.isArray(cust.data) ? cust.data : []);
     setLoading(false);
-  }, [headers]);
+  }, [headers, pedirHub]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -248,8 +259,13 @@ const Connections = () => {
                   ? "Conectado — timbrado, estados financieros y declaraciones al día."
                   : !hub.configured
                     ? `Sin configurar. ${hub.error || ""}`
-                    : `No autentica. ${hub.error || ""} Mientras siga así no se puede timbrar ni ver lo fiscal.`}
+                    : `No autentica. ${hub.error || ""}${hub.retryInSeconds ? ` Reintenta solo en ${Math.ceil(hub.retryInSeconds / 60)} min.` : ""} Mientras siga así no se puede timbrar ni ver lo fiscal.`}
               </span>
+              {hub.configured && !hub.ok && (
+                <button className="zxcn-reintentar" onClick={() => pedirHub(true)} disabled={reintentando}>
+                  {reintentando ? "Probando…" : "Reintentar ahora"}
+                </button>
+              )}
             </div>
           )}
 

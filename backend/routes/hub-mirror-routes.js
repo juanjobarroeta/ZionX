@@ -195,7 +195,9 @@ estadosRouter.get('/finance/cfdi/:id/xml', async (req, res) => {
 
 // GET /api/finance/hub-health — ¿la integración de verdad responde?
 estadosRouter.get('/finance/hub-health', async (req, res) => {
-  const result = await contaHub.health();
+  // ?force=1 salta la espera: es para el botón de «reintentar», que existe
+  // porque tras cambiar la contraseña nadie debería aguardar media hora.
+  const result = await contaHub.health({ force: req.query.force === '1' });
   res.status(result.ok ? 200 : 503).json(result);
 });
 
