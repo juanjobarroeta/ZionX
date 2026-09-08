@@ -85,6 +85,8 @@ const InvoicesManager = lazyWithReload(() => import("./pages/InvoicesManager"));
 const BancosManager = lazyWithReload(() => import("./pages/BancosManager"));
 const NominaFiscal = lazyWithReload(() => import("./pages/NominaFiscal"));
 const EstadosFinancieros = lazyWithReload(() => import("./pages/EstadosFinancieros"));
+const BalanceGeneral = lazyWithReload(() => import("./pages/BalanceGeneral"));
+const Declaraciones = lazyWithReload(() => import("./pages/Declaraciones"));
 const InvoiceDetail = lazyWithReload(() => import("./pages/InvoiceDetail"));
 const PayrollManagement = lazyWithReload(() => import("./pages/PayrollManagement"));
 const FinancialStatements = lazyWithReload(() => import("./pages/FinancialStatements"));
@@ -220,6 +222,8 @@ const AppRouter = () => (
         <Route path="/income/reports" element={<FinanceRoute><IncomeReports /></FinanceRoute>} />
         <Route path="/bancos" element={<FinanceRoute><BancosManager /></FinanceRoute>} />
         <Route path="/finance/estados" element={<FinanceRoute><EstadosFinancieros /></FinanceRoute>} />
+        <Route path="/finance/balance" element={<FinanceRoute><BalanceGeneral /></FinanceRoute>} />
+        <Route path="/finance/declaraciones" element={<FinanceRoute><Declaraciones /></FinanceRoute>} />
 
         {/* HR & Payroll */}
         <Route path="/people" element={<HRRoute><PeopleManagement /></HRRoute>} />

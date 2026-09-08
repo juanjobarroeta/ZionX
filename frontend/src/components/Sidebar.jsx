@@ -74,8 +74,9 @@ const NAV_GROUPS = [
       { href: "/admin/expenses", label: "Gastos", section: "finanzas" },
       { href: "/bancos", label: "Bancos", section: "finanzas" },
       { href: "/admin/budgets", label: "Presupuestos", section: "finanzas" },
-      { href: "/hr/financials", label: "Estados financieros", section: "finanzas" },
-      { href: "/finance/estados", label: "Estados fiscales", section: "finanzas" },
+      { href: "/finance/estados", label: "Estados financieros", section: "finanzas" },
+      { href: "/finance/balance", label: "Balance", section: "finanzas" },
+      { href: "/finance/declaraciones", label: "Declaraciones", section: "finanzas" },
     ],
   },
   {
