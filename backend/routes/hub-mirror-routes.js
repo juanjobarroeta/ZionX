@@ -71,6 +71,34 @@ estadosRouter.get('/finance/estado-resultados', async (req, res) => {
   }
 });
 
+/**
+ * El estado del período pedido, más el primero que existe en el libro.
+ *
+ * Con esos dos datos la pantalla distingue las tres razones por las que un mes
+ * sale vacío: es anterior a la apertura, no tiene CFDIs, o los tiene y nadie
+ * los ha contabilizado.
+ */
+let _periodosCache = { at: 0, rows: null };
+async function periodoDe(_pool, hub, year, month) {
+  if (Date.now() - _periodosCache.at > 60000 || !_periodosCache.rows) {
+    const rows = await hub.periodos();
+    _periodosCache = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
+  }
+  const rows = _periodosCache.rows;
+  const mio = rows.find((r) => r.year === year && r.month === month) || null;
+  // El más antiguo del libro: cualquier corte anterior no tiene de dónde salir.
+  const primero = rows.reduce((min, r) => {
+    if (!min) return r;
+    return r.year < min.year || (r.year === min.year && r.month < min.month) ? r : min;
+  }, null);
+  return {
+    estado: mio?.status || null,
+    asientos: mio?.entriesCount ?? 0,
+    existe: Boolean(mio),
+    primero: primero ? { year: primero.year, month: primero.month } : null,
+  };
+}
+
 // GET /api/finance/ce-estado-resultados?year=&month=&ytd= — el estado de
 // resultados con la CE como columna vertebral: declarado vs derivado.
 estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
@@ -78,8 +106,13 @@ estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
     if (!contaHub.isConfigured()) return res.json({ configured: false });
     const year = parseInt(req.query.year, 10) || defaultYear();
     const month = parseInt(req.query.month, 10) || defaultMonth();
-    const data = await contaHub.ceEstadoResultados(year, month, { ytd: req.query.ytd === '1' });
-    res.json({ configured: true, year, month, ...data });
+    // El período viaja con la respuesta: si el mes sale vacío, la pantalla
+    // tiene que poder decir por qué en vez de enseñar una tabla en blanco.
+    const [data, periodo] = await Promise.all([
+      contaHub.ceEstadoResultados(year, month, { ytd: req.query.ytd === '1' }),
+      periodoDe(req.pool, contaHub, year, month).catch(() => null),
+    ]);
+    res.json({ configured: true, year, month, periodo, ...data });
   } catch (error) {
     console.error('Error fetching CE estado de resultados:', error.message);
     res.status(502).json({ configured: true, error: error.message });
@@ -114,6 +147,48 @@ estadosRouter.get('/finance/declaraciones', async (req, res) => {
   } catch (error) {
     console.error('Error fetching declaraciones:', error.message);
     res.status(502).json({ configured: true, error: error.message, declaraciones: [] });
+  }
+});
+
+// GET /api/finance/cuenta-documentos?cuenta=&year=&month=&ytd= — el desglose.
+estadosRouter.get('/finance/cuenta-documentos', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false, documentos: [] });
+    const cuenta = String(req.query.cuenta || '').trim();
+    if (!cuenta) return res.status(400).json({ error: 'cuenta requerida' });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    const month = parseInt(req.query.month, 10) || defaultMonth();
+    const data = await contaHub.cuentaDocumentos(cuenta, year, month, { ytd: req.query.ytd === '1' });
+    res.json({ configured: true, ...data });
+  } catch (error) {
+    console.error('Error fetching cuenta documentos:', error.message);
+    res.status(502).json({ configured: true, error: error.message, documentos: [] });
+  }
+});
+
+// GET /api/finance/cfdi/:id/representacion — lo legible, armado del XML.
+estadosRouter.get('/finance/cfdi/:id/representacion', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.status(409).json({ error: 'Integración fiscal no configurada' });
+    res.json(await contaHub.cfdiRepresentacion(req.params.id));
+  } catch (error) {
+    console.error('Error fetching CFDI representación:', error.message);
+    res.status(502).json({ error: error.message });
+  }
+});
+
+// GET /api/finance/cfdi/:id/xml — el comprobante de verdad, para descargar.
+estadosRouter.get('/finance/cfdi/:id/xml', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.status(409).json({ error: 'Integración fiscal no configurada' });
+    const xml = await contaHub.cfdiXml(req.params.id);
+    if (!xml) return res.status(404).json({ error: 'Este CFDI no tiene XML guardado' });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${req.params.id}.xml"`);
+    res.send(xml);
+  } catch (error) {
+    console.error('Error fetching CFDI XML:', error.message);
+    res.status(502).json({ error: error.message });
   }
 });
 

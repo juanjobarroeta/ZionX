@@ -4,6 +4,8 @@ import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import PeriodPicker from "../components/PeriodPicker";
 import CeTable from "../components/CeTable";
+import CuentaDocumentos from "../components/CuentaDocumentos";
+import PeriodoVacio from "../components/PeriodoVacio";
 import "./FiscalMirror.css";
 
 const fmtMoney = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
@@ -22,6 +24,9 @@ const EstadosFinancieros = () => {
   const [tab, setTab] = useState("resultados");
   const [er, setEr] = useState({ loading: true, configured: false, ce: null, data: null });
   const [ytd, setYtd] = useState(false);
+  // Qué renglón está abierto. Uno a la vez: abrir varios convierte la pantalla
+  // en una lista de listas y se pierde el estado de resultados.
+  const [cuenta, setCuenta] = useState(null);
   const [bz, setBz] = useState({ loading: false, configured: false, rows: [], preliminar: false });
 
   // El estado de resultados con la CE como columna vertebral: lo declarado al
@@ -104,12 +109,19 @@ const EstadosFinancieros = () => {
               </div>
 
               {tab === "resultados" ? (
-                er.loading ? <div className="zxfm-loading">Cargando…</div> : er.ce ? (
+                er.loading ? <div className="zxfm-loading">Cargando…</div>
+                : er.ce && !(er.ce.rubros || []).some((r) => r.cuentas?.length) ? (
+                  <PeriodoVacio periodo={er.ce.periodo} year={year} month={month} />
+                ) : er.ce ? (
                   <CeTable
                     presentado={er.ce.presentado}
                     grupos={er.ce.rubros}
                     pie={[{ label: "Resultado del período", ...er.ce.resultado, fuerte: true }]}
-                  />
+                    cuentaAbierta={cuenta}
+                    onAbrirCuenta={setCuenta}
+                  >
+                    {cuenta && <CuentaDocumentos cuenta={cuenta} year={year} month={month} ytd={ytd} />}
+                  </CeTable>
                 ) : (
                   <div className="zxfm-fs">
                     {er.data?.preliminar && <div className="zxfm-prelim">Cifras preliminares (periodo sin cierre contable)</div>}

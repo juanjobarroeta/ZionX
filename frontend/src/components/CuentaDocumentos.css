@@ -1,0 +1,79 @@
+/* ===== ZIONX — los documentos detrás de un renglón ===== */
+.zxcd {
+  background: rgba(4,17,26,0.03);
+  border-left: 2px solid var(--zx-brass, #9A6B1E);
+  margin: 0 0 8px 12px; padding: 4px 0 0;
+}
+.zxcd-msg { padding: 16px 18px; font-size: 13px; color: rgba(4,17,26,0.6); }
+.zxcd-msg.error { color: #8A1C1C; font-weight: 600; }
+
+.zxcd-head, .zxcd-row {
+  display: grid; grid-template-columns: 66px minmax(0,1.5fr) minmax(0,1.2fr) 120px 60px;
+  gap: 12px; padding: 8px 18px; align-items: baseline;
+}
+.zxcd-head {
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: rgba(4,17,26,0.45);
+}
+.zxcd-row { font-size: 13px; border-top: 1px solid rgba(4,17,26,0.06); }
+.zxcd-row .f { font-family: var(--zx-mono, ui-monospace, monospace); font-size: 11.5px; color: rgba(4,17,26,0.6); }
+.zxcd-row .doc, .zxcd-row .c { min-width: 0; }
+.zxcd-row b { display: block; font-weight: 600; }
+.zxcd-row b.sinc { color: rgba(4,17,26,0.5); font-weight: 500; font-style: italic; }
+.zxcd-row em {
+  display: block; font-style: normal; font-family: var(--zx-mono, ui-monospace, monospace);
+  font-size: 10px; color: rgba(4,17,26,0.42);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.zxcd-row .r { text-align: right; font-variant-numeric: tabular-nums; }
+.zxcd-row .r.neg { color: #8A1C1C; }
+.zxcd-row .a { text-align: right; }
+.zxcd-ver {
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: none; border: none; color: var(--zx-ink, #04111A);
+  text-decoration: underline; text-underline-offset: 3px; padding: 0;
+}
+.zxcd-nover { font-size: 10.5px; color: rgba(4,17,26,0.38); }
+
+.zxcd-pie {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 9px 18px; border-top: 1px solid rgba(4,17,26,0.1);
+  font-size: 11.5px; color: rgba(4,17,26,0.55);
+}
+.zxcd-pie .neto { font-weight: 700; color: var(--zx-ink, #04111A); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 820px) {
+  .zxcd-head, .zxcd-row { grid-template-columns: 56px minmax(0,1fr) 100px 50px; }
+  .zxcd-head span:nth-child(3), .zxcd-row .c { display: none; }
+}
+
+/* La naturaleza del gasto: lo que dice el concepto, no la cuenta. */
+.zxcd-conceptos-toggle {
+  display: block; margin: 0 18px 6px 78px; padding: 0;
+  font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  background: none; border: none; color: rgba(4,17,26,0.5);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.zxcd-conceptos-toggle:hover { color: var(--zx-ink, #04111A); }
+.zxcd-conceptos {
+  margin: 0 18px 10px 78px; padding: 8px 12px;
+  background: #FFF; border: 1px solid rgba(4,17,26,0.1); border-radius: 3px;
+}
+.zxcd-concepto {
+  display: grid; grid-template-columns: minmax(0,1fr) 150px 110px;
+  gap: 10px; padding: 5px 0; font-size: 12.5px; align-items: baseline;
+  border-bottom: 1px solid rgba(4,17,26,0.05);
+}
+.zxcd-concepto:last-child { border-bottom: none; }
+.zxcd-concepto .d { min-width: 0; }
+.zxcd-concepto .d em {
+  display: block; font-style: normal; font-size: 10px;
+  color: rgba(4,17,26,0.42); font-family: var(--zx-mono, ui-monospace, monospace);
+}
+.zxcd-concepto .q { text-align: right; color: rgba(4,17,26,0.55); font-variant-numeric: tabular-nums; }
+.zxcd-concepto .i { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 820px) {
+  .zxcd-conceptos-toggle, .zxcd-conceptos { margin-left: 18px; }
+  .zxcd-concepto { grid-template-columns: minmax(0,1fr) 100px; }
+  .zxcd-concepto .q { display: none; }
+}
