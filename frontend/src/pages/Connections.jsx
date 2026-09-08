@@ -62,6 +62,10 @@ const Connections = () => {
   const [social, setSocial] = useState([]);
   const [ads, setAds] = useState([]);
   const [jobs, setJobs] = useState([]);
+  // El puente fiscal es una conexión más, y se rompe igual que las de Meta —
+  // una contraseña caducada tumbó el timbrado tres días sin que nadie lo viera,
+  // porque el único sitio donde se notaba era una ruta con token que nadie abre.
+  const [hub, setHub] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -77,6 +81,9 @@ const Connections = () => {
     setSocial(Array.isArray(c.data?.social) ? c.data.social : []);
     setAds(Array.isArray(c.data?.ads) ? c.data.ads : []);
     setJobs(Array.isArray(c.data?.jobs) ? c.data.jobs : []);
+    axios.get(`${API_BASE_URL}/api/finance/hub-health`, { headers })
+      .then((r) => setHub(r.data))
+      .catch((e) => setHub(e.response?.data || { configured: true, ok: false, error: "No respondió." }));
     setCustomers(Array.isArray(cust.data) ? cust.data : []);
     setLoading(false);
   }, [headers]);
@@ -229,6 +236,20 @@ const Connections = () => {
                   </section>
                 );
               })}
+            </div>
+          )}
+
+          {hub && (
+            <div className={`zxcn-hub ${hub.ok ? "ok" : hub.configured ? "bad" : "off"}`}>
+              <i className={`zxcn-dot ${hub.ok ? "ok" : hub.configured ? "bad" : "idle"}`} />
+              <span className="q">contabilidad-os</span>
+              <span className="e">
+                {hub.ok
+                  ? "Conectado — timbrado, estados financieros y declaraciones al día."
+                  : !hub.configured
+                    ? `Sin configurar. ${hub.error || ""}`
+                    : `No autentica. ${hub.error || ""} Mientras siga así no se puede timbrar ni ver lo fiscal.`}
+              </span>
             </div>
           )}
 
