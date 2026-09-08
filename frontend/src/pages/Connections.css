@@ -64,3 +64,17 @@
   display: block; margin-top: 3px;
   font-size: 11px; color: rgba(4,17,26,0.5);
 }
+
+/* El puente fiscal, junto a las conexiones de Meta: se rompe igual y hasta
+   ahora sólo se notaba en una ruta con token que nadie abre. */
+.zxcn-hub {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px; padding: 12px 16px; border-radius: 4px;
+  border: 1px solid var(--zx-line); background: #FFF; font-size: 13px;
+}
+.zxcn-hub.bad { border-left: 3px solid var(--zx-crit); }
+.zxcn-hub.ok { border-left: 3px solid var(--zx-ok); }
+.zxcn-hub.off { border-left: 3px solid var(--zx-line); }
+.zxcn-hub .q { font-weight: 700; }
+.zxcn-hub .e { color: var(--zx-muted); min-width: 0; }
+.zxcn-hub.bad .e { color: var(--zx-crit); font-weight: 600; }
