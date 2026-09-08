@@ -1,0 +1,66 @@
+/* ===== ZIONX — el período, un solo control ===== */
+.zxpp { position: relative; display: inline-flex; align-items: center; gap: 10px; }
+
+.zxpp-nav {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--zx-line, rgba(4,17,26,0.14));
+  border-radius: 3px; background: #FFF; overflow: hidden;
+}
+.zxpp-arrow {
+  font-family: inherit; font-size: 17px; line-height: 1; cursor: pointer;
+  border: none; background: transparent; color: var(--zx-ink, #04111A);
+  padding: 0 12px; transition: background 0.12s;
+}
+.zxpp-arrow:hover:not(:disabled) { background: rgba(4,17,26,0.06); }
+.zxpp-arrow:disabled { opacity: 0.25; cursor: default; }
+.zxpp-arrow.sm { font-size: 14px; padding: 0 8px; }
+
+.zxpp-label {
+  font-family: inherit; cursor: pointer; border: none; background: transparent;
+  border-left: 1px solid var(--zx-line, rgba(4,17,26,0.14));
+  border-right: 1px solid var(--zx-line, rgba(4,17,26,0.14));
+  padding: 9px 16px; display: inline-flex; align-items: baseline; gap: 7px;
+  color: var(--zx-ink, #04111A); min-width: 148px; justify-content: center;
+}
+.zxpp-label:hover { background: rgba(4,17,26,0.04); }
+.zxpp-label .m { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.zxpp-label .y {
+  font-family: var(--zx-mono, ui-monospace, monospace);
+  font-size: 12px; color: var(--zx-muted, rgba(4,17,26,0.55));
+}
+
+.zxpp-today {
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: none; border: none; color: var(--zx-muted, rgba(4,17,26,0.55));
+  text-decoration: underline; text-underline-offset: 3px; padding: 4px 2px;
+}
+.zxpp-today:hover { color: var(--zx-ink, #04111A); }
+
+.zxpp-ytd { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--zx-muted, rgba(4,17,26,0.62)); cursor: pointer; }
+.zxpp-ytd input { accent-color: var(--zx-ink, #04111A); }
+
+.zxpp-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  background: #FFF; border: 1px solid var(--zx-line, rgba(4,17,26,0.14));
+  border-radius: 4px; padding: 10px; width: 250px;
+  box-shadow: 0 14px 40px rgba(4,17,26,0.16);
+}
+.zxpp-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--zx-mono, ui-monospace, monospace); font-size: 13px;
+  font-weight: 600; margin-bottom: 8px;
+}
+.zxpp-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.zxpp-month {
+  font-family: inherit; font-size: 12.5px; cursor: pointer;
+  padding: 8px 0; border-radius: 3px; border: 1px solid transparent;
+  background: transparent; color: var(--zx-ink, #04111A);
+}
+.zxpp-month:hover:not(:disabled) { background: rgba(4,17,26,0.06); }
+.zxpp-month.on { background: var(--zx-ink, #04111A); color: #F2F3F1; font-weight: 600; }
+.zxpp-month:disabled { opacity: 0.25; cursor: default; }
+
+@media (max-width: 520px) {
+  .zxpp { flex-wrap: wrap; }
+  .zxpp-label { min-width: 120px; }
+}

@@ -299,6 +299,29 @@ async function ceEstadoResultados(year, month, { ytd = false } = {}) {
 }
 
 /**
+ * Balance general con la CE como columna vertebral, igual que el estado de
+ * resultados: lo declarado manda y lo derivado va al lado.
+ */
+async function ceBalanceGeneral(year, month) {
+  const c = CFG();
+  const p = new URLSearchParams({ companyId: c.companyId, anio: String(year), mes: String(month) });
+  return hub(`/api/contabilidad/ce-balance-general?${p.toString()}`);
+}
+
+/** Declaraciones capturadas del ejercicio: mensuales de IVA/ISR y la anual. */
+async function declaraciones(year) {
+  const c = CFG();
+  const p = new URLSearchParams({ companyId: c.companyId, year: String(year) });
+  return hub(`/api/declaraciones/historial?${p.toString()}`);
+}
+
+/** Acuses que faltan — lo que impide arrastrar saldos a favor y coeficiente. */
+async function declaracionesCobertura() {
+  const c = CFG();
+  return hub(`/api/declaraciones/cobertura?companyId=${encodeURIComponent(c.companyId)}`);
+}
+
+/**
  * ¿La integración de verdad funciona?
  *
  * `isConfigured()` sólo mira que las cuatro variables no estén vacías. Con una
@@ -333,5 +356,6 @@ module.exports = {
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
+  ceBalanceGeneral, declaraciones, declaracionesCobertura,
   listEmployees, emitNomina,
 };

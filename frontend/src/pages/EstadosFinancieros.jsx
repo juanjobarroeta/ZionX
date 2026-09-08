@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Layout from "../components/Layout";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import PeriodPicker from "../components/PeriodPicker";
+import CeTable from "../components/CeTable";
 import "./FiscalMirror.css";
 
 const fmtMoney = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
@@ -54,65 +56,6 @@ const EstadosFinancieros = () => {
   useEffect(() => { if (tab === "balanza") loadBZ(); }, [tab, loadBZ]);
 
   const configured = er.configured;
-  const years = [nowD.getFullYear(), nowD.getFullYear() - 1, nowD.getFullYear() - 2];
-
-  /**
-   * El estado de resultados declarado contra el derivado.
-   *
-   * La diferencia se enseña siempre: esconderla sería lo prudente sólo si
-   * fuera enorme, y entonces esconderla sería justo lo peor que se puede hacer.
-   */
-  const CeEstado = ({ ce }) => (
-    <div className="zxfm-fs zxfm-ce">
-      <div className={`zxfm-ce-flag ${ce.presentado ? "ok" : "prelim"}`}>
-        {ce.presentado
-          ? "Período presentado al SAT — lo declarado manda; el derivado de los CFDIs va al lado como evidencia."
-          : "Período sin presentar — sólo hay cifras derivadas de los CFDIs. Dice dónde va a cerrar el mes."}
-      </div>
-
-      <div className="zxfm-ce-head">
-        <span className="n">Cuenta</span>
-        <span className="v">{ce.presentado ? "Declarado" : "—"}</span>
-        <span className="v">Derivado</span>
-        <span className="v">Diferencia</span>
-      </div>
-
-      {(ce.rubros || []).filter((r) => r.cuentas?.length || r.declarado || r.derivado).map((r) => (
-        <div className="zxfm-ce-rubro" key={r.clave}>
-          <div className="zxfm-fs-shead">{r.titulo}</div>
-          {(r.cuentas || []).map((c) => (
-            <div className="zxfm-ce-line" key={c.numCta}>
-              <span className="n"><em>{c.numCta}</em> {c.nombre}</span>
-              <span className="v">{ce.presentado ? fmtMoney(c.declarado) : "—"}</span>
-              <span className="v">{fmtMoney(c.derivado)}</span>
-              <span className={`v d${ce.presentado && Math.abs(c.diferencia) > 0.5 ? " on" : ""}`}>
-                {ce.presentado ? fmtMoney(c.diferencia) : "—"}
-              </span>
-            </div>
-          ))}
-          <div className="zxfm-ce-line total">
-            <span className="n">Total {r.titulo.toLowerCase()}</span>
-            <span className="v">{ce.presentado ? fmtMoney(r.declarado) : "—"}</span>
-            <span className="v">{fmtMoney(r.derivado)}</span>
-            <span className={`v d${ce.presentado && Math.abs(r.diferencia) > 0.5 ? " on" : ""}`}>
-              {ce.presentado ? fmtMoney(r.diferencia) : "—"}
-            </span>
-          </div>
-        </div>
-      ))}
-
-      <div className="zxfm-ce-line result">
-        <span className="n">Resultado del período</span>
-        <span className={`v ${Number(ce.resultado?.declarado) >= 0 ? "pos" : "neg"}`}>
-          {ce.presentado ? fmtMoney(ce.resultado?.declarado) : "—"}
-        </span>
-        <span className={`v ${Number(ce.resultado?.derivado) >= 0 ? "pos" : "neg"}`}>
-          {fmtMoney(ce.resultado?.derivado)}
-        </span>
-        <span className="v d">{ce.presentado ? fmtMoney(ce.resultado?.diferencia) : "—"}</span>
-      </div>
-    </div>
-  );
 
   const Section = ({ title, rows, total, totalLabel }) => (
     <div className="zxfm-fs-section">
@@ -148,16 +91,11 @@ const EstadosFinancieros = () => {
           ) : (
             <>
               <div className="zxfm-controls">
-                <select className="zxfm-select" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                  {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                </select>
-                <select className="zxfm-select" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                  {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <label className="zxfm-ytd">
-                  <input type="checkbox" checked={ytd} onChange={(e) => setYtd(e.target.checked)} />
-                  Acumulado del ejercicio
-                </label>
+                <PeriodPicker
+                  year={year} month={month}
+                  onChange={({ year: y, month: m }) => { setYear(y); setMonth(m); }}
+                  ytd={ytd} onYtdChange={setYtd}
+                />
                 <div className="zxfm-tabs">
                   {TABS.map((t) => (
                     <button key={t.id} className={`zxfm-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
@@ -167,7 +105,11 @@ const EstadosFinancieros = () => {
 
               {tab === "resultados" ? (
                 er.loading ? <div className="zxfm-loading">Cargando…</div> : er.ce ? (
-                  <CeEstado ce={er.ce} />
+                  <CeTable
+                    presentado={er.ce.presentado}
+                    grupos={er.ce.rubros}
+                    pie={[{ label: "Resultado del período", ...er.ce.resultado, fuerte: true }]}
+                  />
                 ) : (
                   <div className="zxfm-fs">
                     {er.data?.preliminar && <div className="zxfm-prelim">Cifras preliminares (periodo sin cierre contable)</div>}

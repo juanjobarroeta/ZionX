@@ -86,6 +86,37 @@ estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
   }
 });
 
+// GET /api/finance/balance?year=&month= — balance general (CE vs derivado).
+estadosRouter.get('/finance/balance', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    const month = parseInt(req.query.month, 10) || defaultMonth();
+    const data = await contaHub.ceBalanceGeneral(year, month);
+    res.json({ configured: true, year, month, ...data });
+  } catch (error) {
+    console.error('Error fetching balance general:', error.message);
+    res.status(502).json({ configured: true, error: error.message });
+  }
+});
+
+// GET /api/finance/declaraciones?year= — lo presentado, y lo que falta.
+estadosRouter.get('/finance/declaraciones', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false, declaraciones: [] });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    // La cobertura es informativa: si falla, el historial sigue valiendo.
+    const [historial, cobertura] = await Promise.all([
+      contaHub.declaraciones(year),
+      contaHub.declaracionesCobertura().catch(() => null),
+    ]);
+    res.json({ configured: true, year, ...historial, cobertura });
+  } catch (error) {
+    console.error('Error fetching declaraciones:', error.message);
+    res.status(502).json({ configured: true, error: error.message, declaraciones: [] });
+  }
+});
+
 // GET /api/finance/hub-health — ¿la integración de verdad responde?
 estadosRouter.get('/finance/hub-health', async (req, res) => {
   const result = await contaHub.health();
