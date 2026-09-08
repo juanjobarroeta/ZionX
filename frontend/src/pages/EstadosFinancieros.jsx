@@ -5,6 +5,7 @@ import { API_BASE_URL } from "../utils/constants";
 import PeriodPicker from "../components/PeriodPicker";
 import CeTable from "../components/CeTable";
 import CuentaDocumentos from "../components/CuentaDocumentos";
+import ResultadosCfdi from "../components/ResultadosCfdi";
 import PeriodoVacio from "../components/PeriodoVacio";
 import "./FiscalMirror.css";
 
@@ -13,6 +14,7 @@ const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", 
 
 const TABS = [
   { id: "resultados", label: "Estado de resultados" },
+  { id: "ce", label: "Versión contable (CE)" },
   { id: "balanza", label: "Balanza de comprobación" },
 ];
 
@@ -24,6 +26,7 @@ const EstadosFinancieros = () => {
   const [tab, setTab] = useState("resultados");
   const [er, setEr] = useState({ loading: true, configured: false, ce: null, data: null });
   const [ytd, setYtd] = useState(false);
+  const [ce, setCe] = useState({ loading: false, data: null });
   // Qué renglón está abierto. Uno a la vez: abrir varios convierte la pantalla
   // en una lista de listas y se pierde el estado de resultados.
   const [cuenta, setCuenta] = useState(null);
@@ -33,21 +36,24 @@ const EstadosFinancieros = () => {
   // SAT manda, lo derivado de los CFDIs va al lado como evidencia. Si el hub no
   // lo tiene o falla, se cae al de siempre — que da el mismo número sin decir
   // de dónde sale.
+  // El estado de resultados se arma con los CFDIs. La versión de Contabilidad
+  // Electrónica sigue disponible en su pestaña: es la exacta cuando el mes está
+  // presentado, pero está vacía hasta que el contador cierra — y los
+  // comprobantes existen desde que el SAT los entrega.
   const loadER = useCallback(() => {
     setEr((s) => ({ ...s, loading: true }));
+    axios.get(`${API_BASE_URL}/api/finance/resultados-cfdi`, { headers, params: { year, month } })
+      .then((r) => setEr({ loading: false, configured: !!r.data?.configured, cfdi: r.data, ce: null, data: null }))
+      .catch((e) => setEr({ loading: false, configured: true, cfdi: null, ce: null, data: null,
+                            error: e.response?.data?.error || "No se pudo armar el estado de resultados." }));
+  }, [headers, year, month]);
+
+  // La de CE, sólo cuando se pide: cuesta una llamada al hub.
+  const loadCE = useCallback(() => {
+    setCe((s) => ({ ...s, loading: true }));
     axios.get(`${API_BASE_URL}/api/finance/ce-estado-resultados`, { headers, params: { year, month, ytd: ytd ? 1 : undefined } })
-      .then((r) => {
-        if (r.data?.configured && Array.isArray(r.data?.rubros)) {
-          setEr({ loading: false, configured: true, ce: r.data, data: null });
-          return null;
-        }
-        return axios.get(`${API_BASE_URL}/api/finance/estado-resultados`, { headers, params: { year, month } });
-      })
-      .then((r) => { if (r) setEr({ loading: false, configured: !!r.data?.configured, ce: null, data: r.data }); })
-      .catch(() =>
-        axios.get(`${API_BASE_URL}/api/finance/estado-resultados`, { headers, params: { year, month } })
-          .then((r) => setEr({ loading: false, configured: !!r.data?.configured, ce: null, data: r.data }))
-          .catch(() => setEr({ loading: false, configured: false, ce: null, data: null })));
+      .then((r) => setCe({ loading: false, data: r.data }))
+      .catch((e) => setCe({ loading: false, data: null, error: e.response?.data?.error || "No se pudo cargar la versión CE." }));
   }, [headers, year, month, ytd]);
 
   const loadBZ = useCallback(() => {
@@ -59,6 +65,7 @@ const EstadosFinancieros = () => {
 
   useEffect(() => { loadER(); }, [loadER]);
   useEffect(() => { if (tab === "balanza") loadBZ(); }, [tab, loadBZ]);
+  useEffect(() => { if (tab === "ce") loadCE(); }, [tab, loadCE]);
 
   const configured = er.configured;
 
@@ -110,34 +117,27 @@ const EstadosFinancieros = () => {
 
               {tab === "resultados" ? (
                 er.loading ? <div className="zxfm-loading">Cargando…</div>
-                : er.ce && !(er.ce.rubros || []).some((r) => r.cuentas?.length) ? (
-                  <PeriodoVacio periodo={er.ce.periodo} year={year} month={month} />
-                ) : er.ce ? (
+                : er.error ? <div className="zxfm-empty small"><div className="lead">{er.error}</div></div>
+                : er.cfdi?.comprobantes === 0 ? (
+                  <div className="zxfm-empty small">
+                    <div className="lead">Sin comprobantes en este mes</div>
+                    <div>No hay CFDIs del período en contabilidad-os. Si esperabas alguno, la descarga del SAT todavía no lo cubre.</div>
+                  </div>
+                ) : <ResultadosCfdi data={er.cfdi} />
+              ) : tab === "ce" ? (
+                ce.loading ? <div className="zxfm-loading">Cargando…</div>
+                : ce.error ? <div className="zxfm-empty small"><div className="lead">{ce.error}</div></div>
+                : ce.data && Array.isArray(ce.data.rubros) && ce.data.rubros.some((r) => r.cuentas?.length) ? (
                   <CeTable
-                    presentado={er.ce.presentado}
-                    grupos={er.ce.rubros}
-                    pie={[{ label: "Resultado del período", ...er.ce.resultado, fuerte: true }]}
+                    presentado={ce.data.presentado}
+                    grupos={ce.data.rubros}
+                    pie={[{ label: "Resultado del período", ...ce.data.resultado, fuerte: true }]}
                     cuentaAbierta={cuenta}
                     onAbrirCuenta={setCuenta}
                   >
                     {cuenta && <CuentaDocumentos cuenta={cuenta} year={year} month={month} ytd={ytd} />}
                   </CeTable>
-                ) : (
-                  <div className="zxfm-fs">
-                    {er.data?.preliminar && <div className="zxfm-prelim">Cifras preliminares (periodo sin cierre contable)</div>}
-                    <Section title="Ingresos" rows={er.data?.ingresos} total={er.data?.totalIngresos} totalLabel="Total ingresos" />
-                    {er.data?.costos?.length > 0 && (
-                      <Section title="Costos" rows={er.data?.costos} total={er.data?.totalCostos} totalLabel="Total costos" />
-                    )}
-                    <Section title="Gastos" rows={er.data?.gastos} total={er.data?.totalGastos} totalLabel="Total gastos" />
-                    <div className="zxfm-fs-result">
-                      <span>Utilidad antes de impuestos</span>
-                      <span className={Number(er.data?.utilidadAntesImpuestos) >= 0 ? "pos" : "neg"}>
-                        {fmtMoney(er.data?.utilidadAntesImpuestos)}
-                      </span>
-                    </div>
-                  </div>
-                )
+                ) : <PeriodoVacio periodo={ce.data?.periodo} year={year} month={month} />
               ) : (
                 bz.loading ? <div className="zxfm-loading">Cargando…</div> : bz.rows.length === 0 ? (
                   <div className="zxfm-empty small"><div className="lead">Sin movimientos en el periodo</div></div>
