@@ -47,6 +47,7 @@ let _tokenExp = 0;
 // 401—, así que el scheduler y cada carga de página sumaban intentos durante
 // días hasta que el hub bloqueó la cuenta con un 429. Ahora el fallo también se
 // recuerda, con espera creciente, y no se vuelve a intentar hasta que toca.
+let _refresh = null;
 let _failUntil = 0;
 let _failError = null;
 let _failCount = 0;
@@ -75,6 +76,8 @@ async function cargarEstado() {
   if (!rows.length || !rows[0].last_detail) return;
   try {
     const g = JSON.parse(rows[0].last_detail);
+    // El refresh dura 30 días: recuperarlo tras un redespliegue ahorra un login.
+    if (g.refresh) _refresh = g.refresh;
     if (g.failUntil && g.failUntil > Date.now()) {
       _failUntil = g.failUntil;
       _failError = g.error || 'Fallo previo';
@@ -87,7 +90,7 @@ async function cargarEstado() {
 
 async function guardarEstado() {
   if (!_pool) return;
-  const payload = JSON.stringify({ failUntil: _failUntil, error: _failError, count: _failCount });
+  const payload = JSON.stringify({ failUntil: _failUntil, error: _failError, count: _failCount, refresh: _refresh });
   await _pool.query(
     `INSERT INTO sync_runs (job, last_run_at, last_status, last_detail)
      VALUES ($1, NOW(), $2, $3)
@@ -124,13 +127,54 @@ async function login() {
     anotarFallo(res.status, `Hub login failed (${res.status}): ${body.slice(0, 200)}`);
     throw new Error(_failError);
   }
-  const data = await res.json();
-  _token = data.token;
-  // Refresh a little before the 7-day expiry; treat as 6 days to be safe.
-  _tokenExp = Date.now() + 6 * 24 * 60 * 60 * 1000;
+  aceptarToken(await res.json());
   _failUntil = 0; _failError = null; _failCount = 0;
   guardarEstado();
   return _token;
+}
+
+/**
+ * Guardar el token con la vigencia que DICE el hub, no la que suponíamos.
+ *
+ * Aquí estaba la causa de raíz del bloqueo: el hub migró a tokens de acceso de
+ * UNA HORA con refresh rotatorio, y este cliente seguía cacheando SEIS DÍAS —la
+ * vigencia del flujo legado, que ya sólo se emite con una bandera explícita—.
+ * Pasada la hora cada llamada daba 401, hub() borraba el token y volvía a hacer
+ * login. El hub permite 5 logins por correo cada 15 minutos; entre el scheduler
+ * y las páginas eso se supera enseguida, y de ahí el 429 que no se iba.
+ */
+function aceptarToken(data) {
+  _token = data.token;
+  _refresh = data.refreshToken || null;
+  // Un minuto de margen para no usar un token que caduca durante el viaje.
+  const segundos = Number(data.expiresIn) > 0 ? Number(data.expiresIn) : 3600;
+  _tokenExp = Date.now() + Math.max(30, segundos - 60) * 1000;
+  guardarEstado();
+}
+
+/**
+ * Renovar sin reenviar credenciales.
+ *
+ * Es lo que hay que usar: rota el refresh en el mismo paso y su límite es de 30
+ * por IP, no de 5 por correo como el login. Devuelve false si no hay refresh o
+ * si el hub lo rechaza — sólo entonces toca autenticarse de nuevo.
+ */
+async function renovar() {
+  if (!_refresh) return false;
+  const c = CFG();
+  try {
+    const res = await fetch(`${c.url}/api/auth/token/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: _refresh }),
+    });
+    if (!res.ok) { _refresh = null; guardarEstado(); return false; }
+    aceptarToken(await res.json());
+    return true;
+  } catch {
+    _refresh = null;
+    return false;
+  }
 }
 
 /** Segundos que faltan para el próximo intento, o null si no hay espera. */
@@ -147,6 +191,9 @@ function olvidarFallo() {
 
 async function token() {
   if (_token && Date.now() < _tokenExp) return _token;
+  // Caducó: renovar antes que volver a autenticarse. El login es el recurso
+  // escaso —5 por correo cada 15 minutos—; el refresh no lo es.
+  if (_refresh && await renovar()) return _token;
   // Dentro de la ventana de espera no se toca la red: se repite el último
   // motivo. Insistir es lo que provocó el bloqueo.
   if (Date.now() < _failUntil) {
