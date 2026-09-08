@@ -17,9 +17,61 @@ import "./CuentaDocumentos.css";
 const fmt = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
 const dia = (d) => (d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "—");
 
+/**
+ * Qué se compró exactamente.
+ *
+ * La cuenta contable dice «gastos de publicidad»; el concepto del CFDI dice
+ * «pauta Meta agosto» y trae su clave del SAT. Esa es la naturaleza del gasto,
+ * y sólo vive en el comprobante.
+ */
+function ConceptosDe({ invoiceId, abierto, estado, onAlternar }) {
+  return (
+    <>
+      <button className="zxcd-conceptos-toggle" onClick={onAlternar} aria-expanded={abierto}>
+        {abierto ? "Ocultar conceptos" : "Ver conceptos"}
+      </button>
+      {abierto && (
+        <div className="zxcd-conceptos">
+          {estado?.loading ? <div className="zxcd-msg">Leyendo el comprobante…</div>
+            : estado?.error ? <div className="zxcd-msg error">{estado.error}</div>
+            : !estado?.lista?.length ? <div className="zxcd-msg">El comprobante no detalla conceptos.</div>
+            : estado.lista.map((c, i) => (
+                <div className="zxcd-concepto" key={`${invoiceId}-${i}`}>
+                  <span className="d">
+                    {c.descripcion || "Sin descripción"}
+                    {c.claveProdServ && <em>clave SAT {c.claveProdServ}{c.claveUnidad ? ` · ${c.claveUnidad}` : ""}</em>}
+                  </span>
+                  <span className="q">{c.cantidad != null ? `${c.cantidad} ×` : ""} {c.valorUnitario != null ? fmt(c.valorUnitario) : ""}</span>
+                  <span className="i">{fmt(c.importe)}</span>
+                </div>
+              ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
   const [st, setSt] = useState({ loading: true, data: null, error: null });
   const [abierto, setAbierto] = useState(null);
+  // Los conceptos del CFDI: lo que de verdad se compró, no sólo en qué cuenta
+  // cayó. Se piden por documento cuando alguien lo abre, porque el desglose de
+  // la cuenta no los trae y pedirlos todos de golpe sería una llamada por
+  // factura para algo que casi nunca se mira entero.
+  const [conceptos, setConceptos] = useState({});
+  const [expandido, setExpandido] = useState(null);
+
+  const verConceptos = (invoiceId) => {
+    if (expandido === invoiceId) { setExpandido(null); return; }
+    setExpandido(invoiceId);
+    if (conceptos[invoiceId]) return;
+    setConceptos((c) => ({ ...c, [invoiceId]: { loading: true } }));
+    axios.get(`${API_BASE_URL}/api/finance/cfdi/${invoiceId}/representacion`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+      .then((r) => setConceptos((c) => ({ ...c, [invoiceId]: { lista: r.data?.representacion?.conceptos || [] } })))
+      .catch(() => setConceptos((c) => ({ ...c, [invoiceId]: { error: "No se pudieron leer los conceptos." } })));
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -51,7 +103,8 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
             {docs.map((doc) => {
               const f = doc.invoice;
               return (
-                <div className="zxcd-row" key={doc.id}>
+                <React.Fragment key={doc.id}>
+                <div className="zxcd-row">
                   <span className="f">{dia(doc.fecha)}</span>
                   <span className="doc">
                     {f
@@ -77,6 +130,15 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
                         : null}
                   </span>
                 </div>
+                {f?.representable && (
+                  <ConceptosDe
+                    invoiceId={f.id}
+                    abierto={expandido === f.id}
+                    estado={conceptos[f.id]}
+                    onAlternar={() => verConceptos(f.id)}
+                  />
+                )}
+                </React.Fragment>
               );
             })}
 

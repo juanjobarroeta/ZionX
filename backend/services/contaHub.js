@@ -322,6 +322,18 @@ async function declaracionesCobertura() {
 }
 
 /**
+ * El estado de cada período contable: DRAFT, POSTED o CLOSED, con cuántos
+ * asientos tiene. Es lo que convierte una pantalla vacía en una explicación:
+ * un mes sin cifras puede ser un mes sin CFDIs, un mes con CFDIs que nadie ha
+ * contabilizado, o un mes anterior a la apertura del libro. Son tres problemas
+ * distintos y sólo uno se arregla desde aquí.
+ */
+async function periodos() {
+  const c = CFG();
+  return hub(`/api/contabilidad/periods?companyId=${encodeURIComponent(c.companyId)}`);
+}
+
+/**
  * De una cuenta del estado de resultados a los documentos que la forman.
  *
  * El último escalón: cada renglón trae su CFDI —folio fiscal, contraparte,
@@ -389,6 +401,6 @@ module.exports = {
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
   ceBalanceGeneral, declaraciones, declaracionesCobertura,
-  cuentaDocumentos, cfdiRepresentacion, cfdiXml,
+  cuentaDocumentos, cfdiRepresentacion, cfdiXml, periodos,
   listEmployees, emitNomina,
 };

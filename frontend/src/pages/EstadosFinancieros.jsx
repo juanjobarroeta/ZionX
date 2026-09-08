@@ -5,6 +5,7 @@ import { API_BASE_URL } from "../utils/constants";
 import PeriodPicker from "../components/PeriodPicker";
 import CeTable from "../components/CeTable";
 import CuentaDocumentos from "../components/CuentaDocumentos";
+import PeriodoVacio from "../components/PeriodoVacio";
 import "./FiscalMirror.css";
 
 const fmtMoney = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
@@ -108,7 +109,10 @@ const EstadosFinancieros = () => {
               </div>
 
               {tab === "resultados" ? (
-                er.loading ? <div className="zxfm-loading">Cargando…</div> : er.ce ? (
+                er.loading ? <div className="zxfm-loading">Cargando…</div>
+                : er.ce && !(er.ce.rubros || []).some((r) => r.cuentas?.length) ? (
+                  <PeriodoVacio periodo={er.ce.periodo} year={year} month={month} />
+                ) : er.ce ? (
                   <CeTable
                     presentado={er.ce.presentado}
                     grupos={er.ce.rubros}

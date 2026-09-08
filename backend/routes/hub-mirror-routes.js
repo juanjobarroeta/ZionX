@@ -71,6 +71,34 @@ estadosRouter.get('/finance/estado-resultados', async (req, res) => {
   }
 });
 
+/**
+ * El estado del período pedido, más el primero que existe en el libro.
+ *
+ * Con esos dos datos la pantalla distingue las tres razones por las que un mes
+ * sale vacío: es anterior a la apertura, no tiene CFDIs, o los tiene y nadie
+ * los ha contabilizado.
+ */
+let _periodosCache = { at: 0, rows: null };
+async function periodoDe(_pool, hub, year, month) {
+  if (Date.now() - _periodosCache.at > 60000 || !_periodosCache.rows) {
+    const rows = await hub.periodos();
+    _periodosCache = { at: Date.now(), rows: Array.isArray(rows) ? rows : [] };
+  }
+  const rows = _periodosCache.rows;
+  const mio = rows.find((r) => r.year === year && r.month === month) || null;
+  // El más antiguo del libro: cualquier corte anterior no tiene de dónde salir.
+  const primero = rows.reduce((min, r) => {
+    if (!min) return r;
+    return r.year < min.year || (r.year === min.year && r.month < min.month) ? r : min;
+  }, null);
+  return {
+    estado: mio?.status || null,
+    asientos: mio?.entriesCount ?? 0,
+    existe: Boolean(mio),
+    primero: primero ? { year: primero.year, month: primero.month } : null,
+  };
+}
+
 // GET /api/finance/ce-estado-resultados?year=&month=&ytd= — el estado de
 // resultados con la CE como columna vertebral: declarado vs derivado.
 estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
@@ -78,8 +106,13 @@ estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
     if (!contaHub.isConfigured()) return res.json({ configured: false });
     const year = parseInt(req.query.year, 10) || defaultYear();
     const month = parseInt(req.query.month, 10) || defaultMonth();
-    const data = await contaHub.ceEstadoResultados(year, month, { ytd: req.query.ytd === '1' });
-    res.json({ configured: true, year, month, ...data });
+    // El período viaja con la respuesta: si el mes sale vacío, la pantalla
+    // tiene que poder decir por qué en vez de enseñar una tabla en blanco.
+    const [data, periodo] = await Promise.all([
+      contaHub.ceEstadoResultados(year, month, { ytd: req.query.ytd === '1' }),
+      periodoDe(req.pool, contaHub, year, month).catch(() => null),
+    ]);
+    res.json({ configured: true, year, month, periodo, ...data });
   } catch (error) {
     console.error('Error fetching CE estado de resultados:', error.message);
     res.status(502).json({ configured: true, error: error.message });
