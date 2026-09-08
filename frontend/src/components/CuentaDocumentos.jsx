@@ -60,6 +60,9 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
   // factura para algo que casi nunca se mira entero.
   const [conceptos, setConceptos] = useState({});
   const [expandido, setExpandido] = useState(null);
+  // El hub topa en 1000 por petición. Se piden 200 de entrada porque casi
+  // ninguna cuenta tiene más, y el resto se trae si alguien lo pide.
+  const [limite, setLimite] = useState(200);
 
   const verConceptos = (invoiceId) => {
     if (expandido === invoiceId) { setExpandido(null); return; }
@@ -78,16 +81,45 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
     setSt({ loading: true, data: null, error: null });
     axios.get(`${API_BASE_URL}/api/finance/cuenta-documentos`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      params: { cuenta, year, month, ytd: ytd ? 1 : undefined },
+      params: { cuenta, year, month, ytd: ytd ? 1 : undefined, limit: limite },
     })
       .then((r) => { if (vivo) setSt({ loading: false, data: r.data, error: r.data?.error || null }); })
       .catch((e) => { if (vivo) setSt({ loading: false, data: null, error: e.response?.data?.error || "No se pudo abrir el desglose." }); });
     return () => { vivo = false; };
-  }, [cuenta, year, month, ytd]);
+  }, [cuenta, year, month, ytd, limite]);
 
   const d = st.data;
-  const docs = d?.documentos || [];
+  const docs = React.useMemo(() => d?.documentos || [], [d]);
   const faltan = d && d.total > d.mostrados;
+
+  // Agrupados por contraparte, no en una lista plana. Ante «ventas» nadie se
+  // pregunta «qué folios hay»: se pregunta a quién le facturamos y cuánto. Los
+  // asientos sin comprobante quedan en su propio grupo, al final, porque son de
+  // otra naturaleza — y siguen contando para que la suma cuadre.
+  const grupos = React.useMemo(() => {
+    const mapa = new Map();
+    for (const doc of docs) {
+      const f = doc.invoice;
+      const clave = f ? (f.contraparteRfc || f.contraparteNombre || f.id) : "__sin__";
+      if (!mapa.has(clave)) {
+        mapa.set(clave, {
+          clave,
+          nombre: f ? (f.contraparteNombre || f.contraparteRfc || "Sin nombre") : "Sin comprobante",
+          rfc: f?.contraparteRfc || null,
+          sinComprobante: !f,
+          total: 0,
+          docs: [],
+        });
+      }
+      const g = mapa.get(clave);
+      g.total += Number(doc.monto) || 0;
+      g.docs.push(doc);
+    }
+    return [...mapa.values()].sort((a, b) => {
+      if (a.sinComprobante !== b.sinComprobante) return a.sinComprobante ? 1 : -1;
+      return Math.abs(b.total) - Math.abs(a.total);
+    });
+  }, [docs]);
 
   return (
     <div className="zxcd">
@@ -96,11 +128,17 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
         : docs.length === 0 ? <div className="zxcd-msg">Sin movimientos en esta cuenta.</div>
         : (
           <>
-            <div className="zxcd-head">
-              <span>Fecha</span><span>Documento</span><span>Contraparte</span><span className="r">Importe</span><span />
-            </div>
-
-            {docs.map((doc) => {
+            {grupos.map((g) => (
+              <div className="zxcd-grupo" key={g.clave}>
+                <div className={`zxcd-ghead${g.sinComprobante ? " sinc" : ""}`}>
+                  <span className="who">
+                    {g.nombre}
+                    {g.rfc && <em>{g.rfc}</em>}
+                  </span>
+                  <span className="cuantos">{g.docs.length} CFDI{g.docs.length === 1 ? "" : "s"}</span>
+                  <span className={`monto ${g.total >= 0 ? "pos" : "neg"}`}>{fmt(g.total)}</span>
+                </div>
+                {g.docs.map((doc) => {
               const f = doc.invoice;
               return (
                 <React.Fragment key={doc.id}>
@@ -116,10 +154,6 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
                           <b className="sinc">Sin comprobante</b>
                           <em>{doc.descripcion || doc.fuente || "Asiento contable"}</em>
                         </>}
-                  </span>
-                  <span className="c">
-                    {f?.contraparteNombre || "—"}
-                    {f?.contraparteRfc && <em>{f.contraparteRfc}</em>}
                   </span>
                   <span className={`r ${doc.monto >= 0 ? "pos" : "neg"}`}>{fmt(doc.monto)}</span>
                   <span className="a">
@@ -139,13 +173,18 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
                   />
                 )}
                 </React.Fragment>
-              );
-            })}
+                );
+              })}
+              </div>
+            ))}
 
             <div className="zxcd-pie">
               <span>
                 {d.mostrados} de {d.total} movimiento{d.total === 1 ? "" : "s"}
-                {faltan && " · sólo se muestran los primeros"}
+                {faltan && limite < 1000 && (
+                  <button className="zxcd-todos" onClick={() => setLimite(1000)}>ver todos</button>
+                )}
+                {faltan && limite >= 1000 && " · el hub no entrega más de 1000 por cuenta"}
               </span>
               <span className="neto">Neto {fmt(d.neto)}</span>
             </div>

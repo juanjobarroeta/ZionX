@@ -35,6 +35,12 @@ function normalizeFactura(inv) {
     rfc: inv.customer?.rfc || null,
     metodo_pago: inv.metodoPago || null,
     pdf_url: inv.pdfUrl || null,
+    subtotal: inv.subtotal != null ? money(inv.subtotal) : null,
+    // El hub manda el XML completo en cada factura del listado. Aquí sólo se
+    // conserva si existe —para saber cuáles se pueden abrir— y el XML se queda
+    // fuera: reenviarlo serían megas por página para algo que se pide de uno en
+    // uno cuando alguien abre un comprobante.
+    representable: inv.rawXml != null,
   };
 }
 

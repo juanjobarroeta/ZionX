@@ -177,13 +177,18 @@ async function stampInvoice({ invoice, customer, items }) {
 
 // Surface: list the company's CFDIs from the hub (for read-only mirroring).
 // tipo filters by INGRESO | EGRESO | NOMINA | PAGO; skip paginates.
-async function listInvoices({ q, take = 50, tipo, skip } = {}) {
+async function listInvoices({ q, take = 50, tipo, skip, from, to, customerId } = {}) {
   if (!isConfigured()) return [];
   const c = CFG();
-  const params = new URLSearchParams({ companyId: c.companyId, take: String(take) });
+  // El hub topa en 200 por página y no devuelve un total: quien quiera todos
+  // pagina con skip hasta que una página venga incompleta.
+  const params = new URLSearchParams({ companyId: c.companyId, take: String(Math.min(take, 200)) });
   if (q) params.set("q", q);
   if (tipo) params.set("tipo", tipo);
   if (skip) params.set("skip", String(skip));
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (customerId) params.set("customerId", customerId);
   return hub(`/api/facturas?${params.toString()}`);
 }
 

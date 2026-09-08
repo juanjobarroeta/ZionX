@@ -158,7 +158,8 @@ estadosRouter.get('/finance/cuenta-documentos', async (req, res) => {
     if (!cuenta) return res.status(400).json({ error: 'cuenta requerida' });
     const year = parseInt(req.query.year, 10) || defaultYear();
     const month = parseInt(req.query.month, 10) || defaultMonth();
-    const data = await contaHub.cuentaDocumentos(cuenta, year, month, { ytd: req.query.ytd === '1' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 1000);
+    const data = await contaHub.cuentaDocumentos(cuenta, year, month, { ytd: req.query.ytd === '1', limit });
     res.json({ configured: true, ...data });
   } catch (error) {
     console.error('Error fetching cuenta documentos:', error.message);
