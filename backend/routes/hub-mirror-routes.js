@@ -154,12 +154,23 @@ estadosRouter.get('/finance/declaraciones', async (req, res) => {
 estadosRouter.get('/finance/cuenta-documentos', async (req, res) => {
   try {
     if (!contaHub.isConfigured()) return res.json({ configured: false, documentos: [] });
-    const cuenta = String(req.query.cuenta || '').trim();
+    const cuentaCruda = String(req.query.cuenta || '');
+    const cuenta = cuentaCruda.trim();
     if (!cuenta) return res.status(400).json({ error: 'cuenta requerida' });
     const year = parseInt(req.query.year, 10) || defaultYear();
     const month = parseInt(req.query.month, 10) || defaultMonth();
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 1000);
     const data = await contaHub.cuentaDocumentos(cuenta, year, month, { ytd: req.query.ytd === '1', limit });
+    // El estado de resultados dice que esa cuenta tiene movimiento y el
+    // desglose devuelve cero: eso es una contradicción entre dos endpoints que
+    // leen la misma tabla, y hay que poder verla en el log en vez de deducirla.
+    if (!data?.documentos?.length) {
+      console.log(
+        `ℹ️ cuenta-documentos sin resultados — llegó ${JSON.stringify(cuentaCruda)}, ` +
+        `enviamos ${JSON.stringify(cuenta)} para ${month}/${year}; ` +
+        `el hub respondió cuenta=${JSON.stringify(data?.cuenta)} ${data?.mes}/${data?.anio} total=${data?.total}`
+      );
+    }
     res.json({ configured: true, ...data });
   } catch (error) {
     console.error('Error fetching cuenta documentos:', error.message);

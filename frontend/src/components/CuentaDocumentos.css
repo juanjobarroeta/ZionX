@@ -98,3 +98,7 @@
   font-weight: 600; cursor: pointer; background: none; border: none;
   color: var(--zx-ink, #04111A); text-decoration: underline; text-underline-offset: 3px;
 }
+.zxcd-msg em {
+  display: block; margin-top: 4px; font-style: normal;
+  font-size: 11px; color: rgba(4,17,26,0.45);
+}

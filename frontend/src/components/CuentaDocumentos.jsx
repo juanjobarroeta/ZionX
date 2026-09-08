@@ -125,7 +125,13 @@ export default function CuentaDocumentos({ cuenta, year, month, ytd = false }) {
     <div className="zxcd">
       {st.loading ? <div className="zxcd-msg">Abriendo el desglose…</div>
         : st.error ? <div className="zxcd-msg error">{st.error}</div>
-        : docs.length === 0 ? <div className="zxcd-msg">Sin movimientos en esta cuenta.</div>
+        : docs.length === 0 ? (
+          <div className="zxcd-msg">
+            Sin movimientos en esta cuenta.
+            <em>Se pidió la cuenta {cuenta} de {String(month).padStart(2, "0")}/{year}
+              {ytd ? " (acumulado)" : ""} y el hub devolvió {d?.total ?? 0}.</em>
+          </div>
+        )
         : (
           <>
             {grupos.map((g) => (
