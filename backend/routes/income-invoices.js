@@ -27,13 +27,21 @@ router.get('/cfdi/invoices', async (req, res) => {
     if (!contaHub.isConfigured()) return res.json({ configured: false, facturas: [] });
     const VALID_TIPO = ['INGRESO', 'EGRESO', 'NOMINA', 'PAGO', 'TRASLADO'];
     const tipo = VALID_TIPO.includes(req.query.tipo) ? req.query.tipo : undefined;
+    const take = Math.min(parseInt(req.query.take, 10) || 100, 200);
+    const skip = parseInt(req.query.skip, 10) || 0;
     const invoices = await contaHub.listInvoices({
-      q: req.query.q,
-      tipo,
-      take: Math.min(parseInt(req.query.take, 10) || 100, 200),
-      skip: parseInt(req.query.skip, 10) || 0,
+      q: req.query.q, tipo, take, skip,
+      from: req.query.from, to: req.query.to, customerId: req.query.customerId,
     });
-    res.json({ configured: true, facturas: facturasAdapter.normalizeFacturas(invoices) });
+    // El hub no devuelve un total, así que la única señal honesta de que hay
+    // más es que la página vino llena. `hasMore` es eso y nada más.
+    res.json({
+      configured: true,
+      facturas: facturasAdapter.normalizeFacturas(invoices),
+      skip,
+      take,
+      hasMore: Array.isArray(invoices) && invoices.length === take,
+    });
   } catch (error) {
     console.error('Error listing hub CFDIs:', error.message);
     res.status(502).json({ configured: true, error: error.message, facturas: [] });

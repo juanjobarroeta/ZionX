@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
+import CfdiVisor from "../components/CfdiVisor";
 import "./Finance.css";
 
 const fmtMoney = (n) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(n) || 0);
@@ -53,8 +54,13 @@ const InvoicesManager = () => {
   // CFDIs and defaults to that view; the local ZionX invoices stay a click away.
   const [configured, setConfigured] = useState(false);
   const [view, setView] = useState("local"); // 'cfdi' | 'local'
-  const [cfdi, setCfdi] = useState({ loading: true, facturas: [] });
+  const [cfdi, setCfdi] = useState({ loading: true, facturas: [], hasMore: false });
   const [cfdiTipo, setCfdiTipo] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [abierto, setAbierto] = useState(null);
+  const [cargandoMas, setCargandoMas] = useState(false);
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${localStorage.getItem("token")}` }), []);
 
@@ -80,14 +86,43 @@ const InvoicesManager = () => {
   }, [filter, headers]);
 
   // Fiscal CFDIs from the hub (only when configured and viewing them).
+  // El hub topa en 200 por página y no da un total, así que «todos» se alcanza
+  // paginando: se pide una página más hasta que venga incompleta.
+  const PAGINA = 200;
+  const pedir = useCallback((skip) => axios.get(`${API_BASE_URL}/api/income/cfdi/invoices`, {
+    headers,
+    params: {
+      take: PAGINA, skip,
+      tipo: cfdiTipo || undefined,
+      q: busqueda.trim() || undefined,
+      from: desde || undefined,
+      to: hasta || undefined,
+    },
+  }), [headers, cfdiTipo, busqueda, desde, hasta]);
+
   useEffect(() => {
     if (!configured || view !== "cfdi") return;
     setCfdi((s) => ({ ...s, loading: true }));
-    const q = cfdiTipo ? `?tipo=${cfdiTipo}&take=200` : "?take=200";
-    axios.get(`${API_BASE_URL}/api/income/cfdi/invoices${q}`, { headers })
-      .then((r) => setCfdi({ loading: false, facturas: r.data?.facturas || [] }))
-      .catch(() => setCfdi({ loading: false, facturas: [] }));
-  }, [configured, view, cfdiTipo, headers]);
+    // Un respiro antes de pegarle al hub mientras alguien sigue escribiendo.
+    const t = setTimeout(() => {
+      pedir(0)
+        .then((r) => setCfdi({ loading: false, facturas: r.data?.facturas || [], hasMore: !!r.data?.hasMore }))
+        .catch(() => setCfdi({ loading: false, facturas: [], hasMore: false }));
+    }, busqueda ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [configured, view, pedir, busqueda]);
+
+  const cargarMas = () => {
+    setCargandoMas(true);
+    pedir(cfdi.facturas.length)
+      .then((r) => setCfdi((s) => ({
+        loading: false,
+        facturas: [...s.facturas, ...(r.data?.facturas || [])],
+        hasMore: !!r.data?.hasMore,
+      })))
+      .catch(() => {})
+      .finally(() => setCargandoMas(false));
+  };
 
   const rows = useMemo(() => {
     if (filter === "overdue") return invoices.filter((i) => (i.current_status || i.status) === "overdue");
@@ -154,6 +189,16 @@ const InvoicesManager = () => {
                 ))}
               </div>
 
+              <div className="zxin-cfdifiltros">
+                <input className="zxin-buscar" type="search" value={busqueda} placeholder="Buscar por folio, UUID, RFC o razón social…"
+                       onChange={(e) => setBusqueda(e.target.value)} />
+                <label>Desde <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
+                <label>Hasta <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
+                {(busqueda || desde || hasta) && (
+                  <button className="zxin-limpiar" onClick={() => { setBusqueda(""); setDesde(""); setHasta(""); }}>Limpiar</button>
+                )}
+              </div>
+
               {cfdi.loading ? (
                 <div className="zxin-loading">Cargando comprobantes…</div>
               ) : cfdi.facturas.length === 0 ? (
@@ -164,7 +209,7 @@ const InvoicesManager = () => {
                     <thead>
                       <tr>
                         <th>Tipo</th><th>Contraparte</th><th>Folio</th><th>Fecha</th>
-                        <th className="r">Total</th><th>Estado</th><th>CFDI</th>
+                        <th className="r">Total</th><th>Estado</th><th>CFDI</th><th />
                       </tr>
                     </thead>
                     <tbody>
@@ -180,12 +225,29 @@ const InvoicesManager = () => {
                             <td className="r" style={neg ? { color: "var(--bad)" } : undefined}>{neg ? "−" : ""}{fmtMoney(Math.abs(f.total))}</td>
                             <td><span className={`zxin-pill ${cs.cls}`}>{cs.label}</span></td>
                             <td>{f.uuid ? <span className="zxin-uuid">{String(f.uuid).slice(-12)}</span> : "—"}</td>
+                            <td className="r">
+                              {f.representable
+                                ? <button className="zxin-ver" onClick={() => setAbierto(f)}>Ver</button>
+                                : <span className="muted zxin-sinxml">sin XML</span>}
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  <div className="zxin-pagina">
+                    <span>{cfdi.facturas.length} comprobante{cfdi.facturas.length === 1 ? "" : "s"}{cfdi.hasMore ? " · hay más" : " · no hay más"}</span>
+                    {cfdi.hasMore && (
+                      <button className="zxin-mas" onClick={cargarMas} disabled={cargandoMas}>
+                        {cargandoMas ? "Trayendo…" : "Cargar 200 más"}
+                      </button>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              {abierto && (
+                <CfdiVisor invoiceId={abierto.id} uuid={abierto.uuid} onCerrar={() => setAbierto(null)} />
               )}
             </>
           ) : (
