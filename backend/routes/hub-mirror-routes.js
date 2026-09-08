@@ -1,5 +1,6 @@
 const express = require('express');
 const contaHub = require('../services/contaHub');
+const resultadosCfdi = require('../services/resultadosCfdi');
 
 // =====================================================
 // HUB MIRROR ROUTES — read-only surfacing of contabilidad-os fiscal data.
@@ -201,6 +202,36 @@ estadosRouter.get('/finance/cfdi/:id/xml', async (req, res) => {
   } catch (error) {
     console.error('Error fetching CFDI XML:', error.message);
     res.status(502).json({ error: error.message });
+  }
+});
+
+// GET /api/finance/resultados-cfdi?year=&month= — el estado de resultados
+// armado con los comprobantes del mes, con su detalle por contraparte.
+estadosRouter.get('/finance/resultados-cfdi', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    const month = parseInt(req.query.month, 10) || defaultMonth();
+    const data = await resultadosCfdi.mes(year, month);
+    res.json({ configured: true, ...data });
+  } catch (error) {
+    console.error('Error building CFDI income statement:', error.message);
+    res.status(502).json({ configured: true, error: error.message });
+  }
+});
+
+// GET /api/finance/resultados-cfdi/serie?year=&month=&meses= — un renglón por
+// mes hacia atrás, para ver la forma del año.
+estadosRouter.get('/finance/resultados-cfdi/serie', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false, meses: [] });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    const month = parseInt(req.query.month, 10) || defaultMonth();
+    const meses = Math.min(Math.max(parseInt(req.query.meses, 10) || 12, 1), 36);
+    res.json({ configured: true, meses: await resultadosCfdi.serie(year, month, meses) });
+  } catch (error) {
+    console.error('Error building CFDI series:', error.message);
+    res.status(502).json({ configured: true, error: error.message, meses: [] });
   }
 });
 
