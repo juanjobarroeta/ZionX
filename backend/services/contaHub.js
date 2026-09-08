@@ -42,26 +42,75 @@ const isConfigured = () => {
 let _token = null;
 let _tokenExp = 0;
 
+// Sólo se cacheaban los ACIERTOS: con una contraseña equivocada, cada petición
+// al hub volvía a intentar el login —y hub() reintenta una vez más al recibir
+// 401—, así que el scheduler y cada carga de página sumaban intentos durante
+// días hasta que el hub bloqueó la cuenta con un 429. Ahora el fallo también se
+// recuerda, con espera creciente, y no se vuelve a intentar hasta que toca.
+let _failUntil = 0;
+let _failError = null;
+let _failCount = 0;
+
+const BACKOFF_MS = 60 * 1000;          // primer fallo: un minuto
+const BACKOFF_MAX_MS = 30 * 60 * 1000; // techo: media hora
+const BACKOFF_429_MS = 15 * 60 * 1000; // si el hub dice «demasiados», se le hace caso
+
+function anotarFallo(status, mensaje) {
+  _failCount += 1;
+  const espera = status === 429
+    ? Math.max(BACKOFF_429_MS, Math.min(BACKOFF_MS * 2 ** _failCount, BACKOFF_MAX_MS))
+    : Math.min(BACKOFF_MS * 2 ** (_failCount - 1), BACKOFF_MAX_MS);
+  _failUntil = Date.now() + espera;
+  _failError = mensaje;
+}
+
 async function login() {
   const c = CFG();
-  const res = await fetch(`${c.url}/api/auth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: c.email, password: c.password }),
-  });
+  let res;
+  try {
+    res = await fetch(`${c.url}/api/auth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: c.email, password: c.password }),
+    });
+  } catch (err) {
+    anotarFallo(0, `No se pudo alcanzar contabilidad-os: ${err.message}`);
+    throw new Error(_failError);
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Hub login failed (${res.status}): ${body.slice(0, 200)}`);
+    anotarFallo(res.status, `Hub login failed (${res.status}): ${body.slice(0, 200)}`);
+    throw new Error(_failError);
   }
   const data = await res.json();
   _token = data.token;
   // Refresh a little before the 7-day expiry; treat as 6 days to be safe.
   _tokenExp = Date.now() + 6 * 24 * 60 * 60 * 1000;
+  _failUntil = 0; _failError = null; _failCount = 0;
   return _token;
+}
+
+/** Segundos que faltan para el próximo intento, o null si no hay espera. */
+function esperaRestante() {
+  const ms = _failUntil - Date.now();
+  return ms > 0 ? Math.ceil(ms / 1000) : null;
+}
+
+/** Reintentar ya, sin esperar: para cuando alguien acaba de cambiar la clave. */
+function olvidarFallo() {
+  _failUntil = 0; _failError = null; _failCount = 0;
 }
 
 async function token() {
   if (_token && Date.now() < _tokenExp) return _token;
+  // Dentro de la ventana de espera no se toca la red: se repite el último
+  // motivo. Insistir es lo que provocó el bloqueo.
+  if (Date.now() < _failUntil) {
+    const seg = Math.ceil((_failUntil - Date.now()) / 1000);
+    const err = new Error(`${_failError} (reintento en ${seg}s)`);
+    err.retryInSeconds = seg;
+    throw err;
+  }
   return login();
 }
 
@@ -380,17 +429,23 @@ async function cfdiXml(invoiceId) {
  *
  * @returns {Promise<{configured, ok, error?}>}
  */
-async function health() {
+async function health({ force = false } = {}) {
   if (!isConfigured()) {
     const c = CFG();
     const faltan = ['url', 'email', 'password', 'companyId'].filter((k) => !c[k]);
     return { configured: false, ok: false, error: `Falta configurar: ${faltan.join(', ')}` };
   }
+  // Mirar cómo está no puede ser lo que lo rompa: sin `force`, esto respeta la
+  // ventana de espera igual que cualquier otra llamada.
+  if (force) olvidarFallo();
   try {
     await token();
     return { configured: true, ok: true };
   } catch (err) {
-    return { configured: true, ok: false, error: err.message };
+    return {
+      configured: true, ok: false, error: err.message,
+      retryInSeconds: err.retryInSeconds ?? esperaRestante(),
+    };
   }
 }
 
@@ -405,7 +460,7 @@ module.exports = {
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
-  ceBalanceGeneral, declaraciones, declaracionesCobertura,
+  ceBalanceGeneral, declaraciones, declaracionesCobertura, olvidarFallo, esperaRestante,
   cuentaDocumentos, cfdiRepresentacion, cfdiXml, periodos,
   listEmployees, emitNomina,
 };
