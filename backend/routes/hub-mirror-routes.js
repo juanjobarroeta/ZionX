@@ -71,6 +71,27 @@ estadosRouter.get('/finance/estado-resultados', async (req, res) => {
   }
 });
 
+// GET /api/finance/ce-estado-resultados?year=&month=&ytd= — el estado de
+// resultados con la CE como columna vertebral: declarado vs derivado.
+estadosRouter.get('/finance/ce-estado-resultados', async (req, res) => {
+  try {
+    if (!contaHub.isConfigured()) return res.json({ configured: false });
+    const year = parseInt(req.query.year, 10) || defaultYear();
+    const month = parseInt(req.query.month, 10) || defaultMonth();
+    const data = await contaHub.ceEstadoResultados(year, month, { ytd: req.query.ytd === '1' });
+    res.json({ configured: true, year, month, ...data });
+  } catch (error) {
+    console.error('Error fetching CE estado de resultados:', error.message);
+    res.status(502).json({ configured: true, error: error.message });
+  }
+});
+
+// GET /api/finance/hub-health — ¿la integración de verdad responde?
+estadosRouter.get('/finance/hub-health', async (req, res) => {
+  const result = await contaHub.health();
+  res.status(result.ok ? 200 : 503).json(result);
+});
+
 // GET /api/finance/balanza?year=&month= — trial balance.
 estadosRouter.get('/finance/balanza', async (req, res) => {
   try {

@@ -13,8 +13,11 @@ const IVA_RATE = 0.16; // Mexican VAT 16%
 // =====================================================
 
 // Is the fiscal integration configured on this deployment?
-router.get('/cfdi/health', (req, res) => {
-  res.json({ configured: contaHub.isConfigured() });
+router.get('/cfdi/health', async (req, res) => {
+  // Antes sólo miraba que las variables no estuvieran vacías, así que con una
+  // contraseña equivocada respondía configured:true mientras todo daba 401.
+  const h = await contaHub.health();
+  res.json({ configured: h.configured, ok: h.ok, error: h.error });
 });
 
 // Surface the company's real CFDIs from contabilidad-os (read-only mirror).
