@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import PeriodPicker from "../components/PeriodPicker";
 import CeTable from "../components/CeTable";
+import CuentaDocumentos from "../components/CuentaDocumentos";
 import "./FiscalMirror.css";
 
 /**
@@ -21,6 +22,7 @@ export default function BalanceGeneral() {
   const [year, setYear] = useState(hoy.getFullYear());
   const [month, setMonth] = useState(hoy.getMonth() + 1);
   const [st, setSt] = useState({ loading: true, configured: false, data: null, error: null });
+  const [cuenta, setCuenta] = useState(null);
 
   const load = useCallback(() => {
     setSt((s) => ({ ...s, loading: true }));
@@ -70,12 +72,16 @@ export default function BalanceGeneral() {
                       presentado={d?.presentado}
                       grupos={d?.grupos || []}
                       nota={notas.length ? notas.join(" ") : null}
+                      cuentaAbierta={cuenta}
+                      onAbrirCuenta={setCuenta}
                       pie={[
                         { label: "Resultado del ejercicio", ...(d?.resultado || {}) },
                         { label: "Total activo", declarado: d?.totales?.activo?.declarado, derivado: d?.totales?.activo?.derivado, fuerte: true },
                         { label: "Pasivo + capital + resultado", declarado: d?.totales?.pasivoCapitalResultado?.declarado, derivado: d?.totales?.pasivoCapitalResultado?.derivado, fuerte: true },
                       ]}
-                    />
+                    >
+                      {cuenta && <CuentaDocumentos cuenta={cuenta} year={year} month={month} />}
+                    </CeTable>
                     {descuadre && (
                       <div className={`zxfm-cuadre ${cuadra ? "ok" : "off"}`}>
                         {cuadra

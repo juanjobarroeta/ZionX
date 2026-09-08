@@ -322,6 +322,38 @@ async function declaracionesCobertura() {
 }
 
 /**
+ * De una cuenta del estado de resultados a los documentos que la forman.
+ *
+ * El último escalón: cada renglón trae su CFDI —folio fiscal, contraparte,
+ * importe— y los asientos sin comprobante (banco, depreciación, ajustes) vienen
+ * con `invoice: null`. Esos no se esconden a propósito: sin ellos la suma de
+ * los documentos no cuadraría contra el renglón, que es justo lo que alguien
+ * va a verificar.
+ */
+async function cuentaDocumentos(cuenta, year, month, { ytd = false, limit = 200 } = {}) {
+  const c = CFG();
+  const p = new URLSearchParams({
+    companyId: c.companyId, cuenta, anio: String(year), mes: String(month), limit: String(limit),
+  });
+  if (ytd) p.set('ytd', '1');
+  return hub(`/api/contabilidad/cuenta-documentos?${p.toString()}`);
+}
+
+/** La representación impresa parseada del XML guardado. */
+async function cfdiRepresentacion(invoiceId) {
+  return hub(`/api/facturas/${encodeURIComponent(invoiceId)}/representacion`);
+}
+
+/**
+ * El XML tal cual lo entregó el SAT — el comprobante de verdad.
+ * hub() devuelve { raw } cuando la respuesta no es JSON, que es este caso.
+ */
+async function cfdiXml(invoiceId) {
+  const r = await hub(`/api/facturas/${encodeURIComponent(invoiceId)}/download?format=xml`);
+  return typeof r === 'string' ? r : (r?.raw ?? null);
+}
+
+/**
  * ¿La integración de verdad funciona?
  *
  * `isConfigured()` sólo mira que las cuatro variables no estén vacías. Con una
@@ -357,5 +389,6 @@ module.exports = {
   autoConciliar, applyBankTx, uploadBankStatement,
   listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
   ceBalanceGeneral, declaraciones, declaracionesCobertura,
+  cuentaDocumentos, cfdiRepresentacion, cfdiXml,
   listEmployees, emitNomina,
 };
