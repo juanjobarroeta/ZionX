@@ -278,6 +278,50 @@ async function estadoResultados(year, month) {
   return hub(`/api/contabilidad/estado-resultados?companyId=${encodeURIComponent(c.companyId)}&year=${year}&month=${month}`);
 }
 
+/**
+ * El estado de resultados con la Contabilidad Electrónica como columna
+ * vertebral: lo DECLARADO —la balanza ya presentada al SAT— manda, y lo
+ * derivado de los CFDIs va al lado como evidencia, con la diferencia.
+ *
+ * Un período que todavía no se presenta devuelve `presentado: false` y sólo la
+ * columna derivada, marcada preliminar: dice dónde va a cerrar el mes antes de
+ * que el contador lo cierre.
+ *
+ * Ojo: este endpoint usa `anio`/`mes`, no `year`/`month` como los otros.
+ *
+ * @param {boolean} ytd acumulado desde enero del ejercicio.
+ */
+async function ceEstadoResultados(year, month, { ytd = false } = {}) {
+  const c = CFG();
+  const p = new URLSearchParams({ companyId: c.companyId, anio: String(year), mes: String(month) });
+  if (ytd) p.set('ytd', '1');
+  return hub(`/api/contabilidad/ce-estado-resultados?${p.toString()}`);
+}
+
+/**
+ * ¿La integración de verdad funciona?
+ *
+ * `isConfigured()` sólo mira que las cuatro variables no estén vacías. Con una
+ * contraseña equivocada seguía diciendo que sí mientras cada llamada daba 401
+ * —y eso pasó tres días sin que nadie lo notara, con el timbrado caído—. Esto
+ * intenta el login real y dice qué encontró.
+ *
+ * @returns {Promise<{configured, ok, error?}>}
+ */
+async function health() {
+  if (!isConfigured()) {
+    const c = CFG();
+    const faltan = ['url', 'email', 'password', 'companyId'].filter((k) => !c[k]);
+    return { configured: false, ok: false, error: `Falta configurar: ${faltan.join(', ')}` };
+  }
+  try {
+    await token();
+    return { configured: true, ok: true };
+  } catch (err) {
+    return { configured: true, ok: false, error: err.message };
+  }
+}
+
 // GET /api/contabilidad/balanza — trial balance for a month.
 async function balanza(year, month) {
   const c = CFG();
@@ -288,6 +332,6 @@ module.exports = {
   isConfigured, stampInvoice, ensureReceptor, listInvoices, CFG,
   listBankAccounts, createBankAccount, listBankTransactions, bankCandidates,
   autoConciliar, applyBankTx, uploadBankStatement,
-  listPayrollRuns, getPayrollRun, estadoResultados, balanza,
+  listPayrollRuns, getPayrollRun, estadoResultados, ceEstadoResultados, balanza, health,
   listEmployees, emitNomina,
 };

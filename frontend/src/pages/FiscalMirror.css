@@ -81,3 +81,44 @@
   .zxfm-tabs { margin-left: 0; width: 100%; }
   .zxfm-row { flex-wrap: wrap; }
 }
+
+/* ===== Estado de resultados con la CE como columna vertebral ===== */
+/* Cuatro columnas: la cuenta, lo declarado al SAT, lo derivado de los CFDIs,
+   y la diferencia — que se enseña siempre, porque es el argumento. */
+.zxfm-ce-flag {
+  padding: 10px 14px; border-radius: 3px; font-size: 13px; line-height: 1.5;
+  margin-bottom: 16px; border-left: 3px solid;
+}
+.zxfm-ce-flag.ok { background: rgba(35,91,68,0.07); border-color: #235B44; color: #1b4636; }
+.zxfm-ce-flag.prelim { background: rgba(154,107,30,0.08); border-color: #9A6B1E; color: #6f4d15; }
+
+.zxfm-ce-head, .zxfm-ce-line {
+  display: grid; grid-template-columns: minmax(0,1fr) 130px 130px 120px;
+  gap: 10px; align-items: baseline; padding: 6px 0;
+}
+.zxfm-ce-head {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: rgba(4,17,26,0.5);
+  border-bottom: 1px solid rgba(4,17,26,0.14); padding-bottom: 8px; margin-bottom: 4px;
+}
+.zxfm-ce-line { border-bottom: 1px solid rgba(4,17,26,0.05); font-size: 14px; }
+.zxfm-ce-line .n { min-width: 0; }
+.zxfm-ce-line .n em { font-style: normal; font-family: var(--zx-mono, ui-monospace, monospace); font-size: 11px; color: rgba(4,17,26,0.45); margin-right: 6px; }
+.zxfm-ce-line .v { text-align: right; font-variant-numeric: tabular-nums; }
+.zxfm-ce-line .v.d { color: rgba(4,17,26,0.4); }
+.zxfm-ce-line .v.d.on { color: #9A6B1E; font-weight: 600; }
+.zxfm-ce-line.total { font-weight: 700; border-bottom: 1px solid rgba(4,17,26,0.18); }
+.zxfm-ce-line.result {
+  margin-top: 16px; padding-top: 14px; font-size: 16px; font-weight: 700;
+  border-top: 2px solid #04111A; border-bottom: none;
+}
+.zxfm-ce-line.result .pos { color: #235B44; }
+.zxfm-ce-line.result .neg { color: #8A1C1C; }
+.zxfm-ce-rubro { margin-bottom: 18px; }
+
+.zxfm-ytd { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(4,17,26,0.7); cursor: pointer; }
+
+@media (max-width: 780px) {
+  .zxfm-ce-head, .zxfm-ce-line { grid-template-columns: minmax(0,1fr) 96px 96px; }
+  .zxfm-ce-head .v:last-child, .zxfm-ce-line .v.d { display: none; }
+}
