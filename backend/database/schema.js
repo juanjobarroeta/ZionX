@@ -791,6 +791,47 @@ const createTables = async (pool) => {
         ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS sync_alerted_at TIMESTAMP;
       `);
     }
+    // Términos de servicio: lo que el cliente se compromete a cumplir, no sólo
+    // lo que nosotros entregamos. El manual señala que sin un SLA de aprobación
+    // formal, un cliente que tarda cuatro días en aprobar produce una
+    // publicación tardía que parece culpa de la agencia — no hay línea que diga
+    // de quién es el retraso, así que por defecto es nuestro.
+    //
+    // Los valores por defecto viven en el paquete; la suscripción los puede
+    // pisar cuando un cliente negoció otra cosa.
+    for (const t of ['service_packages', 'customer_subscriptions']) {
+      await pool.query(`
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS approval_sla_hours INTEGER;
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS revision_rounds INTEGER;
+        ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS sla_breach VARCHAR(30);
+      `);
+    }
+
+    // El acuerdo firmado. `terms` es una FOTO de las condiciones al momento de
+    // firmar: si mañana cambia el SLA del paquete, lo que el cliente aceptó no
+    // cambia con él — que es la diferencia entre un acuerdo y una preferencia.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS service_agreements (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+        subscription_id INTEGER,
+        token VARCHAR(64) UNIQUE NOT NULL,
+        terms JSONB NOT NULL,
+        body TEXT,
+        sent_at TIMESTAMP,
+        signed_at TIMESTAMP,
+        signed_by_name VARCHAR(160),
+        signed_by_email VARCHAR(160),
+        signed_ip VARCHAR(64),
+        signed_user_agent TEXT,
+        revoked_at TIMESTAMP,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_agreements_customer ON service_agreements(customer_id);
+    `);
+    console.log("✅ Service agreement tables ready");
+
     console.log("✅ Connection health columns ready");
 
     console.log("✅ Analytics history tables ready");

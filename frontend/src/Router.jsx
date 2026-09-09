@@ -52,6 +52,7 @@ const CreativeBrief = lazyWithReload(() => import("./pages/CreativeBrief"));
 const PublicCreativeBrief = lazyWithReload(() => import("./pages/PublicCreativeBrief"));
 const PublicBriefStart = lazyWithReload(() => import("./pages/PublicBriefStart"));
 const PublicClientApproval = lazyWithReload(() => import("./pages/PublicClientApproval"));
+const PublicAcuerdo = lazyWithReload(() => import("./pages/PublicAcuerdo"));
 const PublicCapture = lazyWithReload(() => import("./pages/PublicCapture"));
 const PublicLegal = lazyWithReload(() => import("./pages/PublicLegal"));
 const CreateUser = lazyWithReload(() => import("./pages/CreateUser"));
@@ -173,6 +174,7 @@ const AppRouter = () => (
         <Route path="/brief-publico" element={<PublicBriefStart />} />
         <Route path="/public-brief/:token" element={<PublicCreativeBrief />} />
         <Route path="/client-approval/:token" element={<PublicClientApproval />} />
+        <Route path="/acuerdo/:token" element={<PublicAcuerdo />} />
         <Route path="/capturar/:token" element={<PublicCapture />} />
         <Route path="/reporte/:token" element={<PublicReport />} />
         <Route path="/privacy" element={<PublicLegal kind="privacy" />} />
