@@ -12,6 +12,7 @@
  */
 
 const { syncAccountInsights, syncPostInsights, syncAdSpend } = require('./metricsSync');
+const alertas = require('./alertas');
 
 const TICK_MS = 15 * 60 * 1000;   // how often we ask "is anything due?"
 const BOOT_DELAY_MS = 45 * 1000;  // let the app finish starting before the first pull
@@ -51,6 +52,16 @@ class MetricsScheduler {
           lookbackDays: parseInt(process.env.METRICS_ADS_LOOKBACK_DAYS, 10) || 14,
         }),
         describe: (r) => `${r.synced}/${r.total} cuentas publicitarias (${r.days})`,
+      },
+      {
+        // Las alertas del manual avisan ANTES de vencer, así que el ritmo tiene
+        // que ser más fino que el de las métricas: cada hora, para que «faltan
+        // menos de 24 h» siga siendo verdad cuando llega el aviso.
+        name: 'alertas_operativas',
+        every: hours('ALERTAS_INTERVAL_HOURS', 1),
+        run: () => alertas.correr(this.pool),
+        describe: (r) =>
+          `publicaciones ${r.pubs.avisadas}/${r.pubs.revisadas} · tareas ${r.tareas.avisadas}/${r.tareas.revisadas}`,
       },
     ];
   }
