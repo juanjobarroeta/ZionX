@@ -830,6 +830,43 @@ const createTables = async (pool) => {
       );
       CREATE INDEX IF NOT EXISTS idx_agreements_customer ON service_agreements(customer_id);
     `);
+    // Juntas con cliente. El manual dice que toda decisión de una junta termina
+    // en la app y que ningún acuerdo cuenta hasta quedar registrado; esto es
+    // donde aterriza lo que Zoom devuelve al terminar.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS zoom_meetings (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+        zoom_meeting_id BIGINT,
+        zoom_uuid VARCHAR(64),
+        topic VARCHAR(255),
+        start_time TIMESTAMP,
+        duration INTEGER,
+        join_url TEXT,
+        start_url TEXT,
+        status VARCHAR(30) DEFAULT 'programada',
+        transcript_path TEXT,
+        summary TEXT,
+        next_steps JSONB,
+        next_steps_procesados_at TIMESTAMP,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_zoom_meeting_id ON zoom_meetings(zoom_meeting_id)
+        WHERE zoom_meeting_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_zoom_customer ON zoom_meetings(customer_id);
+    `);
+    // Un acuerdo de junta empieza como borrador: la transcripción en español
+    // no es lo bastante fiable como para asignarle trabajo a alguien sin que un
+    // humano lo confirme.
+    await pool.query(`
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origen VARCHAR(30);
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origen_id INTEGER;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS es_borrador BOOLEAN DEFAULT false;
+    `);
+    console.log("✅ Zoom meeting tables ready");
+
     console.log("✅ Service agreement tables ready");
 
     console.log("✅ Connection health columns ready");

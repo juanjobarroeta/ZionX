@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import PageShell from "../components/PageShell";
+import JuntasCliente from "../components/JuntasCliente";
 import axios from "axios";
 import { API_BASE_URL } from "../utils/constants";
 import { customerName, customerContact } from "../utils/customerName";
@@ -413,6 +414,8 @@ const CustomerProfile = () => {
               <div className="zxp-cockpit">
                 {/* Contenido: what shipped and what's coming, one click from the
                     calendar and the metrics filtered to this client. */}
+                <JuntasCliente customerId={id} />
+
                 <section className="zxp-block">
                   <div className="zxp-block-head">
                     <h3>Contenido</h3>
