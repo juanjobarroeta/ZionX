@@ -32,7 +32,13 @@ const { createTables } = require('./database/schema');
 const app = express();
 const port = process.env.PORT || 5001;
 
-app.use(express.json({ limit: '50mb' }));
+// El cuerpo CRUDO se guarda al vuelo porque la firma de Zoom se calcula sobre
+// los bytes exactos que mandó: re-serializar el JSON cambia espacios y orden, y
+// entonces ninguna firma valida jamás.
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buf) => { if (buf?.length) req.rawBody = buf.toString('utf8'); },
+}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // CORS — allow configured origins, any *.vercel.app deployment, and localhost.
@@ -307,6 +313,11 @@ async function start() {
     // que va aquí arriba por la misma razón que la aprobación del cliente.
     const acuerdosRoutes = require('./routes/acuerdos-routes');
     app.use('/api/acuerdos', withPool, acuerdosRoutes.publico);
+
+    // El webhook de Zoom lo llama Zoom, no una persona: se autentica con su
+    // propia firma, así que va antes de authenticateToken como las públicas.
+    const zoomRoutes = require('./routes/zoom-routes');
+    app.use('/api/zoom/webhook', withPool, zoomRoutes.webhook);
     app.use('/api/briefs', withPool, publicSubset(creativeBriefsRoutes, '/public/'));
 
     // Customer import
@@ -314,6 +325,7 @@ async function start() {
 
     // Y lo del equipo, con sesión, como todo lo demás.
     app.use('/api', withPool, authenticateToken, requireSection('finanzas'), acuerdosRoutes.equipo);
+    app.use('/api', withPool, authenticateToken, zoomRoutes.equipo);
 
     // HR & Payroll
     app.use('/api/hr', withPool, authenticateToken, hrPayrollRoutes);
