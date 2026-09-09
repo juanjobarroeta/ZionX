@@ -18,6 +18,7 @@
 
 const { notifyUser } = require('./notify');
 const { userIdsForTeamMembers } = require('./identity');
+const acuerdos = require('./acuerdos');
 
 /** ¿Ya avisamos de esto? El propio historial de avisos es el registro. */
 async function yaAvisado(pool, tipo, itemId, itemType, dentroDeHoras) {
@@ -124,6 +125,73 @@ async function tareasPorVencer(pool) {
   return { revisadas: rows.length, avisadas };
 }
 
+/**
+ * «Alerta por aprobación de cliente fuera de SLA».
+ *
+ * El plazo NO es un número que elegimos: sale de los términos vigentes del
+ * cliente, y si hay acuerdo firmado, de lo que firmó. Por eso el aviso puede
+ * decir a partir de qué compromiso se está midiendo — que es lo que convierte
+ * «el cliente se tardó» en algo que se puede sostener frente a él.
+ *
+ * Sin acuerdo firmado también avisa, pero lo dice: son condiciones propuestas,
+ * no acordadas.
+ */
+async function aprobacionesFueraDeSla(pool) {
+  const { rows } = await pool.query(
+    `SELECT cc.id, cc.title, cc.customer_id, cc.submitted_for_review_at,
+            cc.assigned_community_manager, cc.assigned_designer, cc.created_by,
+            c.assigned_community, c.assigned_senior,
+            COALESCE(NULLIF(c.commercial_name,''), NULLIF(c.business_name,''), 'Cliente') AS cliente
+       FROM content_calendar cc
+       LEFT JOIN customers c ON c.id = cc.customer_id
+      WHERE cc.submitted_for_review_at IS NOT NULL
+        AND cc.client_reviewed_at IS NULL
+        AND LOWER(COALESCE(cc.client_status, 'pending')) NOT IN ('approved', 'changes_requested')`
+  );
+  if (!rows.length) return { revisadas: 0, avisadas: 0 };
+
+  const miembros = rows.flatMap((r) => [
+    r.assigned_community_manager, r.assigned_designer, r.assigned_community, r.assigned_senior,
+  ]).filter(Boolean);
+  const porMiembro = await userIdsForTeamMembers(pool, miembros);
+  const cache = new Map();
+
+  let avisadas = 0;
+  let vencidas = 0;
+  for (const r of rows) {
+    if (!cache.has(r.customer_id)) {
+      cache.set(r.customer_id, await acuerdos.terminosDe(pool, r.customer_id));
+    }
+    const t = cache.get(r.customer_id);
+    const horas = (Date.now() - new Date(r.submitted_for_review_at).getTime()) / 3600000;
+    if (horas < t.approval_sla_hours) continue;
+    vencidas += 1;
+
+    if (await yaAvisado(pool, 'sla_aprobacion', r.id, 'content_calendar', 24)) continue;
+    const destino =
+      porMiembro.get(r.assigned_community_manager) ||
+      porMiembro.get(r.assigned_community) ||
+      porMiembro.get(r.assigned_senior) ||
+      porMiembro.get(r.assigned_designer) ||
+      r.created_by;
+    if (!destino) continue;
+
+    const base = t.firmado
+      ? `acordado con ${r.cliente}`
+      : 'propuesto — este cliente no ha firmado acuerdo';
+    await notifyUser(pool, destino, {
+      type: 'sla_aprobacion',
+      title: 'El cliente pasó su plazo de aprobación',
+      message: `${r.title || 'Sin título'} · ${r.cliente} · lleva ${Math.floor(horas)} h y el plazo es de ${t.approval_sla_hours} h (${base})`,
+      link: `/post/${r.id}`,
+      itemId: r.id,
+      itemType: 'content_calendar',
+    });
+    avisadas += 1;
+  }
+  return { revisadas: vencidas, avisadas };
+}
+
 /** Corre las dos y devuelve el resumen para el log. */
 async function correr(pool) {
   const pubs = await publicacionesSinProgramar(pool).catch((e) => {
@@ -132,7 +200,10 @@ async function correr(pool) {
   const tareas = await tareasPorVencer(pool).catch((e) => {
     console.error('alertas/tareas:', e.message); return { revisadas: 0, avisadas: 0, error: e.message };
   });
-  return { pubs, tareas };
+  const sla = await aprobacionesFueraDeSla(pool).catch((e) => {
+    console.error('alertas/sla:', e.message); return { revisadas: 0, avisadas: 0, error: e.message };
+  });
+  return { pubs, tareas, sla };
 }
 
-module.exports = { correr, publicacionesSinProgramar, tareasPorVencer };
+module.exports = { correr, publicacionesSinProgramar, tareasPorVencer, aprobacionesFueraDeSla };

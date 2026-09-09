@@ -1,0 +1,66 @@
+/* ===== ZIONX — el acuerdo, del lado del cliente ===== */
+@font-face { font-family: 'Bricolage'; src: url('/fonts/Bricolage.ttf') format('truetype'); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: 'Nyght'; src: url('/fonts/NyghtLightItalic.ttf') format('truetype'); font-weight: 300; font-style: italic; font-display: swap; }
+
+.zxac {
+  --ink: #04111A; --paper: #F2F3F1; --line: rgba(4,17,26,0.14); --muted: rgba(4,17,26,0.55);
+  --ok: #235B44; --bad: #8A1C1C;
+  min-height: 100vh; background: var(--paper); color: var(--ink);
+  font-family: 'Bricolage', Helvetica, Arial, sans-serif;
+  padding: 48px 20px 80px; display: flex; justify-content: center;
+}
+.zxac *, .zxac { box-sizing: border-box; }
+.zxac-hoja {
+  width: 100%; max-width: 680px; background: #FFF;
+  border: 1px solid var(--line); border-radius: 5px; overflow: hidden;
+}
+.zxac-cab { background: var(--ink); color: var(--paper); padding: 26px 32px; }
+.zxac-marca { font-size: 19px; font-weight: 700; letter-spacing: 0.14em; }
+.zxac-eyebrow { margin-top: 6px; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.6; }
+
+.zxac-cuerpo { padding: 30px 32px 8px; }
+.zxac-cuerpo p { margin: 0 0 14px; font-size: 15px; line-height: 1.65; }
+.zxac-cuerpo p:first-child { font-size: 17px; font-weight: 600; }
+.zxac-sep { height: 10px; }
+
+.zxac-firma { padding: 8px 32px 32px; border-top: 1px solid var(--line); margin-top: 14px; padding-top: 24px; }
+.zxac-firma-lead { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+.zxac-firma label { display: block; margin-bottom: 14px; }
+.zxac-firma label span {
+  display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: var(--muted); margin-bottom: 6px;
+}
+.zxac-firma label span em { font-style: normal; letter-spacing: 0; text-transform: none; font-weight: 500; }
+.zxac-firma input {
+  width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+  padding: 11px 13px; border: 1px solid rgba(4,17,26,0.2); border-radius: 3px; background: #FFF;
+}
+.zxac-firma input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(4,17,26,0.08); }
+.zxac-firma button {
+  width: 100%; margin-top: 6px; font-family: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer; padding: 14px; border-radius: 3px; border: 1px solid var(--ink);
+  background: var(--ink); color: var(--paper);
+}
+.zxac-firma button:hover:not(:disabled) { opacity: 0.9; }
+.zxac-firma button:disabled { opacity: 0.5; cursor: default; }
+
+.zxac-firmado { padding: 24px 32px 32px; border-top: 1px solid var(--line); margin-top: 14px; }
+.zxac-firmado .lead {
+  display: inline-block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700; color: var(--paper); background: var(--ok); padding: 5px 11px; border-radius: 2px;
+}
+.zxac-firmado p { margin: 12px 0 0; font-size: 15px; line-height: 1.6; }
+
+.zxac-error {
+  margin-bottom: 12px; padding: 10px 13px; border-radius: 3px; font-size: 13.5px; font-weight: 600;
+  color: var(--bad); background: rgba(138,28,28,0.07); border-left: 3px solid var(--bad);
+}
+.zxac-msg { padding: 60px 32px; text-align: center; font-size: 15px; color: var(--muted); }
+.zxac-msg.error { color: var(--bad); font-weight: 600; }
+.zxac-pie { margin-top: 14px !important; font-size: 12px !important; color: var(--muted); line-height: 1.55 !important; }
+
+@media (max-width: 560px) {
+  .zxac { padding: 0 0 40px; }
+  .zxac-hoja { border: none; border-radius: 0; }
+  .zxac-cab, .zxac-cuerpo, .zxac-firma, .zxac-firmado { padding-left: 20px; padding-right: 20px; }
+}

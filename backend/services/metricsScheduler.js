@@ -61,7 +61,8 @@ class MetricsScheduler {
         every: hours('ALERTAS_INTERVAL_HOURS', 1),
         run: () => alertas.correr(this.pool),
         describe: (r) =>
-          `publicaciones ${r.pubs.avisadas}/${r.pubs.revisadas} · tareas ${r.tareas.avisadas}/${r.tareas.revisadas}`,
+          `publicaciones ${r.pubs.avisadas}/${r.pubs.revisadas} · tareas ${r.tareas.avisadas}/${r.tareas.revisadas}` +
+          ` · SLA ${r.sla.avisadas}/${r.sla.revisadas}`,
       },
     ];
   }

@@ -303,10 +303,17 @@ async function start() {
       req.path.startsWith(prefix) ? router(req, res, next) : next();
 
     app.use('/api/approvals', withPool, publicSubset(approvalsRoutes, '/client/'));
+    // La firma del acuerdo la hace alguien que no tiene cuenta en ZIONX, así
+    // que va aquí arriba por la misma razón que la aprobación del cliente.
+    const acuerdosRoutes = require('./routes/acuerdos-routes');
+    app.use('/api/acuerdos', withPool, acuerdosRoutes.publico);
     app.use('/api/briefs', withPool, publicSubset(creativeBriefsRoutes, '/public/'));
 
     // Customer import
     app.use('/api', withPool, authenticateToken, customerImportRoutes);
+
+    // Y lo del equipo, con sesión, como todo lo demás.
+    app.use('/api', withPool, authenticateToken, requireSection('finanzas'), acuerdosRoutes.equipo);
 
     // HR & Payroll
     app.use('/api/hr', withPool, authenticateToken, hrPayrollRoutes);
