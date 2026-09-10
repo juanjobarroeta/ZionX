@@ -70,3 +70,4 @@
   color: var(--zx-ink, #04111A); text-decoration: underline; text-underline-offset: 2px;
 }
 .zxcv2-link:disabled { opacity: 0.5; cursor: default; }
+.zxcv2-link.quitar { color: #8A1C1C; }

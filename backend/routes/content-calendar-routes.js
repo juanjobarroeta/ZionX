@@ -512,6 +512,41 @@ router.post("/content/:postId/upload", upload.array('files', 10), async (req, re
 });
 
 /**
+ * DELETE /content/:postId/arte — quitar el arte de la publicación.
+ *
+ * Se podía reemplazar el arte pero no quitarlo, así que un arte subido por
+ * error se quedaba hasta que alguien subiera otro encima. Un post sin arte es
+ * un estado legítimo —así nacen todos— y volver a él debería costar un clic.
+ *
+ * Se suelta también el diseño de Canva: si el arte ya no está, «actualizar
+ * desde Canva» no tiene qué actualizar, y dejar el vínculo colgando haría que
+ * la tarjeta ofreciera refrescar un arte que no existe.
+ *
+ * El archivo NO se borra del volumen. Quitar el arte de un post es una decisión
+ * sobre el post, no sobre el archivo; si se quitó por equivocación, la liga
+ * anterior sigue sirviendo.
+ */
+router.delete("/content/:postId/arte", async (req, res) => {
+  try {
+    const id = parseInt(req.params.postId, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "id inválido" });
+
+    const { rows } = await req.pool.query(
+      `UPDATE content_calendar
+          SET arte = NULL, canva_design_id = NULL, canva_synced_at = NULL, updated_at = NOW()
+        WHERE id = $1
+    RETURNING id, arte, canva_design_id, canva_synced_at`,
+      [id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "La publicación no existe" });
+    res.json({ success: true, ...rows[0] });
+  } catch (error) {
+    console.error("Error removing arte:", error);
+    res.status(500).json({ error: "No se pudo quitar el arte" });
+  }
+});
+
+/**
  * GET /content-calendar/:id
  *
  * Everything about one post, in one request: the idea and the artwork, the

@@ -91,6 +91,19 @@ export default function CanvaArte({ postId, designId, syncedAt, onArte }) {
     } finally { setBusy(false); setTrayendo(null); }
   };
 
+  /** Soltar el arte y el diseño. El archivo se queda en el volumen. */
+  const quitar = async () => {
+    if (!window.confirm("¿Quitar el arte de esta publicación?")) return;
+    setBusy(true); setError(null);
+    try {
+      const { data } = await axios.delete(`${API_BASE_URL}/content/${postId}/arte`, { headers });
+      onArte?.(data);
+      setAbierto(false);
+    } catch (e) {
+      setError(e.response?.data?.error || "No se pudo quitar el arte.");
+    } finally { setBusy(false); }
+  };
+
   if (!st?.configurado) return null;
 
   if (!st.conectado) {
@@ -120,6 +133,9 @@ export default function CanvaArte({ postId, designId, syncedAt, onArte }) {
           <button className="zxcv2-link" type="button" disabled={busy}
                   onClick={() => setAbierto((v) => !v)}>
             {abierto ? "Cerrar" : "Cambiar de diseño"}
+          </button>
+          <button className="zxcv2-link quitar" type="button" disabled={busy} onClick={quitar}>
+            Quitar arte
           </button>
         </>
       ) : (

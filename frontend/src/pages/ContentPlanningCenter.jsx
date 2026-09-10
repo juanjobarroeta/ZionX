@@ -416,6 +416,24 @@ const ContentPlanningCenter = () => {
       if (arteInputRef.current) arteInputRef.current.value = "";
     }
   };
+  /**
+   * Quitar el arte. Se pregunta porque el botón vive al lado de «Reemplazar» y
+   * un clic de más no debería vaciar la publicación en silencio.
+   */
+  const quitarArte = async () => {
+    if (!selected?.arte) return;
+    if (!window.confirm("¿Quitar el arte de esta publicación?")) return;
+    setUploadingArte(true);
+    try {
+      await axios.delete(`${API_BASE_URL}/content/${selected.id}/arte`, { headers });
+      applyPatch(selected.id, { arte: null, canva_design_id: null, canva_synced_at: null });
+    } catch {
+      /* el panel de listos sigue diciendo «arte» hasta que de verdad se va */
+    } finally {
+      setUploadingArte(false);
+    }
+  };
+
   const sendToClient = async (post) => {
     setBusy(true);
     try {
@@ -863,6 +881,12 @@ const ContentPlanningCenter = () => {
                   <input ref={arteInputRef} type="file" hidden
                          accept="image/*,video/mp4,video/quicktime"
                          onChange={(e) => uploadArte(e.target.files?.[0])} />
+                  {selected.arte && (
+                    <button type="button" className="zx-btn ghost" disabled={uploadingArte}
+                            onClick={quitarArte}>
+                      Quitar arte
+                    </button>
+                  )}
                   {["story", "reel", "video"].includes((selected.content_type || "").toLowerCase()) && (
                     <span className="zxc-note">Para {selected.content_type}: sube video (MP4/MOV).</span>
                   )}
@@ -875,7 +899,10 @@ const ContentPlanningCenter = () => {
                   syncedAt={selected.canva_synced_at}
                   onArte={(d) => applyPatch(selected.id, {
                     arte: d.arte,
-                    canva_design_id: d.canva_design_id ?? selected.canva_design_id,
+                    // `??` no sirve: quitar el arte devuelve null a propósito y
+                    // habría revivido el diseño anterior. «Actualizar» en cambio
+                    // no manda la clave, y ahí sí hay que conservarla.
+                    canva_design_id: "canva_design_id" in d ? d.canva_design_id : selected.canva_design_id,
                     canva_synced_at: d.canva_synced_at,
                   })}
                 />
