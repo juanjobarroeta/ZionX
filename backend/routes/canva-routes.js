@@ -58,9 +58,11 @@ conexion.delete('/canva/conexion', async (req, res) => {
  */
 contenido.post('/content-calendar/:id/canva', async (req, res) => {
   try {
-    const designId = canva.idDeDiseño(req.body?.design || req.body?.url);
+    const designId = await canva.resolverDiseño(req.body?.design || req.body?.url);
     if (!designId) {
-      return res.status(400).json({ error: 'Esa no parece una liga de diseño de Canva.' });
+      return res.status(400).json({
+        error: 'Esa no parece una liga de diseño de Canva. Copia la del navegador con el diseño abierto (canva.com/design/…) o la de «Compartir».',
+      });
     }
     const arte = await canva.traerArte(req.pool, req.user.id, designId, req.body?.formato || 'png');
     const { rows } = await req.pool.query(
