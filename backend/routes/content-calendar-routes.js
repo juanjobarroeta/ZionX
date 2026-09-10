@@ -101,6 +101,7 @@ router.get("/content-calendar-range", async (req, res) => {
         cc.id, cc.customer_id, cc.title, cc.campaign, cc.platform, cc.pilar, cc.content_type,
         cc.scheduled_date, cc.status, cc.idea_tema, cc.copy_in, cc.copy_out, cc.arte,
         cc.priority, cc.client_status, cc.scheduled_post_id,
+        cc.canva_design_id, cc.canva_synced_at,
         (SELECT COUNT(*)::int FROM post_pipeline_stages pps
           WHERE pps.content_calendar_id = cc.id
             AND pps.optional = false AND pps.status <> 'listo') AS pending_stages,
