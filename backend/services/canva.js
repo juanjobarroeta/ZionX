@@ -183,6 +183,39 @@ function idDeDiseño(entrada) {
   return null;
 }
 
+// Los dominios de liga corta de Canva. La lista es cerrada a propósito: esto
+// sale a pedir una URL que nos dieron, y sólo debe alcanzar a Canva.
+const CORTAS = new Set(['canva.link', 'www.canva.link']);
+
+/**
+ * El ID del diseño, resolviendo la liga corta si hace falta.
+ *
+ * El botón «Compartir» de Canva da `canva.link/xxxx`, que NO contiene el ID:
+ * es un redirect. Se pide sólo el `Location` y no se sigue hasta la página —
+ * canva.com le responde 403 a un cliente que no es navegador, pero el redirect
+ * ya trae `/design/<ID>/`, que es todo lo que hace falta.
+ */
+async function resolverDiseño(entrada) {
+  const directo = idDeDiseño(entrada);
+  if (directo) return directo;
+
+  let u;
+  try { u = new URL(String(entrada || '').trim()); } catch { return null; }
+  if (u.protocol !== 'https:' || !CORTAS.has(u.hostname)) return null;
+
+  const ctl = new AbortController();
+  const alarma = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(u.toString(), { redirect: 'manual', signal: ctl.signal });
+    const destino = r.headers.get('location');
+    return destino ? idDeDiseño(destino) : null;
+  } catch {
+    return null; // una liga corta que no resuelve se trata como liga inválida
+  } finally {
+    clearTimeout(alarma);
+  }
+}
+
 /**
  * Exporta un diseño y devuelve la URL del archivo.
  *
@@ -241,4 +274,4 @@ async function estado(pool, userId) {
   };
 }
 
-module.exports = { isConfigured, CFG, ligaDeAutorizacion, canjear, token, api, idDeDiseño, exportar, traerArte, estado, SCOPES };
+module.exports = { isConfigured, CFG, ligaDeAutorizacion, canjear, token, api, idDeDiseño, resolverDiseño, exportar, traerArte, estado, SCOPES };
