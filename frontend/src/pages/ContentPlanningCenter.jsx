@@ -5,6 +5,7 @@ import PageShell from "../components/PageShell";
 import PixelMark from "../components/PixelMark";
 import PinterestEmbed from "../components/PinterestEmbed";
 import { API_BASE_URL } from "../utils/constants";
+import CanvaArte from "../components/CanvaArte";
 import { customerName as resolveCustomerName } from "../utils/customerName";
 import {
   contentStatusInfo,
@@ -866,6 +867,18 @@ const ContentPlanningCenter = () => {
                     <span className="zxc-note">Para {selected.content_type}: sube video (MP4/MOV).</span>
                   )}
                 </div>
+                {/* El arte casi siempre nace en Canva; traerlo aqui evita el
+                    bajar-y-volver-a-subir donde se cuela la version vieja. */}
+                <CanvaArte
+                  postId={selected.id}
+                  designId={selected.canva_design_id}
+                  syncedAt={selected.canva_synced_at}
+                  onArte={(d) => applyPatch(selected.id, {
+                    arte: d.arte,
+                    canva_design_id: d.canva_design_id ?? selected.canva_design_id,
+                    canva_synced_at: d.canva_synced_at,
+                  })}
+                />
               </div>
 
               {/* Production pipeline — live, stateful stages */}
