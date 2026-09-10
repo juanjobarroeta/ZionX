@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import PageShell from "../components/PageShell";
+import CanvaArte from "../components/CanvaArte";
 import { API_BASE_URL } from "../utils/constants";
 import { STAGE_LABELS, STATUS_LABELS, STATUS_VARIANT } from "../config/pipeline";
 import { contentStatusInfo, publishStatusInfo } from "../config/contentStatus";
@@ -120,7 +121,8 @@ export default function PostDetail() {
   const client = CLIENT_STATE[post.client_status] || null;
   const mine = stages.filter((s) => s.ready && s.status !== "listo");
   const arte = Array.isArray(post.arte_files) ? post.arte_files : [];
-  const cover = arte[0]?.url || arte[0]?.path || post.arte || null;
+  const media = (u) => (u ? (/^(https?:|data:|blob:)/.test(u) ? u : `${API_BASE_URL}${u}`) : null);
+  const cover = media(arte[0]?.url || arte[0]?.path || post.arte || null);
 
   return (
     <PageShell
@@ -155,6 +157,13 @@ export default function PostDetail() {
         </div>
 
         <div className="zxpd-side">
+          <CanvaArte
+            postId={id}
+            designId={post.canva_design_id}
+            syncedAt={post.canva_synced_at}
+            onArte={() => { setArtBroken(false); load(); }}
+          />
+
           <div className="zxpd-block">
             <h2 className="zxpd-h2">La idea</h2>
             {post.pilar && <div className="zxpd-kv"><span>Pilar</span><b>{post.pilar}</b></div>}

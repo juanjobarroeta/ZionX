@@ -326,6 +326,9 @@ async function start() {
     // Y lo del equipo, con sesión, como todo lo demás.
     app.use('/api', withPool, authenticateToken, requireSection('finanzas'), acuerdosRoutes.equipo);
     app.use('/api', withPool, authenticateToken, zoomRoutes.equipo);
+    const canvaRoutes = require('./routes/canva-routes');
+    app.use('/api', withPool, authenticateToken, canvaRoutes.conexion);
+    app.use('/', withPool, authenticateToken, canvaRoutes.contenido);
 
     // HR & Payroll
     app.use('/api/hr', withPool, authenticateToken, hrPayrollRoutes);

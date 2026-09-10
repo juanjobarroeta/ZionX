@@ -865,6 +865,31 @@ const createTables = async (pool) => {
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS origen_id INTEGER;
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS es_borrador BOOLEAN DEFAULT false;
     `);
+    // Canva es por persona, no por cuenta: cada quien conecta su Canva, así que
+    // el token vive junto al usuario. `refresh_token` ROTA en cada renovación —
+    // guardar el nuevo no es opcional, si se pierde hay que volver a conectar.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS canva_connections (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        access_token TEXT,
+        refresh_token TEXT,
+        expires_at TIMESTAMP,
+        canva_user_id VARCHAR(120),
+        scopes TEXT,
+        pending_verifier TEXT,
+        pending_state VARCHAR(64),
+        connected_at TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    // De qué diseño salió el arte. Guardarlo permite volver a exportar la
+    // versión actual en vez de quedarse con el PNG que alguien bajó una vez.
+    await pool.query(`
+      ALTER TABLE content_calendar ADD COLUMN IF NOT EXISTS canva_design_id VARCHAR(64);
+      ALTER TABLE content_calendar ADD COLUMN IF NOT EXISTS canva_synced_at TIMESTAMP;
+    `);
+    console.log("✅ Canva connection tables ready");
+
     console.log("✅ Zoom meeting tables ready");
 
     console.log("✅ Service agreement tables ready");
