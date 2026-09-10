@@ -217,6 +217,39 @@ async function resolverDiseño(entrada) {
 }
 
 /**
+ * Los diseños de la persona, para elegir viéndolos en vez de pegar una liga.
+ *
+ * Sin búsqueda se ordena por lo último modificado: el arte que se acaba de
+ * terminar es justo el que se va a subir. Con búsqueda manda la relevancia,
+ * que es lo que Canva sabe hacer con un término.
+ *
+ * Corre con `design:meta:read`, que ya se concedió al conectar — esto no le
+ * pide a nadie permisos nuevos.
+ */
+async function listarDiseños(pool, userId, { q = '', cursor = '', limite = 24 } = {}) {
+  const p = new URLSearchParams();
+  const termino = String(q || '').trim().slice(0, 255);
+  if (termino) p.set('query', termino);
+  if (cursor) p.set('continuation', cursor);
+  p.set('sort_by', termino ? 'relevance' : 'modified_descending');
+  p.set('limit', String(Math.min(100, Math.max(1, limite))));
+
+  const r = await api(pool, userId, `/designs?${p.toString()}`);
+  const items = r?.items || r?.designs || [];
+  return {
+    items: items.map((d) => ({
+      id: d.id,
+      titulo: d.title || 'Sin título',
+      // La miniatura de Canva caduca; se pinta en vivo y NO se guarda.
+      thumbnail: d.thumbnail?.url || null,
+      paginas: d.page_count || null,
+      actualizado: d.updated_at ? d.updated_at * 1000 : null,
+    })),
+    cursor: r?.continuation || null,
+  };
+}
+
+/**
  * Exporta un diseño y devuelve la URL del archivo.
  *
  * La exportación es un trabajo asíncrono: se crea y se pregunta hasta que
@@ -274,4 +307,4 @@ async function estado(pool, userId) {
   };
 }
 
-module.exports = { isConfigured, CFG, ligaDeAutorizacion, canjear, token, api, idDeDiseño, resolverDiseño, exportar, traerArte, estado, SCOPES };
+module.exports = { isConfigured, CFG, ligaDeAutorizacion, canjear, token, api, idDeDiseño, resolverDiseño, listarDiseños, exportar, traerArte, estado, SCOPES };

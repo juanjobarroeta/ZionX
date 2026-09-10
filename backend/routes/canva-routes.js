@@ -38,6 +38,22 @@ conexion.post('/canva/callback', async (req, res) => {
   }
 });
 
+// GET /api/canva/disenos — los diseños de la persona, para elegir viéndolos.
+conexion.get('/canva/disenos', async (req, res) => {
+  try {
+    if (!canva.isConfigured()) return res.status(409).json({ error: 'Canva no está configurado' });
+    const datos = await canva.listarDiseños(req.pool, req.user.id, {
+      q: req.query.q || '',
+      cursor: req.query.cursor || '',
+    });
+    res.json(datos);
+  } catch (e) {
+    console.error('Error listing Canva designs:', e.message);
+    res.status(e.necesitaConectar ? 409 : 502)
+       .json({ error: e.message, necesitaConectar: !!e.necesitaConectar });
+  }
+});
+
 // DELETE /api/canva/conexion — desconectar.
 conexion.delete('/canva/conexion', async (req, res) => {
   try {
